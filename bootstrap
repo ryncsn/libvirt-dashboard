@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+#export DJANGO_SETTINGS_MODULE=libvirt_dashboard.settings
+
+# Reset environment
+pkill -f celery
+sudo systemctl restart rabbitmq-server
+rm -rf caselink/migrations celerybeat-schedule db.sqlite3
+
+# Reset database
+python2 ./manage.py makemigrations caselink
+python2 ./manage.py migrate
+
+# Start celery worker
+celery worker -A libvirt_dashboard -l info -f celery_worker.log --purge --detach
+celery beat -A libvirt_dashboard -l info -f celery_beat.log --detach
+
+# Start initial database
+python2 ./setup_db.py
+
+# Run server
+python2 ./manage.py runserver 10.66.5.69:8888
