@@ -57,7 +57,6 @@ def data(request):
 
     def workitem_to_json(workitem):
         if workitem.type == 'heading':
-            logger.info(str(workitem.wi_id) + "type heading")
             return None
         json_case = model_to_dict(workitem)
         json_case['polarion'] = workitem.wi_id
@@ -77,9 +76,16 @@ def data(request):
     if request_type == 'a2m':
         for avocado_case in AvocadoCase.objects.all():
             workitems = avocado_case.workitems.all()
+
             if len(workitems) == 0:
                 logger.error("Auto case:" + str(avocado_case.name) + "is not linked")
                 continue
+
+            if len(avocado_case.name) == 0:
+                logger.info("Auto with no name founded")
+                avocado_case.name = "NONAME"
+                continue
+
             json_case = {}
             for workitem in workitems:
                 item_case = workitem_to_json(workitem)
