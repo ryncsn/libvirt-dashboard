@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.template import RequestContext, loader
 from django.forms.models import model_to_dict
 
-from .models import WorkItem, Error
+from .models import WorkItem, AvocadoCase, Error
 from .tasks import create_jira_issue
 
 
@@ -47,24 +47,54 @@ def ignore(request):
 
 
 def data(request):
-    json_list = []
-    for workitem in WorkItem.objects.all():
+    request_type = request.GET.get('type', 'm2a')
+
+    def workitem_to_json(workitem):
         if workitem.type == 'heading':
-            continue
+            logger.info(str(workitem.wi_id) + "type heading")
+            return None
         json_case = model_to_dict(workitem)
         json_case['polarion'] = workitem.wi_id
         json_case['tcms'] = ','.join(
             [case.tcmsid for case in workitem.tcmscase_set.all()])
         json_case['documents'] = '<br/>'.join(
             [doc.doc_id for doc in workitem.document_set.all()])
-        json_case['cases'] = '<br/>'.join(
-            [case.name for case in workitem.avocadocase_set.all()])
         json_case['errors'] = '<br/>'.join(
-            [error.name for error in workitem.errors.all()]
-        )
+            [error.name for error in workitem.errors.all()])
         json_case['diffs'] = '<br/>'.join(
             [change.diff for change in workitem.change_set.all()])
         json_case['changes'] = ''
-        json_list.append(json_case)
+        return json_case
+
+    json_list = []
+
+    if request_type == 'a2m':
+        for avocado_case in AvocadoCase.objects.all():
+            workitems = avocado_case.workitems.all()
+            if len(workitems) == 0:
+                logger.error("Auto case:" + str(avocado_case.name) + "is not linked")
+                continue
+            json_case = {}
+            for workitem in workitems:
+                item_case = workitem_to_json(workitem)
+                if item_case is None:
+                    continue
+                for key in item_case:
+                    try:
+                        json_case[key].append(item_case[key])
+                    except KeyError:
+                        json_case[key] = [item_case[key]];
+
+            json_case['case'] = avocado_case.name
+            json_list.append(json_case)
+
+    elif request_type == 'm2a':
+        for workitem in WorkItem.objects.all():
+            json_case = workitem_to_json(workitem)
+            if json_case is None:
+                continue
+            json_case['cases'] = '<br/>'.join(
+                [case.name for case in workitem.avocadocase_set.all()])
+            json_list.append(json_case)
 
     return JsonResponse({'data': json_list})
