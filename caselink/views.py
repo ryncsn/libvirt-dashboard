@@ -12,6 +12,12 @@ from .tasks import create_jira_issue
 logger = logging.getLogger('django')
 
 
+def a2m(request):
+    template = loader.get_template('caselink/a2m.html')
+    context = RequestContext(request, {})
+    return HttpResponse(template.render(context))
+
+
 def index(request):
     template = loader.get_template('caselink/index.html')
     context = RequestContext(request, {})
