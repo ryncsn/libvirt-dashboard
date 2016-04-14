@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import yaml
 import django
 import datetime
@@ -57,4 +58,6 @@ def run():
 
 
 if __name__ == '__main__':
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
     run()
