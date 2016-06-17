@@ -19,4 +19,4 @@ celery beat -A libvirt_dashboard -l info -f celery_beat.log --detach
 python2 ./setup_db.py
 
 # Run server
-python2 ./manage.py runserver 10.66.5.69:8888
+python2 ./manage.py runserver 0.0.0.0:8888
