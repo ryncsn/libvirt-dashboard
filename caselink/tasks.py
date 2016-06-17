@@ -1,6 +1,3 @@
-"""
-Celery asynchronous tasks
-"""
 import yaml
 import re
 import logging
@@ -23,78 +20,17 @@ try:
 except ImportError:
     from HTMLParser import HTMLParser
 
-from pylarion.document import Document as PylarionDocument
-
 from caselink.models import WorkItem, Document, Change
 from caselink.models import AvocadoCase, TCMSCase, Error
 
 
-@shared_task
-def update_polarion():
-    _update_polarion_db(_load_polarion())
-    update_changes()
-
-
-@shared_task
 def update_linkage():
     _update_linkage_db(_load_linkage())
 
 
-@shared_task
 def update_changes():
     updates = _load_updates()
     _update_changes_db(updates)
-
-
-def _load_polarion():
-    # TODO: remove the function
-    def _flatten_cases(cases):
-        all_cases = {}
-        for doc_id, doc in cases['documents'].items():
-            wis = doc['work_items']
-            for wi_id, wi in wis.items():
-                if 'documents' in wi:
-                    wi['documents'].append(doc_id)
-                else:
-                    wi['documents'] = [doc_id]
-                all_cases[wi_id] = wi
-        return all_cases
-    project = 'RedHatEnterpriseLinux7'
-    space = 'Virt-LibvirtQE'
-    obj = {
-        'project': unicode(project),
-        'space': unicode(space),
-        'documents': {},
-    }
-
-    docs = PylarionDocument.get_documents(
-        project, space, fields=['document_id', 'title', 'type', 'updated'])
-    print(u'Found %d documents project:%s space:%s' %
-          (len(docs), project, space))
-    for doc in docs:
-        print('  - ', doc.title)
-
-    for doc_idx, doc in enumerate(docs):
-        obj_doc = {
-            'title': unicode(doc.title),
-            'type': unicode(doc.type),
-            'updated': doc.updated,
-            'work_items': {},
-        }
-
-        print(u'Reading (%2d/%2d) %-20s %-60s' %
-              (doc_idx + 1, len(docs), doc.type, doc.title))
-        fields = ['work_item_id', 'type', 'title', 'updated']
-        wis = doc.get_work_items(None, True, fields=fields)
-        for wi_idx, wi in enumerate(wis):
-            obj_wi = {
-                'title': str(wi.title),
-                'type': str(wi.type),
-                'updated': wi.updated,
-            }
-            obj_doc['work_items'][str(wi.work_item_id)] = obj_wi
-        obj['documents'][str(doc.document_id)] = obj_doc
-    return _flatten_cases(obj)
 
 
 def _load_linkage():
@@ -108,36 +44,6 @@ def _load_updates():
         updates = yaml.load(updates_fp)
     changes = {k: v['changes'] for k, v in updates.items() if 'changes' in v}
     return changes
-
-
-@transaction.atomic
-def _update_polarion_db(cases):
-    # pylint: disable=no-member
-    early_error, _ = Error.objects.get_or_create(
-        name='Current date earlier than confirmation')
-
-    for wi_id, case in cases.items():
-        wi, created = WorkItem.objects.get_or_create(wi_id=wi_id)
-        wi.title = case['title']
-        wi.type = case['type']
-        updated = timezone.make_aware(case['updated'])
-        if created:
-            wi.updated = wi.confirmed = updated
-        else:
-            if wi.confirmed < updated:
-                print("Current date late than confirmation for %s (%s:%s)" %
-                      (updated - wi.confirmed, wi.confirmed, updated))
-                wi.updated = updated
-            elif wi.confirmed > updated:
-                print("Current date earlier than confirmation for %s (%s:%s)" %
-                      (wi.confirmed - updated, wi.confirmed, updated))
-                wi.errors.add(early_error)
-        wi.save()
-
-        for doc_id in case['documents']:
-            doc, _ = Document.objects.get_or_create(doc_id=doc_id)
-            doc.workitems.add(wi)
-            doc.save()
 
 
 @transaction.atomic
