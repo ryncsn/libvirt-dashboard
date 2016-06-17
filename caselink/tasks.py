@@ -16,7 +16,6 @@ from celery import shared_task
 from builtins import str
 from pylarion.document import Document as PylarionDocument
 from html.parser import HTMLParser
-from jira import JIRA
 
 from caselink.models import WorkItem, Document, Change
 from caselink.models import AvocadoCase, TCMSCase, Error
@@ -37,33 +36,6 @@ def update_linkage():
 def update_changes():
     updates = _load_updates()
     _update_changes_db(updates)
-
-
-@shared_task
-def create_jira_issue(wi_id):
-    options = {
-        'server': 'https://projects.engineering.redhat.com',
-        'verify': False,
-    }
-
-    basic_auth = ('username', 'password')
-    jira = JIRA(options, basic_auth=basic_auth)
-
-    # Change contnent of this.
-    issue_dict = {
-        'project': {
-            'key': 'LIBVIRTAT',
-        },
-        'summary': 'Update autocase for %s' % wi_id,
-        'description': '',
-        'parent': {
-            'id': 'LIBVIRTAT-19',
-        },
-        'issuetype': {
-            'name': 'Sub-task',
-        },
-    }
-    jira.create_issue(fields=issue_dict)
 
 
 def _load_polarion():

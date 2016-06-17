@@ -6,7 +6,6 @@ from django.template import RequestContext, loader
 from django.forms.models import model_to_dict
 
 from .models import WorkItem, AvocadoCase, Error
-from .tasks import create_jira_issue
 
 
 logger = logging.getLogger('django')
@@ -27,8 +26,6 @@ def index(request):
 def update(request):
     wi_id = request.POST.get('id')
     response = {'job': wi_id}
-
-    create_jira_issue.delay(wi_id)
 
     # Confirm change
     wi = WorkItem.objects.get(wi_id=wi_id)
