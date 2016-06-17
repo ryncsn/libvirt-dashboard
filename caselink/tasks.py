@@ -13,9 +13,17 @@ from django.core.exceptions import ObjectDoesNotExist
 from celery import shared_task
 
 # pylint: disable=redefined-builtin
-from builtins import str
+try:
+    from builtins import str
+except ImportError:
+    pass
+
+try:
+    from html.parser import HTMLParser
+except ImportError:
+    from HTMLParser import HTMLParser
+
 from pylarion.document import Document as PylarionDocument
-from html.parser import HTMLParser
 
 from caselink.models import WorkItem, Document, Change
 from caselink.models import AvocadoCase, TCMSCase, Error

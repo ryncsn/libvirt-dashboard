@@ -18,7 +18,10 @@ from caselink.models import WorkItem, Document
 from caselink.tasks import update_linkage
 from caselink.tasks import update_polarion
 
-from builtins import str
+try:
+    from builtins import str
+except ImportError:
+    pass
 
 
 class literal(str):
