@@ -122,7 +122,12 @@
                     {
                         "data": "polarion",
                         "render": function( data ) {
-                            return '<a href="https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/workitem?id='+data+'">'+data+'</a>';
+                            link = "";
+                            for (i in data){
+                                polarion_id = data[i];
+                                link += '<a href="https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/workitem?id='+polarion_id+'">'+polarion_id+'</a><br>';
+                            }
+                            return link;
                         }
                     },
                     { "data": "title" },
