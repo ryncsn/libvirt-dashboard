@@ -2,6 +2,7 @@ import yaml
 import re
 import logging
 import difflib
+import datetime
 
 from django.utils import timezone
 from django.db import transaction
@@ -24,13 +25,22 @@ from caselink.models import WorkItem, Document, Change
 from caselink.models import AvocadoCase, TCMSCase, Error
 
 
+def update_polarion():
+    _update_polarion_db(_load_polarion())
+
+
 def update_linkage():
     _update_linkage_db(_load_linkage())
 
 
 def update_changes():
-    updates = _load_updates()
-    _update_changes_db(updates)
+    _update_changes_db(_load_updates())
+
+
+def _load_polarion():
+    with open('base_polarion.yaml') as polarion_fp:
+        polarion = yaml.load(polarion_fp)
+    return polarion
 
 
 def _load_linkage():
@@ -44,6 +54,24 @@ def _load_updates():
         updates = yaml.load(updates_fp)
     changes = {k: v['changes'] for k, v in updates.items() if 'changes' in v}
     return changes
+
+
+@transaction.atomic
+def _update_polarion_db(polarion):
+    for wi_id, case in polarion.items():
+        # pylint: disable=no-member
+        workitem, _ = WorkItem.objects.get_or_create(wi_id=wi_id)
+        workitem.title = case['title']
+        workitem.type = case['type']
+        updated = timezone.make_aware(
+            case['updated'] - datetime.timedelta(hours=8))
+        workitem.updated = workitem.confirmed = updated
+        workitem.save()
+
+        for doc_id in case['documents']:
+            doc, _ = Document.objects.get_or_create(doc_id=doc_id)
+            doc.workitems.add(workitem)
+            doc.save()
 
 
 @transaction.atomic
