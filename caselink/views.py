@@ -6,9 +6,32 @@ from django.template import RequestContext, loader
 from django.forms.models import model_to_dict
 
 from .models import WorkItem, AvocadoCase, Error
+from .serializers import WorkItemSerializer, AvocadoCaseSerializer
+from rest_framework import generics
 
 
 logger = logging.getLogger('django')
+
+
+class WorkItemList(generics.ListCreateAPIView):
+    queryset = WorkItem.objects.all()
+    serializer_class = WorkItemSerializer
+
+
+class WorkItemDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = WorkItem.objects.all()
+    serializer_class = WorkItemSerializer
+
+
+class AvocadoCaseList(generics.ListCreateAPIView):
+    queryset = AvocadoCase.objects.all()
+    serializer_class = AvocadoCaseSerializer
+
+
+class AvocadoCaseDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = AvocadoCase.objects.all()
+    serializer_class = AvocadoCaseSerializer
+
 
 
 def a2m(request):

@@ -3,10 +3,12 @@ from django.db import models
 
 class Error(models.Model):
     name = models.CharField(max_length=255)
+    def __str__(self):
+        return self.name
 
 
 class WorkItem(models.Model):
-    wi_id = models.CharField(max_length=255)
+    wi_id = models.CharField(max_length=255, primary_key=True)
     title = models.CharField(
         max_length=65535,
         blank=True,
@@ -40,6 +42,10 @@ class WorkItem(models.Model):
     )
     errors = models.ManyToManyField(Error)
 
+    def __str__(self):
+        return self.wi_id
+
+
 
 class Document(models.Model):
     doc_id = models.CharField(max_length=65535)
@@ -55,7 +61,7 @@ class Change(models.Model):
 
 class AvocadoCase(models.Model):
     workitems = models.ManyToManyField(WorkItem)
-    name = models.CharField(max_length=65535)
+    name = models.CharField(max_length=65535, primary_key = True)
 
 
 class TCMSCase(models.Model):
