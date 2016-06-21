@@ -111,7 +111,7 @@ def load_polarion(project, space):
     ])
 
     docs = Document.get_documents(
-        project, space, fields=['document_id', 'title', 'type', 'updated'])
+        project, space, fields=['document_id', 'title', 'type', 'updated', 'project_id'])
     info(u'Found %d documents project:%s space:%s', len(docs), project, space)
     for doc in docs:
         print('  - ', doc.title)
@@ -120,8 +120,9 @@ def load_polarion(project, space):
         obj_doc = OrderedDict([
             ('title', literal(doc.title)),
             ('type', literal(doc.type)),
-            ('updated', doc.updated),
+            ('project', project),
             ('work_items', OrderedDict()),
+            ('updated', doc.updated),
         ])
 
         info(u'Reading (%2d/%2d) %-20s %-60s',
@@ -132,6 +133,7 @@ def load_polarion(project, space):
             obj_wi = OrderedDict([
                 ('title', literal(wi.title)),
                 ('type', literal(wi.type)),
+                ('project', project),
                 ('updated', wi.updated),
             ])
             obj_doc['work_items'][literal(wi.work_item_id)] = obj_wi
@@ -269,37 +271,6 @@ def check_linkage(cases, linkage):
     print('Found %3d linkages with polarion work item not found' %
           len(polarion_not_found))
     print('=' * 80)
-
-
-def report(polarion_result):
-    fields = ['wiki_page_id', 'home_page_content', 'title', 'type', 'updated']
-    wikis = WikiPage.get_wiki_pages(PROJECT, AUTO_SPACE, fields)
-    linkage_wiki = None
-    for wiki in wikis:
-        if wiki.wiki_page_id == 'libvirt Auto-Manual Linkage Report':
-            linkage_wiki = wiki
-
-    if linkage_wiki:
-        content = '{toc}\n'
-        if polarion_result['duplicates']:
-            content += '1 Duplicate Cases\n'
-            content += '{table}\n'
-            content += 'Title | Cases\n'
-            for title, wis in polarion_result['duplicates'].items():
-                content += '%s | ' % wiki_escape(title)
-                content += ''.join(
-                    ['{workitem:%s}' % wi for wi in sorted(wis)]) + '\n'
-            content += '{table}\n'
-
-        if linkage_wiki.home_page_content == content:
-            info('Linkage wiki page not changed')
-        else:
-            info('Linkage wiki page changed')
-            for line in difflib.unified_diff(
-                    content.splitlines(),
-                    linkage_wiki.home_page_content.splitlines()):
-                pass
-            linkage_wiki.home_page_content = content
 
 
 def update_automation(linkage):
