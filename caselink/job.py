@@ -141,56 +141,6 @@ def load_polarion(project, space):
     return flatten_cases(obj)
 
 
-def check_updates(param):
-    new_cases = param['current']
-    old_cases = param['base']
-
-    assert new_cases['project'] == old_cases['project']
-    assert new_cases['space'] == old_cases['space']
-    project = new_cases['project']
-    space = new_cases['space']
-
-    new_doc_ids = set(new_cases['documents'].keys())
-    old_doc_ids = set(old_cases['documents'].keys())
-    created_docs = new_doc_ids - old_doc_ids
-    removed_docs = new_doc_ids - old_doc_ids
-
-    if created_docs:
-        info('Created documents in %s %s:', project, space)
-        for doc_id in created_docs:
-            info('   %s' % doc_id)
-    if removed_docs:
-        info('Removed documents in %s %s:', project, space)
-        for doc_id in created_docs:
-            info('   %s', doc_id)
-
-    for doc_id in (new_doc_ids & old_doc_ids):
-        old_wis = old_cases['documents'][doc_id]['work_items']
-        new_wis = new_cases['documents'][doc_id]['work_items']
-
-        old_wi_ids = set(old_wis.keys())
-        new_wi_ids = set(new_wis.keys())
-        created_wis = new_wi_ids - old_wi_ids
-        removed_wis = old_wi_ids - new_wi_ids
-
-        if created_wis:
-            info("Created work items in %s:", doc_id)
-            for wi_id in created_wis:
-                info('   %s' % wi_id)
-        if removed_wis:
-            info("Removed work items in %s:", doc_id)
-            for wi_id in removed_wis:
-                info('   %s', wi_id)
-
-        for wi_id in (new_wi_ids & old_wi_ids):
-            old_wi = new_wis[wi_id]
-            new_wi = new_wis[wi_id]
-
-            if new_wi['updated'] != old_wi['updated']:
-                info('Work item %s: %s has been updated at %s',
-                     (wi_id, new_wi['title'], new_wi['updated']))
-
-
 def flatten_cases(cases):
     all_cases = {}
     for doc_id, doc in cases['documents'].items():
@@ -273,7 +223,7 @@ def check_linkage(cases, linkage):
     print('=' * 80)
 
 
-def update_automation(linkage):
+def check_update_automation(linkage):
     for case in linkage:
         if 'automated' not in case:
             case['automated'] = True
@@ -300,22 +250,6 @@ def update_automation(linkage):
                 else:
                     print("%s have automation state: %s" % (wi_id, automation))
     session.tx_commit()
-
-
-def update_json(all_cases):
-    json_obj = []
-    for case in all_cases:
-        if case['type'] == 'heading':
-            continue
-        if case['updated']:
-            case['updated'] = case['updated'].isoformat()
-        case['documents'] = '<br/>'.join(case['documents'])
-        case['errors'] = '<br/>'.join(case['errors'])
-        case['changes'] = ''
-        json_obj.append(case)
-
-    with open('data.json', 'w') as json_fp:
-        json.dump({'data': json_obj}, json_fp, indent=4)
 
 
 def merge_cases(base, current, updates, linkage):
@@ -348,6 +282,11 @@ def merge_cases(base, current, updates, linkage):
         'updated': None,
         'created': False,
         'removed': False,
+        'cases': [],
+        'documents': [],
+        'errors': [],
+        'changes': [],
+        'diffs': [],
     }
 
     all_cases = []
@@ -367,15 +306,6 @@ def merge_cases(base, current, updates, linkage):
                 case[key] = updates_case.get(key)
             else:
                 case[key] = defaults[key]
-        for key in ['cases', 'documents', 'errors', 'changes', 'diffs']:
-            if key in polarion_case:
-                case[key] = polarion_case.get(key)
-            elif key in linkage_case:
-                case[key] = linkage_case.get(key)
-            elif key in updates_case:
-                case[key] = updates_case.get(key)
-            else:
-                case[key] = []
         case['polarion'] = wi_id
         all_cases.append(case)
     return all_cases
@@ -501,52 +431,6 @@ def check_changes(changes, wi_id=None):
     return diffs
 
 
-def load_updates(base, current):
-    created = set(current) - set(base)
-    removed = set(base) - set(current)
-    all_cases = set(base) | set(current)
-
-    print('Created %s work items:' % len(created))
-    print('Removed %s work items:' % len(removed))
-
-    with open('updates.yaml') as updates_fp:
-        old_updates = yaml.load(updates_fp)
-
-    updates = {}
-    for wi_id in all_cases:
-        if wi_id in created:
-            updates[wi_id] = {'created': True}
-        elif wi_id in removed:
-            updates[wi_id] = {'removed': True}
-        else:
-            if wi_id in old_updates:
-                updates[wi_id] = {'changes': old_updates[wi_id]}
-                continue
-
-            base_wi = base[wi_id]
-            current_wi = current[wi_id]
-            if base_wi['updated'] != current_wi['updated']:
-                print('%s changed on %s' % (wi_id, current_wi['updated']))
-                changes = recent_changes(wi_id, base_wi['updated'])
-                updates[wi_id] = {'changes': changes}
-
-    # updates = {}
-    # for wi_id in unchanged:
-    #     base_wi = base[wi_id]
-    #     current_wi = current[wi_id]
-    #     if base_wi['updated'] != current_wi['updated']:
-    #         print('%s changed on %s' % (wi_id, current_wi['updated']))
-    #         changes = recent_changes(wi_id, base_wi['updated'])
-    #         updates[wi_id] = changes
-
-    with open('updates.yaml', 'w') as updates_fp:
-        yaml.dump(updates, updates_fp)
-
-    with open('updates.yaml') as updates_fp:
-        updates = yaml.load(updates_fp)
-    return updates
-
-
 def load():
     # Load base status recorded
     with open('base_polarion.yaml') as base_fp:
@@ -561,8 +445,6 @@ def load():
     with open('autotest_cases.yaml') as linkage_fp:
         linkage = yaml.load(linkage_fp)
 
-    # Load updates
-    # updates = load_updates(base, current)
     with open('updates.yaml') as updates_fp:
         updates = yaml.load(updates_fp)
 
@@ -634,9 +516,8 @@ def run():
 #    linkage_result = check_linkage(current, linkage)
 
     # Update stage
-    # update_automation(linkage)
+    # check_updata_automation(linkage)
     update_base(all_cases)
-    update_json(all_cases)
 
     # Report stage
     # report(polarion_result)
