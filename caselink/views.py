@@ -5,8 +5,8 @@ from django.http import JsonResponse
 from django.template import RequestContext, loader
 from django.forms.models import model_to_dict
 
-from .models import WorkItem, AutoCase, Error
-from .serializers import WorkItemSerializer, AutoCaseSerializer
+from .models import WorkItem, AutoCase, CaseLink, Error
+from .serializers import WorkItemSerializer, AutoCaseSerializer, LinkageSerializer
 from rest_framework import generics
 
 
@@ -32,6 +32,15 @@ class AutoCaseDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = AutoCase.objects.all()
     serializer_class = AutoCaseSerializer
 
+
+class LinkageList(generics.ListCreateAPIView):
+    queryset = CaseLink.objects.all()
+    serializer_class = LinkageSerializer
+
+
+class LinkageDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = CaseLink.objects.all()
+    serializer_class = LinkageSerializer
 
 
 def a2m(request):

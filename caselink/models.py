@@ -64,15 +64,19 @@ class AutoCase(models.Model):
     start_commit = models.CharField(max_length=255, blank=True)
     end_commit = models.CharField(max_length=255, blank=True)
     errors = models.ManyToManyField(Error, blank=True, related_name='autocases')
+    def __str__(self):
+        return self.id
 
 
 class CaseLink(models.Model):
-    workitem = models.ForeignKey(WorkItem, on_delete=models.PROTECT, related_name='caselinks')
+    workitem = models.OneToOneField(WorkItem, on_delete=models.PROTECT,
+                                 primary_key=True, related_name='caselinks')
     autocases = models.ManyToManyField(AutoCase, blank=True, related_name='caselinks')
     autocase_pattern = models.CharField(max_length=255, blank=True)
     framework = models.ForeignKey(Framework, on_delete=models.PROTECT, null=True,
                                   related_name='caselinks')
     errors = models.ManyToManyField(Error, blank=True, related_name='caselinks')
+
 
     # Legacy
     title = models.CharField(max_length=255, blank=True)
