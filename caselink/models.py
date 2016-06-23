@@ -74,3 +74,5 @@ class CaseLink(models.Model):
                                   related_name='caselinks')
     errors = models.ManyToManyField(Error, blank=True, related_name='caselinks')
 
+    # Legacy
+    title = models.CharField(max_length=255, blank=True)

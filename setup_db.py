@@ -11,23 +11,23 @@ django.setup()
 
 from django.db import transaction
 
-from caselink.tasks import update_error
-from caselink.tasks import update_project
-from caselink.tasks import update_manualcase
-from caselink.tasks import update_autocase_linkage
+from caselink.tasks import load_error
+from caselink.tasks import load_project
+from caselink.tasks import load_manualcase
+from caselink.tasks import load_autocase_linkage
 
 def run():
     print('Loading Error')
-    update_error()
+    load_error()
 
     print('Loading Project')
-    update_project()
+    load_project()
 
     print('Loading Manual Cases')
-    update_manualcase()
+    load_manualcase()
 
     print('Loading Auto Cases and Linkage')
-    update_autocase_linkage()
+    load_autocase_linkage()
 
 if __name__ == '__main__':
     reload(sys)

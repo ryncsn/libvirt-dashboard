@@ -30,24 +30,47 @@ def _baseline_loader(baseline_file):
         baseline = yaml.load(base_fp)
     return baseline
 
-def update_error():
-    _update_error_db(_baseline_loader('base_error.yaml'))
+
+def load_error():
+    """Load baseline Error"""
+    _load_error_db(_baseline_loader('base_error.yaml'))
 
 
-def update_project():
-    _update_project_db(_baseline_loader('base_project.yaml'))
+def load_project():
+    """Load baseline Project"""
+    _load_project_db(_baseline_loader('base_project.yaml'))
 
 
-def update_manualcase():
-    _update_manualcase_db(_baseline_loader('base_workitem.yaml'))
+def load_manualcase():
+    """Load baseline Manual cases"""
+    _load_manualcase_db(_baseline_loader('base_workitem.yaml'))
+    updata_manualcase_error()
 
 
-def update_autocase_linkage():
-    _update_autocase_linkage_db(_baseline_loader('base_autocase_linkage.yaml'))
+def load_autocase_linkage():
+    """Load baseline Auto cases and linkage"""
+    _load_autocase_linkage_db(_baseline_loader('base_autocase_linkage.yaml'))
+    updata_linkage_error()
+    updata_autocase_error()
+
+
+def updata_linkage_error():
+    """Check for errors in linkage"""
+    pass
+
+
+def updata_manualcase_error():
+    """Check for errors in manual cases"""
+    pass
+
+
+def updata_autocase_error():
+    """Check for errors in auto cases"""
+    pass
 
 
 @transaction.atomic
-def _update_project_db(projects):
+def _load_project_db(projects):
     for project_id, project_item in projects.items():
         project, _ = Project.objects.get_or_create(id=project_id)
         project.name = project_item['name']
@@ -55,7 +78,7 @@ def _update_project_db(projects):
 
 
 @transaction.atomic
-def _update_error_db(errors):
+def _load_error_db(errors):
     for error_id, error_item in errors.items():
         error, _ = Error.objects.get_or_create(id=error_id)
         error.message = error_item['message']
@@ -63,7 +86,7 @@ def _update_error_db(errors):
 
 
 @transaction.atomic
-def _update_manualcase_db(polarion):
+def _load_manualcase_db(polarion):
     for wi_id, case in polarion.items():
 
         # pylint: disable=no-member
@@ -105,7 +128,7 @@ def _update_manualcase_db(polarion):
 
 
 @transaction.atomic
-def _update_autocase_linkage_db(linkage):
+def _load_autocase_linkage_db(linkage):
     # pylint: disable=no-member
     for link in linkage:
         wi_ids = link.get('polarion', {}).keys()
