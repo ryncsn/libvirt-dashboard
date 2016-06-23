@@ -21,110 +21,167 @@ try:
 except ImportError:
     from HTMLParser import HTMLParser
 
-from caselink.models import WorkItem, Document, Change
-from caselink.models import AvocadoCase, TCMSCase, Error
+from caselink.models \
+        import Error, Arch, Component, Framework, Project, Document, WorkItem, AutoCase, CaseLink
 
 
-def update_polarion():
-    _update_polarion_db(_load_polarion())
+def _baseline_loader(baseline_file):
+    with open('caselink/db_baseline/' + baseline_file) as base_fp:
+        baseline = yaml.load(base_fp)
+    return baseline
+
+def update_error():
+    _update_error_db(_baseline_loader('base_error.yaml'))
 
 
-def update_linkage():
-    _update_linkage_db(_load_linkage())
+def update_project():
+    _update_project_db(_baseline_loader('base_project.yaml'))
 
 
-def _load_polarion():
-    with open('base_polarion.yaml') as polarion_fp:
-        polarion = yaml.load(polarion_fp)
-    return polarion
+def update_manualcase():
+    _update_manualcase_db(_baseline_loader('base_workitem.yaml'))
 
 
-def _load_linkage():
-    with open('autotest_cases.yaml') as linkage_fp:
-        linkage = yaml.load(linkage_fp)
-    return linkage
-
-
-def _load_updates():
-    with open('updates.yaml') as updates_fp:
-        updates = yaml.load(updates_fp)
-    changes = {k: v['changes'] for k, v in updates.items() if 'changes' in v}
-    return changes
+def update_autocase_linkage():
+    _update_autocase_linkage_db(_baseline_loader('base_autocase_linkage.yaml'))
 
 
 @transaction.atomic
-def _update_polarion_db(polarion):
+def _update_project_db(projects):
+    for project_id, project_item in projects.items():
+        project, _ = Project.objects.get_or_create(id=project_id)
+        project.name = project_item['name']
+        project.save()
+
+
+@transaction.atomic
+def _update_error_db(errors):
+    for error_id, error_item in errors.items():
+        error, _ = Error.objects.get_or_create(id=error_id)
+        error.message = error_item['message']
+        error.save()
+
+
+@transaction.atomic
+def _update_manualcase_db(polarion):
     for wi_id, case in polarion.items():
+
         # pylint: disable=no-member
-        workitem, _ = WorkItem.objects.get_or_create(wi_id=wi_id)
+        workitem, _ = WorkItem.objects.get_or_create(id=wi_id)
         workitem.title = case['title']
         workitem.type = case['type']
-        updated = timezone.make_aware(
-            case['updated'] - datetime.timedelta(hours=8))
-        workitem.updated = workitem.confirmed = updated
-        workitem.save()
+        workitem.automation = case['automated']
+        workitem.commit = case['commit']
+        workitem.arch, _ = Arch.objects.get_or_create(name=case['arch'])
+        workitem.project, created = Project.objects.get_or_create(name=case['project'])
+
+        if created:
+            logging.error("Created not included project '%s'" % case['project'])
+            workitem.project.id = case['project']
+            workitem.project.save()
+
+        for arch_name in case['arch']:
+            arch, _ = Arch.objects.get_or_create(name=arch_name)
+            arch.workitems.add(workitem)
+            arch.save()
 
         for doc_id in case['documents']:
-            doc, _ = Document.objects.get_or_create(doc_id=doc_id)
+            doc, created = Document.objects.get_or_create(id=doc_id)
+            if created:
+                doc.title = doc_id
+                doc.component = Component.objects.get_or_create(name='libvirt')
             doc.workitems.add(workitem)
             doc.save()
 
+        for error_message in case['errors']:
+            error, created = Error.objects.get_or_create(message=error_message)
+            if created:
+                error.id = error_message
+                logging.error("Created not included error '%s'" % error_message)
+            error.workitems.add(workitem)
+            error.save()
+
+        workitem.save()
+
 
 @transaction.atomic
-def _update_linkage_db(linkage):
+def _update_autocase_linkage_db(linkage):
     # pylint: disable=no-member
-    multiple_polarion_error, _ = Error.objects.get_or_create(
-        name='More than one polarion for one auto case')
-
     for link in linkage:
-        wis = []
         wi_ids = link.get('polarion', {}).keys()
         case_names = link.get('cases', [])
-        tcms_ids = link.get('tcms', {}).keys()
         automated = link.get('automated', True)
+        framework = link.get('framework', '')
+        tcms_ids = link.get('tcms', {}).keys()
         comment = link.get('comment', '')
         feature = link.get('feature', '')
+        title = link.get('title', '')
+        autocase_errors = set()
+        workitem_errors = set()
+        linkage_errors = set()
 
-        # Log error when wi_ids is not unique.
-        # Will remove this when cases are cleaned up.
+        # Check for workitem number error
         if not wi_ids:
             logging.error("No Polarion specified in linkage for %s",
                           link.get('title', ''))
+            autocase_errors.add("NO_WORKITEM")
         elif len(wi_ids) > 1:
             logging.error("More than one polarion for one linkage for %s: %s",
                           link.get('title', ''), wi_ids)
+            autocase_errors.add("MULTIPLE_WORKITEM")
 
+        # Check for workitem deleted error
+        # Create dummy workitem to track error
         for wi_id in wi_ids:
-            try:
-                wi = WorkItem.objects.get(wi_id=wi_id)
-            except ObjectDoesNotExist:
+            wi, created = WorkItem.objects.get_or_create(id=wi_id)
+            if created:
                 logging.error("Work Item %s in linkage not found on Polarion",
                               wi_id)
+                linkage_errors.add("WORKITEM_DELETED")
+                workitem_errors.add("WORKITEM_DELETED")
+                try:
+                    wi.error = Error.objects.get(id="WORKITEM_DELETED")
+                except ObjectDoesNotExist:
+                    logging.error("Error WORKITEM_DELETED not found")
+                wi.save()
                 continue
+            elif len(wi_ids) == 1 and wi.title != title:
+                logging.error("Work Item %s in linkage have diffrent title on Polarion",
+                              wi_id)
+                linkage_errors.add("WORKITEM_TITLE_INCONSISTENCY")
+                workitem_errors.add("WORKITEM_TITLE_INCONSISTENCY")
 
-            if len(wi_ids) > 1:
-                wi.errors.add(multiple_polarion_error)
-
-            if automated:
-                wi.automation = 'automated'
-            else:
-                if comment:
-                    wi.comment = comment
-                    wi.automation = 'manualonly'
-                else:
-                    wi.automation = 'updating'
-            wi.feature = feature
-            wi.save()
-            wis.append(wi)
-
-        for tcmsid in tcms_ids:
-            case, _ = TCMSCase.objects.get_or_create(tcmsid=tcmsid)
-            for wi in wis:
-                case.workitems.add(wi)
-            case.save()
-
+        # Create autocase
         for name in case_names:
-            case, _ = AvocadoCase.objects.get_or_create(name=name)
-            for wi in wis:
-                case.workitems.add(wi)
+            case, created = AutoCase.objects.get_or_create(id=name)
+            for err in autocase_errors:
+                case.errors.add(Error.objects.get(id=err))
+            # Fill new created autocase entry
+            if created:
+                framework, _ = Framework.objects.get_or_create(name=framework)
+                case.framework = framework
+                #case.archs=Framework.objects.get_or_create(name=framework)
+                #case.start_commit=Framework.objects.get_or_create(name=framework)
+                #case.end_commit=Framework.objects.get_or_create(name=framework)
             case.save()
+
+        # Create linkage
+        for wi_id in wi_ids:
+            workitem = WorkItem.objects.get(id=wi_id)
+            linkage, created = CaseLink.objects.get_or_create(workitem=workitem)
+            #if created:
+                #linkage.framework=Framework.objects.get_or_create(name=framework)
+            for name in case_names:
+                linkage.autocases.add(AutoCase.objects.get(id=name))
+
+            if workitem.automation != automated and len(case_names) > 0:
+                workitem.automation = 'automated'
+                workitem.errors.add("WORKITEM_AUTOMATION_INCONSISTENCY")
+            workitem.feature = feature
+            for err in workitem_errors:
+                workitem.errors.add(Error.objects.get(id=err))
+            workitem.save()
+
+            for err in linkage_errors:
+                linkage.errors.add(Error.objects.get(id=err))
+            linkage.save()

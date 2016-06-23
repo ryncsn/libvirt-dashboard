@@ -1,0 +1,20 @@
+"MULTIPLE_WORKITEM":
+  message: "More than one manual for one auto case"
+
+"NO_WORKITEM":
+  message: "Auto case have no manual case linked"
+
+"WORKITEM_DELETED":
+  message: "Manual case linked to the auto case has been deleted"
+
+"WORKITEM_TITLE_INCONSISTENCY":
+  message: "Manual case's title differ from linkage db and polarion"
+
+"WORKITEM_AUTOMATION_INCONSISTENCY":
+  message: "Manual case's automation status differ from linkage db and polarion"
+
+"WORKITEM_FEATURE_INCONSISTENCY":
+  message: "Manual case's feature differ from linkage db and polarion"
+
+"WORKITEM_TITLE_DUPLICATE":
+  message: "Duplicate name found"

@@ -11,16 +11,23 @@ django.setup()
 
 from django.db import transaction
 
-from caselink.tasks import update_polarion
-from caselink.tasks import update_linkage
+from caselink.tasks import update_error
+from caselink.tasks import update_project
+from caselink.tasks import update_manualcase
+from caselink.tasks import update_autocase_linkage
 
 def run():
-    print('Loading polaroin')
-    update_polarion()
+    print('Loading Error')
+    update_error()
 
-    print('Loading linkage')
-    update_linkage()
+    print('Loading Project')
+    update_project()
 
+    print('Loading Manual Cases')
+    update_manualcase()
+
+    print('Loading Auto Cases and Linkage')
+    update_autocase_linkage()
 
 if __name__ == '__main__':
     reload(sys)
