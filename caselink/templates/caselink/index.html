@@ -12,38 +12,6 @@
         <link rel="stylesheet" href="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.default.css" id="toggleCSS" />
     </head>
     <body>
-        <script>
-            function do_update ( row_id, id ) {
-                table = $('#sortable-table').DataTable();
-                table.row(row_id).remove().draw();
-                $.post(
-                    "update",
-                    {
-                        'csrfmiddlewaretoken': '{{ csrf_token }}',
-                        'id': id,
-                    },
-                    function ( response ) {
-                        console.log(response);
-                        alertify.alert("Updated " + id);
-                    }
-                );
-            }
-            function do_ignore ( row_id, id ) {
-                table = $('#sortable-table').DataTable();
-                table.row(row_id).remove().draw();
-                $.post(
-                    "ignore",
-                    {
-                        'csrfmiddlewaretoken': '{{ csrf_token }}',
-                        'id': id,
-                    },
-                    function ( response ) {
-                        console.log(response);
-                        alertify.alert("Ignored " + id);
-                    }
-                );
-            }
-        </script>
         <h3 align='center'>libvirt Manual-Auto Case Linkage</h3>
         <table id="sortable-table" class="display">
             <thead>
@@ -53,11 +21,6 @@
                 <th>Documents</th>
                 <th>Automation</th>
                 <th>Error</th>
-                <th>Feature</th>
-                <th>Updated</th>
-                <th>TCMS</th>
-                <th>Comment</th>
-                <th>Diffs</th>
                 <th>Cases</th>
             </thead>
             <tfoot>
@@ -67,11 +30,6 @@
                 <th>Documents</th>
                 <th>Automation</th>
                 <th>Error</th>
-                <th>Feature</th>
-                <th>Updated</th>
-                <th>TCMS</th>
-                <th>Comment</th>
-                <th>Diffs</th>
                 <th>Cases</th>
             </tfoot>
         </table>
@@ -81,48 +39,19 @@
             function format ( row ) {
                 d = row.data();
                 // `d` is the original data object for the row
-                var diff_txt = ''
-                if(d.diffs.length > 0) {
-                    diff_txt += 'Do these changes need auto case update?'
-                    diff_txt += ' <button type="button" onclick="do_update(\''+
-                        row.index()+'\', \''+
-                        d.polarion+'\');" >Yes</button>';
-                    diff_txt += ' <button type="button" onclick="do_ignore(\''+
-                        row.index()+'\', \''+
-                        d.polarion+'\');" >No</button>';
-                    diff_txt += '<pre><code class="diff">'+d.diffs+'</code></pre>';
-                }
                 var table_txt = '<table cellpadding="0" cellspacing="0" '+
                     'border="0" style="padding-left:0px;">';
-                if(d.tcms) {
-                    table_txt += '<tr>'+
-                        '<td>TCMS case IDs:</td>'+
-                        '<td>'+d.tcms+'</td>'+
-                    '</tr>';
-                }
                 if(d.cases.length > 0) {
                     table_txt += '<tr>'+
                     '<tr>'+
                         '<td>Autotest cases:</td>'+
-                        '<td>'+d.cases+'</td>'+
+                        '<td>'+d.cases.join("<br>")+'</td>'+
                     '</tr>';
                 }
-                if(d.comment) {
-                    table_txt += '<tr>'+
-                        '<td>Comment:</td>'+
-                        '<td>'+d.comment+'</td>'+
-                    '</tr>';
-                }
-                if(d.errors) {
+                if(d.errors.length > 0) {
                     table_txt += '<tr>'+
                         '<td>Errors:</td>'+
-                        '<td>'+d.errors+'</td>'+
-                    '</tr>';
-                }
-                if(diff_txt) {
-                    table_txt += '<tr>'+
-                        '<td>Diffs:</td>'+
-                        '<td>'+ diff_txt +'</td>'+
+                        '<td>'+d.errors.join("<br>")+'</td>'+
                     '</tr>';
                 }
                 table_txt += '</table>';
@@ -145,9 +74,10 @@
                     this.api().columns().every( function () {
                         var column = this;
                         var title = $(column.header()).text();
-                        if ( title.length == 0 || ['Title', 'Polarion', 'TCMS', 'Comment', 'Cases'].indexOf(title) > -1 ) {
+                        if ( title.length == 0 || ['Title', 'Polarion', 'Cases'].indexOf(title) > -1 ) {
                             return;
                         }
+                        var selections = [];
                         var select = $('<select><option value=""></option></select>')
                             .appendTo( $(column.footer()).empty() )
                             .on( 'change', function () {
@@ -155,12 +85,20 @@
                                     $(this).val()
                                 );
                                 column
-                                    .search( val ? '^'+val+'$' : '', true, false )
+                                    .search( val ? val : '', true, false )
                                     .draw();
-                            } );
-                        column.data().unique().sort().each( function ( d, j ) {
-                            select.append( '<option value="'+d+'">'+d+'</option>' )
-                        } );
+                            });
+                            column.data().each( function ( d, j ) {
+                                selections = selections.concat(d);
+                            });
+                            $.each(
+                                $.grep(selections, function(el, index) {
+                                    return index === $.inArray(el, selections);
+                                }),
+                                function(key, value){
+                                    select.append( '<option value="'+value+'">'+value+'</option>' )
+                                }
+                            );
                     } );
                 },
                 "columns": [
@@ -178,14 +116,19 @@
                         }
                     },
                     { "data": "title" },
-                    { "data": "documents"},
+                    {
+                        "data": "documents",
+                        "render": function( data ) {
+                            return data.join('<br>');
+                        }
+                    },
                     { "data": "automation" },
-                    { "data": "errors" },
-                    { "data": "feature" },
-                    { "data": "updated"},
-                    { "data": "tcms" },
-                    { "data": "comment" },
-                    { "data": "diffs" },
+                    {
+                        "data": "errors",
+                        "render": function( data ) {
+                            return data.join('<br>');
+                        }
+                    },
                     { "data": "cases" },
                 ],
                 "createdRow": function ( row, data, index ) {
@@ -193,14 +136,13 @@
                         $('td', row).eq(0).addClass('errors');
                     }
                 }
-            } );
+            });
             table.columns().every( function () {
                     var column = this;
                     var title = $(column.header()).text();
-                    if ( ['TCMS', 'Comment', 'Diffs', 'Cases', 'Updated', 'Feature'].indexOf(title) > -1 ) {
+                    if (['Cases'].indexOf(title) > -1)
                         this.visible(false);
-                    }
-                    });
+            });
 
             // Apply the search
             table.columns().every( function () {

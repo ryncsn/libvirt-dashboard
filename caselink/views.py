@@ -54,10 +54,8 @@ def data(request):
             return None
         json_case = model_to_dict(workitem)
         json_case['polarion'] = workitem.id
-        json_case['documents'] = '<br/>'.join(
-            [doc.id for doc in workitem.documents.all()])
-        json_case['errors'] = '<br/>'.join(
-            [error.message for error in workitem.errors.all()])
+        json_case['documents'] = [doc.id for doc in workitem.documents.all()]
+        json_case['errors'] = [error.message for error in workitem.errors.all()]
         return json_case
 
     json_list = []
@@ -89,9 +87,9 @@ def data(request):
                 continue
             auto_cases = []
             for caselink in workitem.caselinks.all():
-                auto_cases.append(caselink.autocases.all())
-            json_case['cases'] = '<br/>'.join(
-                [case.id for case in auto_cases])
+                for case in caselink.autocases.all():
+                    auto_cases.append(case)
+            json_case['cases'] = [case.id for case in auto_cases]
             json_list.append(json_case)
 
     return JsonResponse({'data': json_list})
