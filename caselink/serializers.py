@@ -1,12 +1,12 @@
 from rest_framework import serializers
-from .models import WorkItem, AvocadoCase
+from .models import WorkItem, AutoCase
 
 
 class WorkItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkItem
 
-class AvocadoCaseSerializer(serializers.ModelSerializer):
+class AutoCaseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AvocadoCase
+        model = AutoCase
 
