@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from django.http import JsonResponse
 from django.template import RequestContext, loader
 from django.forms.models import model_to_dict
+from django.core.exceptions import ObjectDoesNotExist
 
 from .models import WorkItem, AutoCase, CaseLink, Error
 from .serializers import WorkItemSerializer, AutoCaseSerializer, LinkageSerializer
@@ -95,9 +96,11 @@ def data(request):
             if json_case is None:
                 continue
             auto_cases = []
-            for caselink in workitem.caselinks.all():
-                for case in caselink.autocases.all():
+            try:
+                for case in workitem.caselink.autocases.all():
                     auto_cases.append(case)
+            except ObjectDoesNotExist:
+                pass
             json_case['cases'] = [case.id for case in auto_cases]
             json_list.append(json_case)
 
