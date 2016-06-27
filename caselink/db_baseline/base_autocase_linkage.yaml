@@ -10124,7 +10124,6 @@
   feature: migration
   cases:
   - type_specific.io-github-autotest-libvirt.virsh.tunnelled_migration.positive_testing.with_ssh
-  - ''
   - type_specific.io-github-autotest-libvirt.virsh.migrate.there_p2p_tunnelled
 - title: '[Migration] P2P migration using a TLS enabled URI - Bug 721411'
   polarion:
@@ -10424,7 +10423,6 @@
   cases:
   - type_specific.io-github-autotest-libvirt.virsh.migrate.there_timeout type_specific.io-github-autotest-libvirt.virsh.migrate.there_timeout_short
     type_specific.io-github-autotest-libvirt.virsh.migrate.there_timeout_invalid type_specific.io-github-autotest-libvirt.virsh.migrate.there_timeout_offline
-  - ''
   - type_specific.io-github-autotest-libvirt.virsh.migrate_vm.positive_testing.live_migration.timeout
 - title: '[Migration] Migration after eject cdrom in guest - bug 725673'
   polarion:
