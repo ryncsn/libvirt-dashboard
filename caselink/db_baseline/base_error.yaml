@@ -1,6 +1,9 @@
 "MULTIPLE_WORKITEM":
   message: "More than one manual for one auto case"
 
+"PATTERN_DUPLICATE":
+  message: "More than one manual case shares a same autocase pattern"
+
 "NO_WORKITEM":
   message: "Auto case have no manual case linked"
 

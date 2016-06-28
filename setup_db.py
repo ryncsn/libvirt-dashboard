@@ -14,7 +14,8 @@ from django.db import transaction
 from caselink.tasks import load_error
 from caselink.tasks import load_project
 from caselink.tasks import load_manualcase
-from caselink.tasks import load_autocase_linkage
+from caselink.tasks import load_linkage
+from caselink.tasks import load_autocase
 
 def run():
     print('Loading Error')
@@ -26,8 +27,11 @@ def run():
     print('Loading Manual Cases')
     load_manualcase()
 
-    print('Loading Auto Cases and Linkage')
-    load_autocase_linkage()
+    print('Loading Linkage')
+    load_linkage()
+
+    print('Loading Auto Cases')
+    load_autocase()
 
 if __name__ == '__main__':
     reload(sys)
