@@ -141,7 +141,19 @@ def data(request):
             for caselink in auto_case.caselinks.all():
                 workitems.append(caselink.workitem)
 
-            json_case = {}
+            json_case = {
+                "errors": [],
+                "polarion": [],
+                "title": [],
+                "automation": [],
+                "project": [],
+                "documents": [],
+                "commit": [],
+                "type": [],
+                "id": [],
+                "archs": []
+            }
+
             for workitem in workitems:
                 item_case = workitem_to_json(workitem)
                 if item_case is None:
