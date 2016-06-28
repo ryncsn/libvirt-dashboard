@@ -16,6 +16,7 @@ from caselink.tasks import load_project
 from caselink.tasks import load_manualcase
 from caselink.tasks import load_linkage
 from caselink.tasks import load_autocase
+from caselink.tasks import init_error_checking
 
 def run():
     print('Loading Error')
@@ -32,6 +33,9 @@ def run():
 
     print('Loading Auto Cases')
     load_autocase()
+
+    print('Checking for errors...')
+    init_error_checking()
 
 if __name__ == '__main__':
     reload(sys)

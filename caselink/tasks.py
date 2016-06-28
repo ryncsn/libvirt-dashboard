@@ -41,36 +41,77 @@ def load_project():
 def load_manualcase():
     """Load baseline Manual cases"""
     _load_manualcase_db(_baseline_loader('base_workitem.yaml'))
-    updata_manualcase_error()
+    update_manualcase_error()
 
 
 @transaction.atomic
 def load_linkage():
     """Load baseline linkage"""
     _load_libvirt_ci_linkage_db(_baseline_loader('base_libvirt_ci_linkage.yaml'))
-    updata_autocase_error()
 
 
 @transaction.atomic
 def load_autocase():
     """Load baseline Auto cases"""
     _load_libvirt_ci_autocase_db(_baseline_loader('base_libvirt_ci_autocase.yaml'))
-    updata_autocase_error()
+    update_autocase_error()
+    update_linkage_error()
+
+@transaction.atomic
+def init_error_checking():
+    """Load baseline Auto cases"""
+    update_manualcase_error()
+    update_autocase_error()
+    update_linkage_error()
 
 
-def updata_linkage_error():
+
+def update_linkage_error():
     """Check for errors in linkage"""
-    pass
+    for link in CaseLink.objects.all():
+        if len(link.autocases.all()) < 1:
+            link.errors.add(Error.objects.get(id="PATTERN_INVALID"))
+
+        links_duplicate = CaseLink.objects.filter(autocase_pattern=link.autocase_pattern)
+        if len(links_duplicate) > 1:
+            link.errors.add(Error.objects.get(id="PATTERN_DUPLICATE"))
+
+        link.save()
 
 
-def updata_manualcase_error():
+def update_manualcase_error():
     """Check for errors in manual cases"""
-    pass
+    for case in WorkItem.objects.all():
+        cases_duplicate = WorkItem.objects.filter(title=case.title)
+        if len(cases_duplicate) > 1:
+            case.errors.add(Error.objects.get(id="WORKITEM_TITLE_DUPLICATE"))
+
+        links = CaseLink.objects.filter(workitem=case)
+
+        if len(links) > 1:
+            case.errors.add(Error.objects.get(id="WORKITEM_MULTI_PATTERN"))
+
+        if len(links) > 0:
+            if case.automation != 'automated':
+                case.errors.add("WORKITEM_AUTOMATION_INCONSISTENCY")
+
+        for link in links:
+            if link.title != case.title:
+                case.errors.add("WORKITEM_TITLE_INCONSISTENCY")
+
+        case.save()
 
 
-def updata_autocase_error():
+def update_autocase_error():
     """Check for errors in auto cases"""
-    pass
+    for case in AutoCase.objects.all():
+        if len(case.caselinks.all()) < 1:
+            case.errors.add(Error.objects.get(id="NO_WORKITEM"))
+
+        if len(case.caselinks.all()) > 1:
+            case.errors.add(Error.objects.get(id="MULTIPLE_WORKITEM"))
+
+        case.save()
 
 
 def _baseline_loader(baseline_file):
@@ -100,10 +141,10 @@ def _load_manualcase_db(polarion):
         workitem, _ = WorkItem.objects.get_or_create(id=wi_id)
         workitem.title = case['title']
         workitem.type = case['type']
-        workitem.automation = case['automated']
         workitem.commit = case['commit']
         workitem.arch, _ = Arch.objects.get_or_create(name=case['arch'])
         workitem.project, created = Project.objects.get_or_create(name=case['project'])
+        workitem.automation = 'automated' if case['automated'] else 'noautomated'
 
         if created:
             logging.error("Created not included project '%s'" % case['project'])
@@ -144,58 +185,36 @@ def _load_libvirt_ci_linkage_db(linkage):
         comment = link.get('comment', '')
         feature = link.get('feature', '')
         title = link.get('title', '')
-        workitem_errors = set()
-        linkage_errors = set()
 
         framework, _ = Framework.objects.get_or_create(name=framework)
 
         #Legacy
         #tcms_ids = link.get('tcms', {}).keys()
 
-        # Check for workitem number error
-        if len(wi_ids) > 1:
-            logging.error("More than one polarion for one linkage for %s: %s",
-                          link.get('title', ''), wi_ids)
-            linkage_errors.add("PATTERN_DUPLICATE")
-            workitem_errors.add("PATTERN_DUPLICATE")
-
         # Check for workitem deleted error
         # Create dummy workitem to track error
         for wi_id in wi_ids:
             wi, created = WorkItem.objects.get_or_create(id=wi_id)
             if created:
-                logging.error("Work Item %s in linkage deleted on Polarion", wi_id)
-                linkage_errors.add("WORKITEM_DELETED")
-                workitem_errors.add("WORKITEM_DELETED")
                 wi.error = Error.objects.get(id="WORKITEM_DELETED")
                 wi.save()
-            elif wi.title != title:
-                logging.error("Work Item %s in linkage have diffrent title on Polarion", wi_id)
-                linkage_errors.add("WORKITEM_TITLE_INCONSISTENCY")
-                workitem_errors.add("WORKITEM_TITLE_INCONSISTENCY")
 
         # Create linkage
         for wi_id in wi_ids:
             workitem = WorkItem.objects.get(id=wi_id)
             for pattern in case_patterns:
                 linkage, created = CaseLink.objects.get_or_create(
-                    workitem=workitem, autocase_pattern=pattern)
+                    workitem=workitem,
+                    autocase_pattern=pattern
+                )
                 if created:
                     linkage.framework = framework
                     linkage.title = title
-
-                for err in linkage_errors:
-                    linkage.errors.add(Error.objects.get(id=err))
-                linkage.save()
-
-            # Check for error
-            if workitem.automation != automated and len(case_patterns) > 0:
-                workitem.automation = 'automated'
-                workitem.errors.add("WORKITEM_AUTOMATION_INCONSISTENCY")
-
-            for err in workitem_errors:
-                workitem.errors.add(Error.objects.get(id=err))
-            workitem.save()
+                    linkage.save()
+                else:
+                    print "Error in baseline db, duplicated linkage"
+                    print workitem
+                    print pattern
 
 
 def _load_libvirt_ci_autocase_db(autocases):
@@ -237,10 +256,6 @@ def _load_libvirt_ci_autocase_db(autocases):
         for caselink in all_linkage:
             if test_match(caselink.autocase_pattern, case_id):
                 caselink.autocases.add(case)
-
-        if len(case.caselinks.all()) < 1:
-            case.errors.add(Error.objects.get(id="NO_WORKITEM"))
-            case.save()
 
     for caselink in all_linkage:
         caselink.save()

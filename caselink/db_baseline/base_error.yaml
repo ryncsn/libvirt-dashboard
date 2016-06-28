@@ -1,14 +1,20 @@
-"MULTIPLE_WORKITEM":
-  message: "More than one manual for one auto case"
-
 "PATTERN_DUPLICATE":
-  message: "More than one manual case shares a same autocase pattern"
+  message: "More than one caselink shares a same autocase pattern"
+
+"PATTERN_INVALID":
+  message: "Caselink's pattern doesn't match any autocase"
+
+"MULTIPLE_WORKITEM":
+  message: "Auto case linked to multiple caselink/workitem."
 
 "NO_WORKITEM":
   message: "Auto case have no manual case linked"
 
 "WORKITEM_DELETED":
   message: "Manual case linked to the auto case has been deleted"
+
+"WORKITEM_MULTI_PATTERN":
+  message: "Manual case linked to multiple caselink"
 
 "WORKITEM_TITLE_INCONSISTENCY":
   message: "Manual case's title differ from linkage db and polarion"
