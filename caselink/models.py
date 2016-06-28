@@ -69,7 +69,7 @@ class AutoCase(models.Model):
 
 
 class CaseLink(models.Model):
-    workitem = models.ForeignKey(WorkItem, on_delete=models.PROTECT, related_name='caselink')
+    workitem = models.ForeignKey(WorkItem, on_delete=models.PROTECT, related_name='caselinks')
     autocases = models.ManyToManyField(AutoCase, blank=True, related_name='caselinks')
     autocase_pattern = models.CharField(max_length=255, blank=True)
     framework = models.ForeignKey(Framework, on_delete=models.PROTECT, null=True,
@@ -78,3 +78,6 @@ class CaseLink(models.Model):
 
     # Legacy
     title = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        unique_together = ("workitem", "autocase_pattern",)

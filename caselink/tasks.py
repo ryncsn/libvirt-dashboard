@@ -192,8 +192,10 @@ def _load_autocase_linkage_db(linkage):
         for wi_id in wi_ids:
             workitem = WorkItem.objects.get(id=wi_id)
             linkage, created = CaseLink.objects.get_or_create(workitem=workitem)
-            #if created:
-                #linkage.framework=Framework.objects.get_or_create(name=framework)
+            if created:
+                framework, _ = Framework.objects.get_or_create(name=framework)
+                linkage.framework = framework
+                linkage.title = title
             for name in case_names:
                 linkage.autocases.add(AutoCase.objects.get(id=name))
 

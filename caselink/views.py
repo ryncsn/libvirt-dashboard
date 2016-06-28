@@ -16,8 +16,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-logger = logging.getLogger('django')
-
 
 class WorkItemList(generics.ListCreateAPIView):
     queryset = WorkItem.objects.all()
@@ -164,8 +162,10 @@ def data(request):
                 continue
             auto_cases = []
             try:
-                for case in workitem.caselink.autocases.all():
-                    auto_cases.append(case)
+                caselinks = workitem.caselinks.all()
+                for case in caselinks:
+                    for auto_case in case.autocases.all():
+                        auto_cases.append(auto_case)
             except ObjectDoesNotExist:
                 pass
             json_case['cases'] = [case.id for case in auto_cases]
