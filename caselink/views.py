@@ -159,6 +159,8 @@ def data(request):
                 if item_case is None:
                     continue
                 for key in item_case:
+                    if key == 'errors':
+                        continue
                     try:
                         json_case[key].append(item_case[key])
                     except KeyError:
@@ -177,6 +179,7 @@ def data(request):
             try:
                 caselinks = workitem.caselinks.all()
                 for case in caselinks:
+                    json_case['errors'] += [err.message for err in case.errors.all()]
                     for auto_case in case.autocases.all():
                         auto_cases.append(auto_case)
             except ObjectDoesNotExist:
