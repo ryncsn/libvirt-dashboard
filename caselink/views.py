@@ -165,6 +165,7 @@ def data(request):
                         json_case[key] = [item_case[key]];
 
             json_case['case'] = auto_case.id
+            json_case['errors'].append([err.message for err in auto_case.errors.all()])
             json_list.append(json_case)
 
     elif request_type == 'm2a':

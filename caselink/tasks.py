@@ -25,34 +25,33 @@ from caselink.models \
         import Error, Arch, Component, Framework, Project, Document, WorkItem, AutoCase, CaseLink
 
 
-def _baseline_loader(baseline_file):
-    with open('caselink/db_baseline/' + baseline_file) as base_fp:
-        baseline = yaml.load(base_fp)
-    return baseline
-
-
+@transaction.atomic
 def load_error():
     """Load baseline Error"""
     _load_error_db(_baseline_loader('base_error.yaml'))
 
 
+@transaction.atomic
 def load_project():
     """Load baseline Project"""
     _load_project_db(_baseline_loader('base_project.yaml'))
 
 
+@transaction.atomic
 def load_manualcase():
     """Load baseline Manual cases"""
     _load_manualcase_db(_baseline_loader('base_workitem.yaml'))
     updata_manualcase_error()
 
 
+@transaction.atomic
 def load_linkage():
     """Load baseline linkage"""
     _load_libvirt_ci_linkage_db(_baseline_loader('base_libvirt_ci_linkage.yaml'))
     updata_autocase_error()
 
 
+@transaction.atomic
 def load_autocase():
     """Load baseline Auto cases"""
     _load_libvirt_ci_autocase_db(_baseline_loader('base_libvirt_ci_autocase.yaml'))
@@ -74,7 +73,12 @@ def updata_autocase_error():
     pass
 
 
-@transaction.atomic
+def _baseline_loader(baseline_file):
+    with open('caselink/db_baseline/' + baseline_file) as base_fp:
+        baseline = yaml.load(base_fp)
+    return baseline
+
+
 def _load_project_db(projects):
     for project_id, project_item in projects.items():
         project, _ = Project.objects.get_or_create(id=project_id)
@@ -82,7 +86,6 @@ def _load_project_db(projects):
         project.save()
 
 
-@transaction.atomic
 def _load_error_db(errors):
     for error_id, error_item in errors.items():
         error, _ = Error.objects.get_or_create(id=error_id)
@@ -90,7 +93,6 @@ def _load_error_db(errors):
         error.save()
 
 
-@transaction.atomic
 def _load_manualcase_db(polarion):
     for wi_id, case in polarion.items():
 
@@ -132,7 +134,6 @@ def _load_manualcase_db(polarion):
         workitem.save()
 
 
-@transaction.atomic
 def _load_libvirt_ci_linkage_db(linkage):
     # pylint: disable=no-member
     for link in linkage:
@@ -197,7 +198,6 @@ def _load_libvirt_ci_linkage_db(linkage):
             workitem.save()
 
 
-@transaction.atomic
 def _load_libvirt_ci_autocase_db(autocases):
     framework = "libvirt-ci"
     framework, _ = Framework.objects.get_or_create(name=framework)
@@ -238,7 +238,7 @@ def _load_libvirt_ci_autocase_db(autocases):
             if test_match(caselink.autocase_pattern, case_id):
                 caselink.autocases.add(case)
 
-        if not case.caselinks:
+        if len(case.caselinks.all()) < 1:
             case.errors.add(Error.objects.get(id="NO_WORKITEM"))
             case.save()
 
