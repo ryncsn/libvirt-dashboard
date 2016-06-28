@@ -41,7 +41,6 @@ def load_project():
 def load_manualcase():
     """Load baseline Manual cases"""
     _load_manualcase_db(_baseline_loader('base_workitem.yaml'))
-    update_manualcase_error()
 
 
 @transaction.atomic
@@ -54,8 +53,7 @@ def load_linkage():
 def load_autocase():
     """Load baseline Auto cases"""
     _load_libvirt_ci_autocase_db(_baseline_loader('base_libvirt_ci_autocase.yaml'))
-    update_autocase_error()
-    update_linkage_error()
+
 
 @transaction.atomic
 def init_error_checking():
@@ -63,7 +61,6 @@ def init_error_checking():
     update_manualcase_error()
     update_autocase_error()
     update_linkage_error()
-
 
 
 def update_linkage_error():
@@ -122,30 +119,35 @@ def _baseline_loader(baseline_file):
 
 def _load_project_db(projects):
     for project_id, project_item in projects.items():
-        project, _ = Project.objects.get_or_create(id=project_id)
-        project.name = project_item['name']
-        project.save()
+        Project.objects.create(
+            id = project_id,
+            name = project_item['name']
+        )
 
 
 def _load_error_db(errors):
     for error_id, error_item in errors.items():
-        error, _ = Error.objects.get_or_create(id=error_id)
-        error.message = error_item['message']
-        error.save()
+        Error.objects.create(
+            id = error_id,
+            message = error_item['message']
+        )
 
 
 def _load_manualcase_db(polarion):
     for wi_id, case in polarion.items():
 
         # pylint: disable=no-member
-        workitem, _ = WorkItem.objects.get_or_create(id=wi_id)
+        workitem, created = WorkItem.objects.get_or_create(id=wi_id)
+        if not created:
+            logging.error("Duplicated workitem '%s'" % wi_id)
+            continue
+
         workitem.title = case['title']
         workitem.type = case['type']
         workitem.commit = case['commit']
-        workitem.arch, _ = Arch.objects.get_or_create(name=case['arch'])
-        workitem.project, created = Project.objects.get_or_create(name=case['project'])
         workitem.automation = 'automated' if case['automated'] else 'noautomated'
 
+        workitem.project, created = Project.objects.get_or_create(name=case['project'])
         if created:
             logging.error("Created not included project '%s'" % case['project'])
             workitem.project.id = case['project']
@@ -212,9 +214,9 @@ def _load_libvirt_ci_linkage_db(linkage):
                     linkage.title = title
                     linkage.save()
                 else:
-                    print "Error in baseline db, duplicated linkage"
-                    print workitem
-                    print pattern
+                    logging.error("Error in baseline db, duplicated linkage")
+                    logging.error(str(workitem))
+                    logging.error(str(pattern))
 
 
 def _load_libvirt_ci_autocase_db(autocases):
@@ -245,17 +247,18 @@ def _load_libvirt_ci_autocase_db(autocases):
         return True
 
     for case_id in autocases:
-        case, created = AutoCase.objects.get_or_create(
+        case = AutoCase.objects.create(
             id=case_id,
-            framework=framework
-            #archs=Arch.objects.get_or_create(name=arch)
+            framework=framework,
             #start_commit=commit
             #end_commit=commit
         )
 
+        arch, _ = Arch.objects.get_or_create(name='')
+        case.archs.add(arch)
+        case.save()
+
         for caselink in all_linkage:
             if test_match(caselink.autocase_pattern, case_id):
                 caselink.autocases.add(case)
-
-    for caselink in all_linkage:
-        caselink.save()
+                caselink.save()
