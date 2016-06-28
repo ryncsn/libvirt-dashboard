@@ -2,14 +2,19 @@ import logging
 
 from django.http import HttpResponse
 from django.http import JsonResponse
+from django.http import Http404
 from django.template import RequestContext, loader
 from django.forms.models import model_to_dict
 from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import get_object_or_404
 
 from .models import WorkItem, AutoCase, CaseLink, Error
-from .serializers import WorkItemSerializer, AutoCaseSerializer, LinkageSerializer
+from .serializers import \
+        WorkItemSerializer, AutoCaseSerializer, LinkageSerializer, WorkItemLinkageSerializer
 from rest_framework import generics
-
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework import status
 
 logger = logging.getLogger('django')
 
@@ -42,6 +47,68 @@ class LinkageList(generics.ListCreateAPIView):
 class LinkageDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CaseLink.objects.all()
     serializer_class = LinkageSerializer
+
+
+class WorkItemLinkageList(APIView):
+    """
+    Retrieve, update or delete a caselink instance of a workitem.
+    """
+
+    # This serializer is only used for html view to hide workitem field
+    serializer_class = WorkItemLinkageSerializer
+
+    def get_objects(self, workitem):
+        wi = get_object_or_404(WorkItem, id=workitem)
+        try:
+            return CaseLink.objects.filter(workitem=wi)
+        except CaseLink.DoesNotExist:
+            raise Http404
+
+    def get(self, request, workitem, format=None):
+        caselinks = self.get_objects(workitem)
+        serializers = [LinkageSerializer(caselink) for caselink in caselinks]
+        return Response(serializer.data for serializer in serializers)
+
+    def post(self, request, workitem, format=None):
+        request.data['workitem'] = workitem
+        serializer = LinkageSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class WorkItemLinkageDetail(APIView):
+    """
+    Retrieve, update or delete a caselink instance of a workitem.
+    """
+
+    serializer_class = WorkItemLinkageSerializer
+
+    def get_object(self, workitem, pattern):
+        wi = get_object_or_404(WorkItem, id=workitem)
+        try:
+            return CaseLink.objects.get(workitem=wi, autocase_pattern=pattern)
+        except CaseLink.DoesNotExist:
+            raise Http404
+
+    def get(self, request, workitem, pattern, format=None):
+        caselink = self.get_object(workitem, pattern)
+        serializer = LinkageSerializer(caselink)
+        return Response(serializer.data)
+
+    def put(self, request, workitem, pattern, format=None):
+        request.data['workitem'] = workitem
+        caselink = self.get_object(workitem, pattern)
+        serializer = LinkageSerializer(caselink, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, workitem, pattern, format=None):
+        caselink = self.get_object(workitem, pattern)
+        caselink.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def a2m(request):

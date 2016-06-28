@@ -69,14 +69,12 @@ class AutoCase(models.Model):
 
 
 class CaseLink(models.Model):
-    workitem = models.OneToOneField(WorkItem, on_delete=models.PROTECT,
-                                 primary_key=True, related_name='caselink')
+    workitem = models.ForeignKey(WorkItem, on_delete=models.PROTECT, related_name='caselink')
     autocases = models.ManyToManyField(AutoCase, blank=True, related_name='caselinks')
     autocase_pattern = models.CharField(max_length=255, blank=True)
     framework = models.ForeignKey(Framework, on_delete=models.PROTECT, null=True,
                                   related_name='caselinks')
     errors = models.ManyToManyField(Error, blank=True, related_name='caselinks')
-
 
     # Legacy
     title = models.CharField(max_length=255, blank=True)
