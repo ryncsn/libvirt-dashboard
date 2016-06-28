@@ -11,7 +11,7 @@ class WorkItemLinkageSerializer(serializers.ModelSerializer):
         exclude = ('workitem',)
 
 class WorkItemSerializer(serializers.ModelSerializer):
-    caselink = LinkageSerializer(many=True, read_only=True)
+    caselinks = LinkageSerializer(many=True, read_only=True)
     class Meta:
         model = WorkItem
 
