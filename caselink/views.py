@@ -7,6 +7,7 @@ from django.template import RequestContext, loader
 from django.forms.models import model_to_dict
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
+from django.db import IntegrityError, OperationalError, transaction
 
 from .models import WorkItem, AutoCase, CaseLink, Error
 from .serializers import \
@@ -15,6 +16,9 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+
+from.tasks import \
+        update_linkage_error, update_manualcase_error, update_autocase_error
 
 
 class WorkItemList(generics.ListCreateAPIView):
@@ -75,6 +79,7 @@ class WorkItemLinkageList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 class WorkItemLinkageDetail(APIView):
     """
     Retrieve, update or delete a caselink instance of a workitem.
@@ -119,6 +124,32 @@ def index(request):
     template = loader.get_template('caselink/index.html')
     context = RequestContext(request, {})
     return HttpResponse(template.render(context))
+
+
+def task_control(request):
+
+    def depatch(task_to_trigger):
+        try:
+            if 'linkage_error_check' in task_to_trigger:
+                update_linkage_error()
+            if 'autocase_error_check' in task_to_trigger:
+                update_autocase_error()
+            if 'manualcase_error_check' in task_to_trigger:
+                update_manualcase_error()
+        except OperationalError:
+            return JsonResponse({'message': 'DB Locked'})
+        except IntegrityError:
+            return JsonResponse({'message': 'Integrity Check Failed'})
+        return JsonResponse({'message': 'done'})
+
+    task_to_trigger = request.GET.getlist('trigger', [])
+    locked = True if request.GET.get('locked', 'false') == 'true' else False
+
+    if locked:
+        with transaction.atomic():
+            return depatch(task_to_trigger)
+    else:
+        return depatch(task_to_trigger)
 
 
 def data(request):
