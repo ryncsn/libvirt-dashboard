@@ -52,8 +52,60 @@ class WorkItem(models.Model):
     archs = models.ManyToManyField(Arch, blank=True, related_name='workitems')
     documents = models.ManyToManyField(Document, blank=True, related_name='workitems')
     errors = models.ManyToManyField(Error, blank=True, related_name='workitems')
+
+    #Field used to perform runtime error checking
+    error_related = models.ManyToManyField('self', blank=True)
+
     def __str__(self):
         return self.id
+
+
+    def get_related(self):
+        """Get related objects for error cheking"""
+        return (
+            list(self.error_related.all()) +
+            list(self.caselinks.all())
+        )
+
+
+    def error_check(self, depth=1):
+        if depth > 0:
+            # error_related may change, so check it first
+            for item in self.error_related.all():
+                item.error_check(depth - 1)
+
+        self.error_related.clear()
+        self.errors.clear()
+
+        cases_duplicate = WorkItem.objects.filter(title=self.title)
+        if len(cases_duplicate) > 1:
+            self.errors.add("WORKITEM_TITLE_DUPLICATE")
+            for case in cases_duplicate:
+                if case == self:
+                    continue
+                self.error_related.add(case)
+
+        links = CaseLink.objects.filter(workitem=self)
+
+        if len(links) > 1:
+            self.errors.add("WORKITEM_MULTI_PATTERN")
+
+        if len(links) == 0:
+            if self.automation != 'noautomated':
+                self.errors.add("WORKITEM_AUTOMATION_INCONSISTENCY")
+        else:
+            if self.automation != 'automated':
+                self.errors.add("WORKITEM_AUTOMATION_INCONSISTENCY")
+
+            for link in links:
+                if link.title != self.title:
+                    self.errors.add("WORKITEM_TITLE_INCONSISTENCY")
+
+        if depth > 0:
+            for item in self.get_related():
+                item.error_check(depth - 1)
+
+        self.save()
 
 
 class AutoCase(models.Model):
@@ -64,8 +116,43 @@ class AutoCase(models.Model):
     start_commit = models.CharField(max_length=255, blank=True)
     end_commit = models.CharField(max_length=255, blank=True)
     errors = models.ManyToManyField(Error, blank=True, related_name='autocases')
+
+    #Field used to perform runtime error checking
+    #error_related = models.ManyToManyField('self', blank=True)
+
+
+    def get_related(self):
+        """Get related objects for error cheking"""
+        return (
+            list(self.caselinks.all())
+        )
+
+
     def __str__(self):
         return self.id
+
+
+    def autolink(self):
+        for link in CaseLink.objects.all():
+            if link.test_match(self):
+                link.autocases.add(self)
+                link.save()
+
+
+    def error_check(self, depth=1):
+        self.errors.clear()
+
+        if len(self.caselinks.all()) < 1:
+            self.errors.add("NO_WORKITEM")
+
+        if len(self.caselinks.all()) > 1:
+            self.errors.add("MULTIPLE_WORKITEM")
+
+        if depth > 0:
+            for item in self.get_related():
+                item.error_check(depth - 1)
+
+        self.save()
 
 
 class CaseLink(models.Model):
@@ -76,8 +163,76 @@ class CaseLink(models.Model):
                                   related_name='caselinks')
     errors = models.ManyToManyField(Error, blank=True, related_name='caselinks')
 
+    #Field used to perform runtime error checking
+    error_related = models.ManyToManyField('self', blank=True)
+
     # Legacy
     title = models.CharField(max_length=255, blank=True)
 
     class Meta:
         unique_together = ("workitem", "autocase_pattern",)
+
+
+    def test_match(self, auto_case):
+        """
+        Test if a autocase match with the name pattern.
+        """
+        segments = self.autocase_pattern.split('..')
+        items = auto_case.id.split('.')
+        idx = 0
+        for segment in segments:
+            seg_items = segment.split('.')
+            try:
+                while True:
+                    idx = items.index(seg_items[0])
+                    if items[idx:len(seg_items)] == seg_items:
+                        items = items[len(seg_items):]
+                        break
+                    else:
+                        del items[0]
+            except ValueError:
+                return False
+        return True
+
+
+    def autolink(self):
+        for case in AutoCase.objects.all():
+            if self.test_match(case):
+                self.autocases.add(case)
+        self.save()
+
+
+    def get_related(self):
+        """Get related objects for error cheking"""
+        return (
+            list(self.error_related.all()) +
+            list([self.workitem]) +
+            list(self.autocases.all())
+        )
+
+
+
+    def error_check(self, depth=1):
+        if depth > 0:
+            for item in self.error_related.all():
+                item.error_check(depth - 1)
+        self.error_related.clear()
+        self.errors.clear()
+
+        links_duplicate = CaseLink.objects.filter(autocase_pattern=self.autocase_pattern)
+
+        if len(self.autocases.all()) < 1:
+            self.errors.add("PATTERN_INVALID")
+
+        if len(links_duplicate) > 1:
+            self.errors.add("PATTERN_DUPLICATE")
+            for link in links_duplicate:
+                if link == self:
+                    continue
+                self.error_related.add(link)
+
+        if depth > 0:
+            for item in self.get_related():
+                item.error_check(depth - 1)
+
+        self.save()

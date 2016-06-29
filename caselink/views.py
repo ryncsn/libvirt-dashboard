@@ -25,30 +25,75 @@ class WorkItemList(generics.ListCreateAPIView):
     queryset = WorkItem.objects.all()
     serializer_class = WorkItemSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.error_check(depth=1)
+
 
 class WorkItemDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = WorkItem.objects.all()
     serializer_class = WorkItemSerializer
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        instance.error_check(depth=1)
+
+    def perform_destroy(self, instance):
+        related = instance.get_related()
+        instance.delete()
+        for item in related:
+            item.error_check(depth=0)
 
 
 class AutoCaseList(generics.ListCreateAPIView):
     queryset = AutoCase.objects.all()
     serializer_class = AutoCaseSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        instance.error_check(depth=1)
+
 
 class AutoCaseDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = AutoCase.objects.all()
     serializer_class = AutoCaseSerializer
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        instance.error_check(depth=1)
+
+    def perform_destroy(self, instance):
+        related = instance.get_related()
+        instance.delete()
+        for item in related:
+            item.error_check(depth=0)
 
 class LinkageList(generics.ListCreateAPIView):
     queryset = CaseLink.objects.all()
     serializer_class = LinkageSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        instance.error_check(depth=1)
+
 
 class LinkageDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = CaseLink.objects.all()
     serializer_class = LinkageSerializer
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        instance.error_check(depth=1)
+
+    def perform_destroy(self, instance):
+        related = instance.get_related()
+        instance.delete()
+        for item in related:
+            item.error_check(depth=0)
 
 
 class WorkItemLinkageList(APIView):
@@ -75,7 +120,9 @@ class WorkItemLinkageList(APIView):
         request.data['workitem'] = workitem
         serializer = LinkageSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            instance = serializer.save()
+            instance.autolink()
+            instance.error_check(depth=1)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -104,13 +151,18 @@ class WorkItemLinkageDetail(APIView):
         caselink = self.get_object(workitem, pattern)
         serializer = LinkageSerializer(caselink, data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            instance = serializer.save()
+            instance.autolink()
+            instance.error_check(depth=1)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, workitem, pattern, format=None):
         caselink = self.get_object(workitem, pattern)
+        related = caselink.get_related()
         caselink.delete()
+        for item in related:
+            item.error_check(depth=0)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

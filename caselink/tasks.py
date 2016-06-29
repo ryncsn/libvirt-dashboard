@@ -63,52 +63,37 @@ def init_error_checking():
     update_linkage_error()
 
 
-def update_linkage_error():
+def update_linkage_error(link=None):
     """Check for errors in linkage"""
-    for link in CaseLink.objects.all():
-        if len(link.autocases.all()) < 1:
-            link.errors.add(Error.objects.get(id="PATTERN_INVALID"))
+    if not link:
+        links = CaseLink.objects.all()
+    else:
+        links = [link]
 
-        links_duplicate = CaseLink.objects.filter(autocase_pattern=link.autocase_pattern)
-        if len(links_duplicate) > 1:
-            link.errors.add(Error.objects.get(id="PATTERN_DUPLICATE"))
-
-        link.save()
+    for link in links:
+        link.error_check(depth=0)
 
 
-def update_manualcase_error():
+def update_manualcase_error(case=None):
     """Check for errors in manual cases"""
-    for case in WorkItem.objects.all():
-        cases_duplicate = WorkItem.objects.filter(title=case.title)
-        if len(cases_duplicate) > 1:
-            case.errors.add(Error.objects.get(id="WORKITEM_TITLE_DUPLICATE"))
+    if not case:
+        cases = WorkItem.objects.all()
+    else:
+        cases = [case]
 
-        links = CaseLink.objects.filter(workitem=case)
-
-        if len(links) > 1:
-            case.errors.add(Error.objects.get(id="WORKITEM_MULTI_PATTERN"))
-
-        if len(links) > 0:
-            if case.automation != 'automated':
-                case.errors.add("WORKITEM_AUTOMATION_INCONSISTENCY")
-
-        for link in links:
-            if link.title != case.title:
-                case.errors.add("WORKITEM_TITLE_INCONSISTENCY")
-
-        case.save()
+    for case in cases:
+        case.error_check(depth=0)
 
 
-def update_autocase_error():
+def update_autocase_error(case=None):
     """Check for errors in auto cases"""
-    for case in AutoCase.objects.all():
-        if len(case.caselinks.all()) < 1:
-            case.errors.add(Error.objects.get(id="NO_WORKITEM"))
+    if not case:
+        cases = AutoCase.objects.all()
+    else:
+        cases = [case]
 
-        if len(case.caselinks.all()) > 1:
-            case.errors.add(Error.objects.get(id="MULTIPLE_WORKITEM"))
-
-        case.save()
+    for case in cases:
+        case.error_check(depth=0)
 
 
 def _baseline_loader(baseline_file):
@@ -223,28 +208,6 @@ def _load_libvirt_ci_autocase_db(autocases):
     framework = "libvirt-ci"
     framework, _ = Framework.objects.get_or_create(name=framework)
     all_linkage = CaseLink.objects.all()
-    count = 0
-
-    def test_match(patt_str, test_str):
-        """
-        Test if a test name match with the name pattern.
-        """
-        segments = patt_str.split('..')
-        items = test_str.split('.')
-        idx = 0
-        for segment in segments:
-            seg_items = segment.split('.')
-            try:
-                while True:
-                    idx = items.index(seg_items[0])
-                    if items[idx:len(seg_items)] == seg_items:
-                        items = items[len(seg_items):]
-                        break
-                    else:
-                        del items[0]
-            except ValueError:
-                return False
-        return True
 
     for case_id in autocases:
         case = AutoCase.objects.create(
@@ -259,6 +222,6 @@ def _load_libvirt_ci_autocase_db(autocases):
         case.save()
 
         for caselink in all_linkage:
-            if test_match(caselink.autocase_pattern, case_id):
+            if caselink.test_match(case):
                 caselink.autocases.add(case)
                 caselink.save()
