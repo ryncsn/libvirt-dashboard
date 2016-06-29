@@ -176,10 +176,12 @@ def data(request):
             if json_case is None:
                 continue
             auto_cases = []
+            json_case['patterns'] = []
             try:
                 caselinks = workitem.caselinks.all()
                 for case in caselinks:
                     json_case['errors'] += [err.message for err in case.errors.all()]
+                    json_case['patterns'].append(case.autocase_pattern)
                     for auto_case in case.autocases.all():
                         auto_cases.append(auto_case)
             except ObjectDoesNotExist:

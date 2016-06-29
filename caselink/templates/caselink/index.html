@@ -22,6 +22,7 @@
                 <th>Automation</th>
                 <th>Error</th>
                 <th>Cases</th>
+                <th>Patterns</th>
             </thead>
             <tfoot>
                 <th></th>
@@ -31,6 +32,7 @@
                 <th>Automation</th>
                 <th>Error</th>
                 <th>Cases</th>
+                <th>Patterns</th>
             </tfoot>
         </table>
 
@@ -54,6 +56,13 @@
                         '<td>'+d.errors.join("<br>")+'</td>'+
                     '</tr>';
                 }
+                if(d.patterns.length > 0) {
+                    table_txt += '<tr>'+
+                        '<td>Patterns:</td>'+
+                        '<td>'+d.patterns.join("<br>")+'</td>'+
+                    '</tr>';
+                }
+
                 table_txt += '</table>';
                 return table_txt;
             }
@@ -130,6 +139,10 @@
                         }
                     },
                     { "data": "cases" },
+                    {
+                        "data": "patterns",
+                        "visible": false
+                    },
                 ],
                 "createdRow": function ( row, data, index ) {
                     if ( data.errors.length > 0 ) {
