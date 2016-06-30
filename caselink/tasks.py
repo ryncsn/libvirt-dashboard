@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import yaml
 import re
 import logging
@@ -8,7 +10,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
 
-from celery import shared_task
+from celery import shared_task, current_task
 
 # pylint: disable=redefined-builtin
 try:
@@ -63,6 +65,7 @@ def init_error_checking():
     update_linkage_error()
 
 
+@shared_task
 def update_linkage_error(link=None):
     """Check for errors in linkage"""
     if not link:
@@ -70,10 +73,20 @@ def update_linkage_error(link=None):
     else:
         links = [link]
 
+    current = 0
+    total = len(links)
+    direct_call = current_task.request.id is None
+
     for link in links:
         link.error_check(depth=0)
 
+        if not direct_call:
+            current += 1
+            current_task.update_state(state='PROGRESS',
+                                      meta={'current': current, 'total': total})
 
+
+@shared_task
 def update_manualcase_error(case=None):
     """Check for errors in manual cases"""
     if not case:
@@ -81,10 +94,19 @@ def update_manualcase_error(case=None):
     else:
         cases = [case]
 
+    current = 0
+    total = len(cases)
+    direct_call = current_task.request.id is None
+
     for case in cases:
         case.error_check(depth=0)
 
+        if not direct_call:
+            current += 1
+            current_task.update_state(state='PROGRESS',
+                                      meta={'current': current, 'total': total})
 
+@shared_task
 def update_autocase_error(case=None):
     """Check for errors in auto cases"""
     if not case:
@@ -92,8 +114,17 @@ def update_autocase_error(case=None):
     else:
         cases = [case]
 
+    current = 0
+    total = len(cases)
+    direct_call = current_task.request.id is None
+
     for case in cases:
         case.error_check(depth=0)
+
+        if not direct_call:
+            current += 1
+            current_task.update_state(state='PROGRESS',
+                                      meta={'current': current, 'total': total})
 
 
 def _baseline_loader(baseline_file):

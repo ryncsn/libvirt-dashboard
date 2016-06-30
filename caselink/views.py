@@ -20,6 +20,9 @@ from rest_framework import status
 from.tasks import \
         update_linkage_error, update_manualcase_error, update_autocase_error
 
+from celery.task.control import inspect
+from celery.result import AsyncResult
+
 
 class WorkItemList(generics.ListCreateAPIView):
     queryset = WorkItem.objects.all()
@@ -180,28 +183,44 @@ def index(request):
 
 def task_control(request):
 
-    def depatch(task_to_trigger):
-        try:
-            if 'linkage_error_check' in task_to_trigger:
-                update_linkage_error()
-            if 'autocase_error_check' in task_to_trigger:
-                update_autocase_error()
-            if 'manualcase_error_check' in task_to_trigger:
-                update_manualcase_error()
-        except OperationalError:
-            return JsonResponse({'message': 'DB Locked'})
-        except IntegrityError:
-            return JsonResponse({'message': 'Integrity Check Failed'})
-        return JsonResponse({'message': 'done'})
-
+    operations = []
     task_to_trigger = request.GET.getlist('trigger', [])
-    locked = True if request.GET.get('locked', 'false') == 'true' else False
 
-    if locked:
-        with transaction.atomic():
-            return depatch(task_to_trigger)
-    else:
-        return depatch(task_to_trigger)
+    if 'linkage_error_check' in task_to_trigger:
+        operations.append(update_linkage_error)
+    if 'autocase_error_check' in task_to_trigger:
+        operations.append(update_autocase_error)
+    if 'manualcase_error_check' in task_to_trigger:
+        operations.append(update_manualcase_error)
+
+    async = True if request.GET.get('async', '') == 'true' else False
+
+    if len(operations) > 0:
+        if not async:
+            try:
+                for op in operations:
+                    with transaction.atomic():
+                        op()
+            except OperationalError:
+                return JsonResponse({'message': 'DB Locked'})
+            except IntegrityError:
+                return JsonResponse({'message': 'Integrity Check Failed'})
+            return JsonResponse({'message': 'done'})
+        else:
+            for op in operations:
+                op.apply_async()
+            return JsonResponse({'message': 'queued'})
+
+    workers = inspect()
+    task_status = {}
+    for worker, tasks in workers.active().items():
+        for task in tasks:
+            res = AsyncResult(task['id'])
+            task_status[task['name']] = {
+                'state': res.state,
+                'meta': res.info
+            }
+    return JsonResponse(task_status)
 
 
 def data(request):
