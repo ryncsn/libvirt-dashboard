@@ -1,196 +1,26 @@
 {% load staticfiles %}
 <html>
     <head>
-        <title>libvirt Manual-Auto Case Linkage</title>
-        <link rel="stylesheet" type="text/css" href="{% static "caselink/datatables.css" %}">
+        <title>{% block title %} CaseLink {% endblock %} </title>
         <script type="text/javascript" charset="utf8" src="//code.jquery.com/jquery-1.10.2.min.js"></script>
         <script type="text/javascript" charset="utf8" src="//cdn.datatables.net/1.10.7/js/jquery.dataTables.js"></script>
-        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.9.1/styles/googlecode.min.css">
         <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.9.1/highlight.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/js-cookie/2.0.4/js.cookie.min.js"></script>
+        <script src="{% static "caselink/searchtable.js" %}"></script>
+        <link rel="stylesheet" type="text/css" href="{% static "caselink/datatables.css" %}">
+        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.9.1/styles/googlecode.min.css">
        	<link rel="stylesheet" href="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.core.css" />
         <link rel="stylesheet" href="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.default.css" id="toggleCSS" />
     </head>
     <body>
-        <h3 align='center'>libvirt Manual-Auto Case Linkage</h3>
-        <table id="sortable-table" class="display">
-            <thead>
-                <th></th>
-                <th>Polarion</th>
-                <th>Title</th>
-                <th>Documents</th>
-                <th>Automation</th>
-                <th>Error</th>
-                <th>Cases</th>
-                <th>Patterns</th>
-            </thead>
-            <tfoot>
-                <th></th>
-                <th>Polarion</th>
-                <th>Title</th>
-                <th>Documents</th>
-                <th>Automation</th>
-                <th>Error</th>
-                <th>Cases</th>
-                <th>Patterns</th>
-            </tfoot>
-        </table>
-
-        <script type="text/javascript">
-        $(document).ready(function() {
-            function format ( row ) {
-                d = row.data();
-                // `d` is the original data object for the row
-                var table_txt = '<table cellpadding="0" cellspacing="0" '+
-                    'border="0" style="padding-left:0px;">';
-                if(d.cases.length > 0) {
-                    table_txt += '<tr>'+
-                    '<tr>'+
-                        '<td>Autotest cases:</td>'+
-                        '<td>'+d.cases.join("<br>")+'</td>'+
-                    '</tr>';
-                }
-                if(d.errors.length > 0) {
-                    table_txt += '<tr>'+
-                        '<td>Errors:</td>'+
-                        '<td>'+d.errors.join("<br>")+'</td>'+
-                    '</tr>';
-                }
-                if(d.patterns.length > 0) {
-                    table_txt += '<tr>'+
-                        '<td>Patterns:</td>'+
-                        '<td>'+d.patterns.join("<br>")+'</td>'+
-                    '</tr>';
-                }
-
-                table_txt += '</table>';
-                return table_txt;
-            }
-
-            // Setup - add a text input to each footer cell
-            $('#sortable-table tfoot th').each( function () {
-                var title = $('#sortable-table thead th').eq( $(this).index() ).text();
-                if ( title.length > 0 ) {
-                    $(this).html( '<input type="text" placeholder="Search '+title+'" />' );
-                }
-            } );
-
-            var table = $('#sortable-table').DataTable( {
-                "ajax": "data",
-                "iDisplayLength": 20,
-                "bAutoWidth": false,
-                "initComplete": function () {
-                    this.api().columns().every( function () {
-                        var column = this;
-                        var title = $(column.header()).text();
-                        if ( title.length == 0 || ['Title', 'Polarion', 'Cases'].indexOf(title) > -1 ) {
-                            return;
-                        }
-                        var selections = [];
-                        var select = $('<select><option value=""></option></select>')
-                            .appendTo( $(column.footer()).empty() )
-                            .on( 'change', function () {
-                                var val = $.fn.dataTable.util.escapeRegex(
-                                    $(this).val()
-                                );
-                                column
-                                    .search( val ? val : '', true, false )
-                                    .draw();
-                            });
-                            column.data().each( function ( d, j ) {
-                                selections = selections.concat(d);
-                            });
-                            $.each(
-                                $.grep(selections, function(el, index) {
-                                    return index === $.inArray(el, selections);
-                                }),
-                                function(key, value){
-                                    select.append( '<option value="'+value+'">'+value+'</option>' )
-                                }
-                            );
-                    } );
-                },
-                "columns": [
-                    {
-                        "data":           null,
-                        "className":      'details-control',
-                        "orderable":      false,
-                        "defaultContent": '',
-                        "width":          '10',
-                    },
-                    {
-                        "data": "polarion",
-                        "render": function( data ) {
-                            return '<a href="https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/workitem?id='+data+'">'+data+'</a>';
-                        }
-                    },
-                    { "data": "title" },
-                    {
-                        "data": "documents",
-                        "render": function( data ) {
-                            return data.join('<br>');
-                        }
-                    },
-                    { "data": "automation" },
-                    {
-                        "data": "errors",
-                        "render": function( data ) {
-                            return data.join('<br>');
-                        }
-                    },
-                    { "data": "cases" },
-                    {
-                        "data": "patterns",
-                        "visible": false
-                    },
-                ],
-                "createdRow": function ( row, data, index ) {
-                    if ( data.errors.length > 0 ) {
-                        $('td', row).eq(0).addClass('errors');
-                    }
-                }
-            });
-            table.columns().every( function () {
-                    var column = this;
-                    var title = $(column.header()).text();
-                    if (['Cases'].indexOf(title) > -1)
-                        this.visible(false);
-            });
-
-            // Apply the search
-            table.columns().every( function () {
-                var that = this;
-
-                $( 'input', this.footer() ).on( 'keyup change', function () {
-                    that
-                        .search( this.value )
-                        .draw();
-                } );
-            } );
-
-            // Add event listener for opening and closing details
-            $('#sortable-table tbody').on('click', 'td.details-control', function () {
-                var tr = $(this).closest('tr');
-                var row = table.row( tr );
-
-                if ( row.child.isShown() ) {
-                    // This row is already open - close it
-                    row.child.hide();
-                    tr.removeClass('shown');
-                }
-                else {
-                    // Open this row
-                    row.child( format(row) ).show();
-                    tr.addClass('shown');
-                    $('pre code').each(function(i, block) {
-                        hljs.highlightBlock(block);
-                    });
-                }
-            } );
-
-        } );
-        </script>
-		<script src="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.min.js"></script>
-        <a href='control?trigger=manualcase_error_check&trigger=linkage_error_check' target='_blank'>Check Manual case and Linkage errors.</a>
+        {% block body %}
+        <a href="a2m" target="_blank">Auto to Manual case linkage</a>
+        <a href="m2a" target="_blank">Manual to Auto case linkage</a>
+        <br>
+        <a href="manual" target="_blank">Manual Case API</a>
+        <a href="auto" target="_blank">Auto case API</a>
+        <a href="link" target="_blank">Linkage API</a>
+        {% endblock %}
+        <script src="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.min.js"></script>
     </body>
 </html>

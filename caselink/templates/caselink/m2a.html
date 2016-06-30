@@ -1,0 +1,130 @@
+{% extends "caselink/index.html" %}
+{% block title %} Libvirt Manual-Auto Case Linkage {% endblock %}
+{% block body %}
+<h3 align='center'>libvirt Manual-Auto Case Linkage</h3>
+<table id="sortable-table" class="display">
+    <thead>
+        <th></th>
+        <th>Polarion</th>
+        <th>Title</th>
+        <th>Documents</th>
+        <th>Automation</th>
+        <th>Errors</th>
+        <th>Cases</th>
+        <th>Patterns</th>
+    </thead>
+    <tfoot>
+        <th></th>
+        <th>Polarion</th>
+        <th>Title</th>
+        <th>Documents</th>
+        <th>Automation</th>
+        <th>Errors</th>
+        <th>Cases</th>
+        <th>Patterns</th>
+    </tfoot>
+</table>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        function format ( row ) {
+            d = row.data();
+            // `d` is the original data object for the row
+            var table_txt = '<table cellpadding="0" cellspacing="0" '+
+                'border="0" style="padding-left:0px;">';
+                if(d.cases.length > 0) {
+                    table_txt += '<tr>'+
+                    '<tr>'+
+                    '<td>Autotest cases:</td>'+
+                    '<td>'+d.cases.join("<br>")+'</td>'+
+                    '</tr>';
+                }
+                if(d.errors.length > 0) {
+                    table_txt += '<tr>'+
+                    '<td>Errors:</td>'+
+                    '<td>'+d.errors.join("<br>")+'</td>'+
+                    '</tr>';
+                }
+                if(d.patterns.length > 0) {
+                    table_txt += '<tr>'+
+                    '<td>Patterns:</td>'+
+                    '<td>'+d.patterns.join("<br>")+'</td>'+
+                    '</tr>';
+                }
+
+                table_txt += '</table>';
+                return table_txt;
+        }
+
+        var table = $('#sortable-table').DataSearchTable({
+            "ajax": "data",
+            "iDisplayLength": 20,
+            "bAutoWidth": false,
+            "selectorColumns": ['Documents', 'Automatoin', 'Errors'],
+            "columns": [
+                {
+                    "data":           null,
+                    "className":      'details-control',
+                    "orderable":      false,
+                    "defaultContent": '',
+                    "width":          '10',
+                },
+                {
+                    "data": "polarion",
+                    "render": function( data ) {
+                        return '<a href="https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/workitem?id='+data+'">'+data+'</a>';
+                    }
+                },
+                { "data": "title" },
+                {
+                    "data": "documents",
+                    "render": function( data ) {
+                        return data.join('<br>');
+                    }
+                },
+                { "data": "automation" },
+                {
+                    "data": "errors",
+                    "render": function( data ) {
+                        return data.join('<br>');
+                    }
+                },
+                {
+                    "data": "cases",
+                    "visible": false
+                },
+                {
+                    "data": "patterns",
+                    "visible": false
+                },
+            ],
+            "createdRow": function(row, data, index){
+                if(data.errors.length > 0){
+                    $('td', row).eq(0).addClass('errors');
+                }
+            }
+        });
+
+        // Add event listener for opening and closing details
+        $('#sortable-table tbody').on('click', 'td.details-control', function(){
+            var tr = $(this).closest('tr');
+            var row = table.row(tr);
+
+            if (row.child.isShown()) {
+                // This row is already open - close it
+                row.child.hide();
+                tr.removeClass('shown');
+            }
+            else {
+                // Open this row
+                row.child(format(row)).show();
+                tr.addClass('shown');
+                $('pre code').each(function(i, block) {
+                    hljs.highlightBlock(block);
+                });
+            }
+        });
+    });
+</script>
+<a href='control?trigger=manualcase_error_check&trigger=linkage_error_check' target='_blank'>Check Manual case and Linkage errors.</a>
+{% endblock %}

@@ -1,130 +1,64 @@
-{% load staticfiles %}
-<html>
-    <head>
-        <title>libvirt Auto-Manual Case Linkage</title>
-        <link rel="stylesheet" type="text/css" href="{% static "caselink/datatables.css" %}">
-        <script type="text/javascript" charset="utf8" src="//code.jquery.com/jquery-1.10.2.min.js"></script>
-        <script type="text/javascript" charset="utf8" src="//cdn.datatables.net/1.10.7/js/jquery.dataTables.js"></script>
-        <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.9.1/styles/googlecode.min.css">
-        <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.9.1/highlight.min.js"></script>
-        <script src="//cdnjs.cloudflare.com/ajax/libs/js-cookie/2.0.4/js.cookie.min.js"></script>
-        <link rel="stylesheet" href="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.core.css" />
-        <link rel="stylesheet" href="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.default.css" id="toggleCSS" />
-    </head>
-    <body>
-        <h3 align='center'>libvirt Auto-Manual Case Linkage</h3>
-        <table id="sortable-table" class="display">
-            <thead>
-                <th>Case</th>
-                <th>Polarion</th>
-                <th>Title</th>
-                <th>Documents</th>
-                <th>Errors</th>
-            </thead>
-            <tfoot>
-                <th>Case</th>
-                <th>Polarion</th>
-                <th>Title</th>
-                <th>Documents</th>
-                <th>Errors</th>
-            </tfoot>
-        </table>
-
-        <script type="text/javascript">
-        $(document).ready(function() {
-            // Setup - add a text input to each footer cell
-            $('#sortable-table tfoot th').each( function () {
-                var title = $('#sortable-table thead th').eq( $(this).index() ).text();
-                $(this).html( '<input type="text" placeholder="Search '+title+'" />' );
-            } );
-
-            var table = $('#sortable-table').DataTable( {
-                "ajax": "data?type=a2m",
-                "iDisplayLength": 20,
-                "bAutoWidth": false,
-                "initComplete": function () {
-                    this.api().columns().every( function () {
-                        var column = this;
-                        var selections = [];
-                        var title = $(column.header()).text();
-                        if ( ['Title', 'Polarion', 'Case'].indexOf(title) > -1 ) {
-                            return;
+{% extends "caselink/index.html" %}
+ {% block title %} Libvirt Auto-Manual Case Linkage {% endblock %}
+ {% block body %}
+ <h3 align='center'>libvirt Auto-Manual Case Linkage</h3>
+<table id="sortable-table" class="display">
+    <thead>
+        <th>Case</th>
+        <th>Polarion</th>
+        <th>Title</th>
+        <th>Documents</th>
+        <th>Errors</th>
+    </thead>
+    <tfoot>
+        <th>Case</th>
+        <th>Polarion</th>
+        <th>Title</th>
+        <th>Documents</th>
+        <th>Errors</th>
+    </tfoot>
+</table>
+<script type="text/javascript">
+    $(document).ready(function() {
+        var table = $('#sortable-table').DataSearchTable( {
+            "ajax": "data?type=a2m",
+            "iDisplayLength": 20,
+            "bAutoWidth": false,
+            "selectorColumns": ['Documents', 'Errors'],
+            "columns": [
+                { "data": "case" },
+                {
+                    "data": "polarion",
+                    "render": function(data) {
+                        link = ""
+                        for (i in data){
+                            polarion_id = data[i];
+                            link += '<a href="https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/workitem?id='+polarion_id+'">'+polarion_id+'</a><br>';
                         }
-                        var select = $('<select><option value=""></option></select>')
-                            .appendTo( $(column.footer()).empty() )
-                            .on( 'change', function () {
-                                var val = $.fn.dataTable.util.escapeRegex(
-                                    $(this).val()
-                                );
-                                column
-                                    .search( val ? val : '', true, false )
-                                    .draw();
-                            } );
-                        column.data().each( function ( d, j ) {
-                            selections = selections.concat($.map(d, function(n){return n}));
-                        });
-                        $.each(
-                            $.grep(selections, function(el, index) {
-                                return index === $.inArray(el, selections);
-                            }),
-                            function(key, value){
-                                select.append( '<option value="'+value+'">'+value+'</option>' )
-                            }
-                        );
-                    });
-                },
-                "columns": [
-                    { "data": "case" },
-                    {
-                        "data": "polarion",
-                        "render": function( data ) {
-                            link = "";
-                            for (i in data){
-                                polarion_id = data[i];
-                                link += '<a href="https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/workitem?id='+polarion_id+'">'+polarion_id+'</a><br>';
-                            }
-                            return link;
-                        }
-                    },
-                    { "data": "title" },
-                    {
-                        "data": "documents",
-                        "render": function( data ) {
-                            return $.map(data, function(n){return n}).join('<br>');
-                        }
-                    },
-                    {
-                        "data": "errors",
-                        "render": function( data ) {
-                            return $.map(data, function(n){return n}).join('<br>');
-                        }
-                    },
-                ],
-                "createdRow": function ( row, data, index ) {
-                    if ( data.errors.length > 0 ) {
-                        $('td', row).eq(0).addClass('errors');
+                        return link;
                     }
+                },
+                { "data": "title" },
+                {
+                    "data": "documents",
+                    "render": function(data){
+                        return $.map(data, function(n){return n}).join('<br>');
+                    }
+                },
+                {
+                    "data": "errors",
+                    "render": function(data){
+                        return $.map(data, function(n){return n}).join('<br>');
+                    }
+                },
+            ],
+            "createdRow": function (row, data, index){
+                if (data.errors.length > 0) {
+                    $('td', row).eq(0).addClass('errors');
                 }
-            } );
-            table.columns().every( function () {
-                    var column = this;
-                    var title = $(column.header()).text();
-                    });
-
-            // Apply the search
-            table.columns().every( function () {
-                var that = this;
-
-                $( 'input', this.footer() ).on( 'keyup change', function () {
-                    that
-                        .search( this.value )
-                        .draw();
-                });
-            });
-
-        } );
-        </script>
-		<script src="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.min.js"></script>
-        <a href='control?trigger=autocase_error_check' target='_blank'>Check Autocase errors.</a>
-    </body>
-</html>
+            }
+        });
+    });
+</script>
+<a href='control?trigger=autocase_error_check' target='_blank'>Check Autocase errors.</a>
+{% endblock %}

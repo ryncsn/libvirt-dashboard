@@ -175,6 +175,12 @@ def a2m(request):
     return HttpResponse(template.render(context))
 
 
+def m2a(request):
+    template = loader.get_template('caselink/m2a.html')
+    context = RequestContext(request, {})
+    return HttpResponse(template.render(context))
+
+
 def index(request):
     template = loader.get_template('caselink/index.html')
     context = RequestContext(request, {})
