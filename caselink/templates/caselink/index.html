@@ -6,14 +6,15 @@
         <script type="text/javascript" charset="utf8" src="//cdn.datatables.net/1.10.8/js/jquery.dataTables.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.9.1/highlight.min.js"></script>
         <script src="//cdnjs.cloudflare.com/ajax/libs/js-cookie/2.0.4/js.cookie.min.js"></script>
-
         <script src="{% static "caselink/searchtable.js" %}"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
         <link rel="stylesheet" type="text/css" href="{% static "caselink/datatables.css" %}">
+        <link rel="stylesheet" type="text/css" href="{% static "caselink/caselink.css" %}">
         <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/8.9.1/styles/googlecode.min.css">
         <link rel="stylesheet" href="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.core.css" />
         <link rel="stylesheet" href="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.default.css" id="toggleCSS" />
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
     </head>
     <body>
         <nav class="navbar navbar-default navbar-fixed-top">
@@ -65,12 +66,23 @@
 
         <div class="container-fluid">
             {% block content %}
-            <a href="a2m" target="_blank">Auto to Manual case linkage</a>
-            <a href="m2a" target="_blank">Manual to Auto case linkage</a>
-            <br>
-            <a href="manual" target="_blank">Manual Case API</a>
-            <a href="auto" target="_blank">Auto case API</a>
-            <a href="link" target="_blank">Linkage API</a>
+            <div class="container">
+                <div class="panel panel-default">
+                    <div class="panel-heading">Table</div>
+                    <div class="panel-body">
+                        <a type="button" class="btn btn-info" href="a2m">Auto to Manual case linkage</a>
+                        <a type="button" class="btn btn-info" href="m2a">Manual to Auto case linkage</a>
+                    </div>
+                </div>
+                <div class="panel panel-default">
+                    <div class="panel-heading">API</div>
+                    <div class="panel-body">
+                        <a type="button" class="btn btn-default" href="manual">Manual Case API</a>
+                        <a type="button" class="btn btn-default" href="auto">Auto case API</a>
+                        <a type="button" class="btn btn-default" href="link">Linkage API</a>
+                    </div>
+                </div>
+            </div>
             {% endblock %}
         </div>
         <script src="http://fabien-d.github.io/alertify.js/assets/js/lib/alertify/alertify.min.js"></script>
