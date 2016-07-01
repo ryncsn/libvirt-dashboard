@@ -16,35 +16,33 @@ $.fn.extend({
                 // for specified columns
                 var column = this;
                 var title = $(column.header()).text();
-                if (param.selectorColumns && param.selectorColumns.indexOf(title) < 0){
-                    return;
+                if (param.selectorColumns && param.selectorColumns.indexOf(title) > -1){
+                    var selections = [];
+                    var select = $('<select><option value=""></option></select>')
+                    .appendTo($(column.footer()).empty())
+                    .on('change', function () {
+                        var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                        column
+                        .search( val ? val : '', true, false )
+                        .draw();
+                    });
+                    column.data().each(function(d, j){
+                        if($.isArray(d)){
+                            selections = selections.concat($.map(d, function(n){return n}));
+                        }
+                        else{
+                            selections = selections.concat(d);
+                        }
+                    });
+                    $.each(
+                        $.grep(selections, function(el, index) {
+                            return index === $.inArray(el, selections);
+                        }),
+                        function(key, value){
+                            select.append('<option value="'+value+'">'+value+'</option>');
+                        }
+                    );
                 }
-                var selections = [];
-                var select = $('<select><option value=""></option></select>')
-                .appendTo($(column.footer()).empty())
-                .on('change', function () {
-                    var val = $.fn.dataTable.util.escapeRegex($(this).val());
-                    column
-                    .search( val ? val : '', true, false )
-                    .draw();
-                });
-                column.data().each(function(d, j){
-                    if($.isArray(d)){
-                        selections = selections.concat($.map(d, function(n){return n}));
-                    }
-                    else{
-                        selections = selections.concat($.map(d, function(n){return n}));
-                    }
-                });
-                $.each(
-                    $.grep(selections, function(el, index) {
-                        return index === $.inArray(el, selections);
-                    }),
-                    function(key, value){
-                        select.append('<option value="'+value+'">'+value+'</option>');
-                    }
-                );
-
                 // Apply the search
                 var that = this;
                 $('input', this.footer()).on('keyup change', function(){
