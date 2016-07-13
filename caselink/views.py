@@ -169,6 +169,26 @@ class WorkItemLinkageDetail(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class AutoCaseLinkageList(APIView):
+    """
+    Retrieve, update or delete a caselink instance of a autocase.
+    """
+
+    serializer_class = LinkageSerializer
+
+    def get_objects(self, autocase):
+        case = get_object_or_404(AutoCase, id=autocase)
+        try:
+            return case.caselinks.all();
+        except CaseLink.DoesNotExist:
+            raise Http404
+
+    def get(self, request, autocase, format=None):
+        caselinks = self.get_objects(autocase)
+        serializers = [LinkageSerializer(caselink) for caselink in caselinks]
+        return Response(serializer.data for serializer in serializers)
+
+
 def a2m(request):
     template = loader.get_template('caselink/a2m.html')
     context = RequestContext(request, {})
