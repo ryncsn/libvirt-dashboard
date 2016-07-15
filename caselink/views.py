@@ -9,9 +9,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError, OperationalError, transaction
 
-from .models import WorkItem, AutoCase, CaseLink, Error
+from .models import WorkItem, AutoCase, CaseLink, Error, Bug
 from .serializers import \
-        WorkItemSerializer, AutoCaseSerializer, LinkageSerializer, WorkItemLinkageSerializer
+        WorkItemSerializer, AutoCaseSerializer, LinkageSerializer, WorkItemLinkageSerializer, BugSerializer
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -187,6 +187,32 @@ class AutoCaseLinkageList(APIView):
         caselinks = self.get_objects(autocase)
         serializers = [LinkageSerializer(caselink) for caselink in caselinks]
         return Response(serializer.data for serializer in serializers)
+
+
+class BugList(generics.ListCreateAPIView):
+    queryset = Bug.objects.all()
+    serializer_class = BugSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        #instance.error_check(depth=1)
+
+
+class BugDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Bug.objects.all()
+    serializer_class = BugSerializer
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        #instance.error_check(depth=1)
+
+    def perform_destroy(self, instance):
+        #related = instance.get_related()
+        instance.delete()
+        #for item in related:
+        #    item.error_check(depth=0)
 
 
 def a2m(request):

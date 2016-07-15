@@ -19,4 +19,6 @@ urlpatterns = [
     url(r'^auto/(?P<autocase>[a-zA-Z0-9\-\._]+)/link/$', views.AutoCaseLinkageList.as_view(), name='auto_link_list'),
     url(r'^link/$', views.LinkageList.as_view(), name='link'),
     url(r'^link/(?P<pk>[a-zA-Z0-9\-\._]+)/$', views.LinkageDetail.as_view(), name='link_detail'),
+    url(r'^bug/$', views.BugList.as_view(), name='bug'),
+    url(r'^bug/(?P<pk>[a-zA-Z0-9\-\._]+)/$', views.BugDetail.as_view(), name='bug_detail'),
 ]
