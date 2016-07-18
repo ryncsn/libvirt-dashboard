@@ -38,6 +38,10 @@ class CaselinkCase():
 
 
 class AutoCase(CaselinkCase):
+    def __str__(self):
+        return self.id
+
+
     def __init__(self, case_id):
         self.id = case_id
         self.url = CASELINK_URL + 'auto/' + case_id + '/'
@@ -52,6 +56,10 @@ class AutoCase(CaselinkCase):
 
 
 class ManualCase(CaselinkCase):
+    def __str__(self):
+        return self.id
+
+
     def __init__(self, case_id):
         self.id = case_id
         self.url = CASELINK_URL + 'manual/' + case_id + '/'
