@@ -34,6 +34,7 @@ TestRunParser.add_argument('name', required=True);
 TestRunParser.add_argument('date', type=inputs.datetime_from_iso8601, required=True);
 TestRunParser.add_argument('build', required=None);
 TestRunParser.add_argument('project', required=True);
+TestRunParser.add_argument('version', required=True);
 TestRunParser.add_argument('component', required=True);
 TestRunParser.add_argument('framework', required=None);
 TestRunParser.add_argument('description', default=None);
@@ -94,7 +95,6 @@ class TestRunDetail(Resource):
         if result['failure'] and result['skip']:
             return {'message': 'failure and skip can\'t be set at the same time'}, 400
 
-
         try:
             # TODO better error handling
             autocase = CaseLink.AutoCase(result['case']);
@@ -107,18 +107,26 @@ class TestRunDetail(Resource):
                 return {'message': 'Caselink didn\'t response in a expected way'}, 400
 
         # TODO use another table or drop these attributes.
-        result['bugs'] = "\n".join(bugs)
-        result['manualcases'] = "\n".join(manualcases)
+        result['bugs'] = "\n".join([bug.id for bug in bugs])
+        result['manualcases'] = "\n".join([manualcase.id for manualcase in manualcases])
         result_instance = Result(**result)
-        db.session.add(result_instance);
 
         if result['failure']:
             conflict = True
             for bug in bugs:
                 if result['failure'] == bug['message']:
                     conflict = False
-                    # TODO Bug check and Polarion update
-                    pass
+                    result['bug'] = bug.id;
+                    for autocase in bug.autocases:
+                        ManualCasesFailed = True
+                        for related_autocase in bug.autocases:
+                            related_result = Result.query.get((run_id, related_autocase.id));
+                            if not related_result or related_result.bug != bug.id:
+                                ManualCasesFailed = False
+                        if ManualCasesFailed:
+                            # TODO Polaroin
+                            print "Failed manual case " + manualcase
+
             if conflict:
                 conflict = Conflict({'resolve': 'NEW'})
                 conflict.results.append(result_instance)
@@ -128,11 +136,20 @@ class TestRunDetail(Resource):
             result['skip'] = result['skip'].get('message')
 
         else:
-            # TODO
-            # Check if all related auto cases passed, then perform Polarion update
-            pass
+            for manualcase in autocase.manualcases:
+                ManualCasePassed = True
+                for related_autocase in manualcase.autocases:
+                    if related_autocase == autocase:
+                        continue
+                    related_result = Result.query.get((run_id, related_autocase.id));
+                    if not related_result or related_result.failure is not None:
+                        ManualCasePassed = False
+                if ManualCasePassed:
+                    # TODO Polaroin
+                    print "Passed manual case " + str(manualcase)
 
         try:
+            db.session.add(result_instance);
             db.session.commit();
         except Exception as e:
             db.session.rollback();

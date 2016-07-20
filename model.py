@@ -1,4 +1,5 @@
 from app import db
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 
 class Run(db.Model):
     __tablename__ = 'run'
@@ -11,9 +12,16 @@ class Run(db.Model):
     name = db.Column(db.String(255), unique=False, nullable=False)
     date = db.Column(db.DateTime(), unique=False, nullable=False)
     build = db.Column(db.String(255), unique=False, nullable=False)
+    version = db.Column(db.String(255), unique=False, nullable=False)
     framework = db.Column(db.String(255), unique=False, nullable=False)
     description = db.Column(db.String(255), unique=False, nullable=True)
     results = db.relationship('Result', back_populates='run', lazy='dynamic')
+
+
+    @hybrid_property
+    def polarion_id(self):
+        return "Libvirt-Auto-Record-" + str(self.id)
+
 
     def __repr__(self):
         return '<TestRun %s>' % self.name
@@ -28,9 +36,8 @@ class Run(db.Model):
             if c.name != 'date':
                 ret[c.name] = getattr(self, c.name)
         ret['date'] = self.date.isoformat()
+        ret['polarion_id'] = self.polarion_id
         return ret
-
-
 
 
 class Result(db.Model):
@@ -47,8 +54,9 @@ class Result(db.Model):
     failure = db.Column(db.String(65535), nullable=True)
     skip = db.Column(db.String(65535), nullable=True)
     source = db.Column(db.String(65535), nullable=False)
-    manualcases = db.Column(db.String(65535), nullable=False)
-    bugs = db.Column(db.String(65535), nullable=False)
+    manualcases = db.Column(db.String(65535), nullable=True)
+    bugs = db.Column(db.String(65535), nullable=True)
+    bug = db.Column(db.String(65535), nullable=True)
 
     def __repr__(self):
         return '<TestResult %s>' % self.name
@@ -62,7 +70,7 @@ class Result(db.Model):
         for c in self.__table__.columns:
             if c.name != 'date':
                 ret[c.name] = getattr(self, c.name)
-        if show_conflict:
+        if show_conflict and self.conflict:
             ret['conflict'] = {
                 'id': self.conflict_id,
                 'resolve': self.conflict.resolve
