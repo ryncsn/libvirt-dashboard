@@ -60,7 +60,7 @@ class TestRunList(Resource):
     def post(self):
         args = TestRunParser.parse_args()
         run = args;
-        run = Run(args);
+        run = Run(**args);
         db.session.add(run);
         try:
             db.session.commit();
@@ -109,7 +109,7 @@ class TestRunDetail(Resource):
         # TODO use another table or drop these attributes.
         result['bugs'] = "\n".join(bugs)
         result['manualcases'] = "\n".join(manualcases)
-        result_instance = Result(result)
+        result_instance = Result(**result)
         db.session.add(result_instance);
 
         if result['failure']:

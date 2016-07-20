@@ -18,7 +18,7 @@ class Run(db.Model):
     def __repr__(self):
         return '<TestRun %s>' % self.name
 
-    def __init__(self, run):
+    def __init__(self, **run):
         for key, value in run.iteritems():
             setattr(self, key, value)
 
@@ -53,7 +53,7 @@ class Result(db.Model):
     def __repr__(self):
         return '<TestResult %s>' % self.name
 
-    def __init__(self, result):
+    def __init__(self, **result):
         for key, value in result.iteritems():
             setattr(self, key, value)
 
@@ -80,7 +80,7 @@ class Conflict(db.Model):
     def __repr__(self):
         return '<Conflict %s>' % self.results
 
-    def __init__(self, conflict):
+    def __init__(self, **conflict):
         for key, value in conflict.iteritems():
             setattr(self, key, value)
 
