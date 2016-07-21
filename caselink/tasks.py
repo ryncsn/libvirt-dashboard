@@ -23,8 +23,7 @@ try:
 except ImportError:
     from HTMLParser import HTMLParser
 
-from caselink.models \
-        import Error, Arch, Component, Framework, Project, Document, WorkItem, AutoCase, CaseLink
+from caselink.models import *
 
 
 @transaction.atomic
@@ -55,6 +54,12 @@ def load_linkage():
 def load_autocase():
     """Load baseline Auto cases"""
     _load_libvirt_ci_autocase_db(_baseline_loader('base_libvirt_ci_autocase.yaml'))
+
+
+@transaction.atomic
+def load_autocase_failure():
+    """Load baseline Auto cases"""
+    _load_failure_and_bug(_baseline_loader('base_buglist.yaml'))
 
 
 @transaction.atomic
@@ -256,3 +261,31 @@ def _load_libvirt_ci_autocase_db(autocases):
             if caselink.test_match(case):
                 caselink.autocases.add(case)
                 caselink.save()
+
+
+def _load_failure_and_bug(failures):
+    for failure in failures:
+        fail_regex = failure.get('fail-regex', None)
+        bug_id = failure.get('bug', None)
+        auto_patterns = failure.get('autocases', [])
+        skip = failure.get('skip', None)
+        if (bug_id and skip) or (not bug_id and not skip):
+            print "Bad entry: " + str(failure)
+            continue
+
+        bug = None
+        if bug_id:
+            bug = Bug.objects.create(id=bug_id)
+            for manualcase in failure['workitems']:
+                manualcase = WorkItem.objects.get(id=manualcase)
+                bug.manualcases.add(manualcase)
+            bug.save()
+
+        for pattern in auto_patterns:
+            case_failure = AutoCaseFailure.objects.create(
+                autocase_pattern=pattern,
+                type="CASE-UPDATE" if skip else "BUG",
+                failure_regex=fail_regex,
+                bug=bug
+            )
+            case_failure.autolink()

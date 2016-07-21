@@ -9,20 +9,20 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError, OperationalError, transaction
 
-from .models import WorkItem, AutoCase, CaseLink, Error, Bug
-from .serializers import \
-        WorkItemSerializer, AutoCaseSerializer, LinkageSerializer, WorkItemLinkageSerializer, BugSerializer
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
-from.tasks import \
-        update_linkage_error, update_manualcase_error, update_autocase_error
+from.tasks import *
+from .models import *
+from .serializers import *
 
 from celery.task.control import inspect
 from celery.result import AsyncResult
 
+
+# Standard RESTful APIs
 
 class WorkItemList(generics.ListCreateAPIView):
     queryset = WorkItem.objects.all()
@@ -54,6 +54,7 @@ class AutoCaseList(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         instance = serializer.save()
+        # TODO: ignored autolink list
         instance.autolink()
         instance.error_check(depth=1)
 
@@ -98,6 +99,80 @@ class LinkageDetail(generics.RetrieveUpdateDestroyAPIView):
         for item in related:
             item.error_check(depth=0)
 
+
+class BugList(generics.ListCreateAPIView):
+    queryset = Bug.objects.all()
+    serializer_class = BugSerializer
+
+
+class BugDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Bug.objects.all()
+    serializer_class = BugSerializer
+
+
+class AutoCaseFailureList(generics.ListCreateAPIView):
+    queryset = AutoCaseFailure.objects.all()
+    serializer_class = AutoCaseFailureSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        #instance.error_check(depth=1)
+
+
+class AutoCaseFailureDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = AutoCaseFailure.objects.all()
+    serializer_class = AutoCaseFailureSerializer
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        #instance.error_check(depth=1)
+
+    def perform_destroy(self, instance):
+        #related = instance.get_related()
+        instance.delete()
+        #for item in related:
+        #    item.error_check(depth=0)
+
+
+class BugList(generics.ListCreateAPIView):
+    queryset = Bug.objects.all()
+    serializer_class = BugSerializer
+
+
+class BugDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Bug.objects.all()
+    serializer_class = BugSerializer
+
+
+class AutoCaseFailureList(generics.ListCreateAPIView):
+    queryset = AutoCaseFailure.objects.all()
+    serializer_class = BugSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        #instance.error_check(depth=1)
+
+
+class AutoCaseFailureDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = AutoCaseFailure.objects.all()
+    serializer_class = BugSerializer
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        instance.autolink()
+        #instance.error_check(depth=1)
+
+    def perform_destroy(self, instance):
+        #related = instance.get_related()
+        instance.delete()
+        #for item in related:
+        #    item.error_check(depth=0)
+
+
+# Shortcuts RESTful APIs
 
 class WorkItemLinkageList(APIView):
     """
@@ -187,32 +262,6 @@ class AutoCaseLinkageList(APIView):
         caselinks = self.get_objects(autocase)
         serializers = [LinkageSerializer(caselink) for caselink in caselinks]
         return Response(serializer.data for serializer in serializers)
-
-
-class BugList(generics.ListCreateAPIView):
-    queryset = Bug.objects.all()
-    serializer_class = BugSerializer
-
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        instance.autolink()
-        #instance.error_check(depth=1)
-
-
-class BugDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Bug.objects.all()
-    serializer_class = BugSerializer
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        instance.autolink()
-        #instance.error_check(depth=1)
-
-    def perform_destroy(self, instance):
-        #related = instance.get_related()
-        instance.delete()
-        #for item in related:
-        #    item.error_check(depth=0)
 
 
 def a2m(request):

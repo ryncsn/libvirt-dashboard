@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 
 
 def test_pattern_match(pattern, casename):
@@ -64,6 +65,26 @@ class Document(models.Model):
         return self.id
 
 
+class Bug(models.Model):
+    """
+    Linked with AutoCase through AutoCasesFailure for better autocase failure matching,
+    Linked with ManualCase directly.
+    """
+    id = models.CharField(max_length=255, primary_key=True)
+    manualcases = models.ManyToManyField('WorkItem', blank=True, related_name='bugs')
+
+    @property
+    def autocases(self):
+        cases = []
+        for failure in self.autocase_failures.all():
+            cases += failure.autocases.all()
+        return cases
+
+
+    def __str__(self):
+        return self.id
+
+
 class WorkItem(models.Model):
     id = models.CharField(max_length=255, primary_key=True)
     type = models.CharField(max_length=255, blank=True)
@@ -74,7 +95,6 @@ class WorkItem(models.Model):
     archs = models.ManyToManyField(Arch, blank=True, related_name='workitems')
     documents = models.ManyToManyField(Document, blank=True, related_name='workitems')
     errors = models.ManyToManyField(Error, blank=True, related_name='workitems')
-    bugs = models.ManyToManyField('Bug', blank=True, related_name='workitems')
 
     #Field used to perform runtime error checking
     error_related = models.ManyToManyField('self', blank=True)
@@ -139,7 +159,6 @@ class AutoCase(models.Model):
     start_commit = models.CharField(max_length=255, blank=True)
     end_commit = models.CharField(max_length=255, blank=True)
     errors = models.ManyToManyField(Error, blank=True, related_name='autocases')
-    bugs = models.ManyToManyField('Bug', blank=True, related_name='autocases')
 
     #Field used to perform runtime error checking
     #error_related = models.ManyToManyField('self', blank=True)
@@ -246,31 +265,24 @@ class CaseLink(models.Model):
         self.save()
 
 
-class Bug(models.Model):
-    id = models.CharField(max_length=255, primary_key=True)
-    # autocase_patterns defined in model BugAutoLink
-
-
-    def autolink(self):
-        for case in AutoCase.objects.all():
-            for pattern in self.autocase_patterns.all():
-                if pattern.test_match(case):
-                    case.bugs.add(self)
-                    case.save()
-
-
-    def __str__(self):
-        return self.id
-
-
 # Use a standalone model for bug to auto linkage to make use of autocase pattern
-class BugPattern(models.Model):
-    bug = models.ForeignKey(Bug, related_name='autocase_patterns')
+class AutoCaseFailure(models.Model):
+    autocases = models.ManyToManyField(AutoCase, related_name="failures")
+    type = models.CharField(max_length=255)
+    bug = models.ForeignKey('Bug', related_name='autocase_failures', blank=True)
+    failure_regex = models.CharField(max_length=65535)
     autocase_pattern = models.CharField(max_length=255)
 
 
     class Meta:
-        unique_together = ("bug", "autocase_pattern",)
+        unique_together = ("failure_regex", "autocase_pattern",)
+
+
+    def clean(self):
+        if self.type not in ['BUG', 'CASE-UPDATE']:
+            raise ValidationError(_('Unsupported AutoCase Failure Type' + str(self.type)))
+        if self.type == 'BUG' and not self.bug:
+            raise ValidationError(_('Bug id required.'))
 
 
     def test_match(self, auto_case):
@@ -280,5 +292,13 @@ class BugPattern(models.Model):
         return test_pattern_match(self.autocase_pattern, auto_case.id)
 
 
+    def autolink(self):
+        for case in AutoCase.objects.all():
+            if self.test_match(case):
+                self.autocases.add(case)
+        self.save()
+
+
     def __str__(self):
         return self.autocase_pattern
+
