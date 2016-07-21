@@ -10,13 +10,15 @@ class LinkageSerializer(serializers.ModelSerializer):
 
 
 class WorkItemSerializer(serializers.ModelSerializer):
-    caselinks = LinkageSerializer(many=True, read_only=True)
+    caselinks = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    bugs = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     class Meta:
         model = WorkItem
 
 
 class AutoCaseSerializer(serializers.ModelSerializer):
-    caselinks = LinkageSerializer(many=True, read_only=True)
+    caselinks = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    failures = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     class Meta:
         model = AutoCase
 
@@ -25,11 +27,6 @@ class WorkItemLinkageSerializer(serializers.ModelSerializer):
     class Meta:
         model = CaseLink
         exclude = ('workitem',)
-
-
-class AutoCaseFailureSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AutoCaseFailure
 
 
 class BugSerializer(serializers.ModelSerializer):

@@ -16,6 +16,7 @@ from caselink.tasks import load_project
 from caselink.tasks import load_manualcase
 from caselink.tasks import load_linkage
 from caselink.tasks import load_autocase
+from caselink.tasks import load_autocase_failure
 from caselink.tasks import init_error_checking
 
 def run():
@@ -33,6 +34,9 @@ def run():
 
     print('Loading Auto Cases')
     load_autocase()
+
+    print('Loading Auto failure and bugs')
+    load_autocase_failure()
 
     print('Checking for errors...')
     init_error_checking()

@@ -265,7 +265,6 @@ class CaseLink(models.Model):
         self.save()
 
 
-# Use a standalone model for bug to auto linkage to make use of autocase pattern
 class AutoCaseFailure(models.Model):
     autocases = models.ManyToManyField(AutoCase, related_name="failures")
     type = models.CharField(max_length=255)

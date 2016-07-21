@@ -146,32 +146,6 @@ class BugDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = BugSerializer
 
 
-class AutoCaseFailureList(generics.ListCreateAPIView):
-    queryset = AutoCaseFailure.objects.all()
-    serializer_class = BugSerializer
-
-    def perform_create(self, serializer):
-        instance = serializer.save()
-        instance.autolink()
-        #instance.error_check(depth=1)
-
-
-class AutoCaseFailureDetail(generics.RetrieveUpdateDestroyAPIView):
-    queryset = AutoCaseFailure.objects.all()
-    serializer_class = BugSerializer
-
-    def perform_update(self, serializer):
-        instance = serializer.save()
-        instance.autolink()
-        #instance.error_check(depth=1)
-
-    def perform_destroy(self, instance):
-        #related = instance.get_related()
-        instance.delete()
-        #for item in related:
-        #    item.error_check(depth=0)
-
-
 # Shortcuts RESTful APIs
 
 class WorkItemLinkageList(APIView):
