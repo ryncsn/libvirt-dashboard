@@ -8,13 +8,11 @@ class CaseLinkItem():
     def __init__(self):
         self._caselink_json
 
-
     def __getattr__(self, name):
         if not name.startswith('_') and name in self.json:
             # ignore attrs like '_caselink_json', '_json' to avoid recursive getattr.
             return self.json[name]
-        raise AttributeError()
-
+        raise AttributeError('Keyword error' + str(name))
 
     # JSON retrived from caselink, lazy eval.
     @property
@@ -24,11 +22,9 @@ class CaseLinkItem():
         self.refresh()
         return self._caselink_json
 
-
     @json.setter
     def json(self, value):
         self._caselink_json = value
-
 
     def refresh(self):
         respons = requests.get(self.url)
@@ -36,23 +32,21 @@ class CaseLinkItem():
         respons.raise_for_status()
         self.json = respons.json()
 
-
     # Following functions consider caselink stay the same during
     # the life circle of a CaseLinkItem object.
     def __eq__(self, other):
+        if not isinstance(other, CaseLinkItem):
+            return False
         return self.id == other.id
-
 
     def __lt__(self, other):
         return self.id < other.id
 
-
     def __hash__(self):
         return self.id
 
-
     def __str__(self):
-        return self.id
+        return "<CaselinkItem>"+self.id
 
     def __repr__(self):
         return self.__str__()
@@ -60,17 +54,15 @@ class CaseLinkItem():
 
 class AutoCase(CaseLinkItem):
     def __init__(self, case_id):
-        self.id = case_id
-        self.url = CASELINK_URL + 'auto/' + case_id + '/'
-
+        self.id = str(case_id)
+        self.url = CASELINK_URL + 'auto/' + str(case_id) + '/'
 
     @property
     def manualcases(self):
         cases = []
-        for link in self.json['caselinks']:
-            cases.append(ManualCase(link['workitem']))
+        for link in [Linkage(link_id) for link_id in self.json['caselinks']]:
+            cases.append(ManualCase(link.workitem))
         return cases
-
 
     @property
     def bugs(self):
@@ -79,21 +71,27 @@ class AutoCase(CaseLinkItem):
             bugs.append(Bug(bug))
         return bugs
 
+    @property
+    def failures(self):
+        failures = []
+        for failure in self.json['failures']:
+            failures.append(AutoCaseFailure(failure))
+        return failures
+
+
 
 class ManualCase(CaseLinkItem):
     def __init__(self, case_id):
-        self.id = case_id
-        self.url = CASELINK_URL + 'manual/' + case_id + '/'
-
+        self.id = str(case_id)
+        self.url = CASELINK_URL + 'manual/' + str(case_id) + '/'
 
     @property
     def autocases(self):
         cases = []
-        for link in self.json['caselinks']:
-            for autocase in link['autocases']:
+        for link in [Linkage(link_id) for link_id in self.json['caselinks']]:
+            for autocase in link.autocases:
                 cases.append(AutoCase(autocase))
         return cases
-
 
     @property
     def bugs(self):
@@ -105,9 +103,8 @@ class ManualCase(CaseLinkItem):
 
 class Bug(CaseLinkItem):
     def __init__(self, bz_id):
-        self.id = bz_id
-        self.url = CASELINK_URL + 'bug/' + bz_id + '/'
-
+        self.id = str(bz_id)
+        self.url = CASELINK_URL + 'bug/' + str(bz_id) + '/'
 
     @property
     def autocases(self):
@@ -116,12 +113,33 @@ class Bug(CaseLinkItem):
             cases.append(AutoCase(case))
         return cases
 
-
     @property
     def manualcases(self):
         cases = []
-        for case in self.json['workitems']:
+        for case in self.json['manualcases']:
             cases.append(ManualCase(case))
         return cases
 
 
+class AutoCaseFailure(CaseLinkItem):
+    def __init__(self, id):
+        self.id = str(id)
+        self.url = CASELINK_URL + 'autocase_failure/' + str(id) + '/'
+
+    @property
+    def bug(self):
+        return Bug(self.json['bug'])
+
+
+    @property
+    def manualcases(self):
+        cases = []
+        for case in self.bug.manualcases:
+            cases.append(ManualCase(case))
+        return cases
+
+
+class Linkage(CaseLinkItem):
+    def __init__(self, id):
+        self.id = str(id)
+        self.url = CASELINK_URL + 'link/' + str(id) + '/'

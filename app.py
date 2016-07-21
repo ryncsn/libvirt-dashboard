@@ -61,6 +61,7 @@ class TestRunList(Resource):
     def post(self):
         args = TestRunParser.parse_args()
         run = args;
+        run['submitted'] = False;
         run = Run(**args);
         db.session.add(run);
         try:
@@ -99,41 +100,44 @@ class TestRunDetail(Resource):
             # TODO better error handling
             autocase = CaseLink.AutoCase(result['case']);
             manualcases = autocase.manualcases
-            bugs = autocase.bugs
+            faulures = autocase.failures
         except HTTPError as e:
             if e.response.status_code == 404:
                 return {'message': 'Auto case not included in caselink'}, 400
             else:
                 return {'message': 'Caselink didn\'t response in a expected way'}, 400
 
-        # TODO use another table or drop these attributes.
-        result['bugs'] = "\n".join([bug.id for bug in bugs])
-        result['manualcases'] = "\n".join([manualcase.id for manualcase in manualcases])
-        result_instance = Result(**result)
+        # Failed -> look up in bug list, if any bug matches, mark manualcase failed
+        # Passed -> look up in linkage list, if all autocase of a manualcase
+        #           passed, mark the manualcase passed
+
+        # Mark error when lookup failed
 
         if result['failure']:
-            conflict = True
-            for bug in bugs:
-                if result['failure'] == bug['message']:
-                    conflict = False
-                    result['bug'] = bug.id;
-                    for autocase in bug.autocases:
-                        ManualCasesFailed = True
-                        for related_autocase in bug.autocases:
-                            related_result = Result.query.get((run_id, related_autocase.id));
-                            if not related_result or related_result.bug != bug.id:
-                                ManualCasesFailed = False
-                        if ManualCasesFailed:
-                            # TODO Polaroin
-                            print "Failed manual case " + manualcase
+            NoMatchingFailure = True
+            for failure in autocase.failures:
+                # TODO use regex
+                if result['failure'] == failure.failure_regex:
+                    NoMatchingFailure = False
+                    bugs = failure.bug.id
+                    if result.get('bugs', None):
+                        result['bugs'] += "\n" + bugs
+                    else:
+                        result['bugs'] = bugs
 
-            if conflict:
-                conflict = Conflict({'resolve': 'NEW'})
-                conflict.results.append(result_instance)
-                db.session.add(conflict)
+                    manualcase_ids = "\n".join([manualcase.id for manualcase in failure.manualcases])
+                    if result.get('manualcases', None):
+                        result['manualcases'] += "\n" + manualcase_ids
+                    else:
+                        result['manualcases'] = manualcase_ids
+            if NoMatchingFailure:
+                result['error'] = 'UNKNOWN FAILURE'
+                print "UNKNOWN FAILURE For" + str(autocase)
+            else:
+                print "Manual Case Failure" + str(result['manualcases'])
 
         elif result['skip']:
-            result['skip'] = result['skip'].get('message')
+            result['skip'] = result['skip']
 
         else:
             for manualcase in autocase.manualcases:
@@ -145,8 +149,21 @@ class TestRunDetail(Resource):
                     if not related_result or related_result.failure is not None:
                         ManualCasePassed = False
                 if ManualCasePassed:
-                    # TODO Polaroin
+                    if result.get('manualcases', None):
+                        result['manualcases'] += "\n" + manualcase.id
+                    else:
+                        result['manualcases'] = manualcase.id
+                    for related_autocase in manualcase.autocases:
+                        related_result = Result.query.get((run_id, related_autocase.id));
+                        if related_autocase == autocase:
+                            continue
+                        if not related_result.manualcases:
+                            related_result.manualcases = manualcase.id
+                        elif manualcase.id not in related_result['manualcases']:
+                            related_result.manualcases += "\n" + manualcase.id
                     print "Passed manual case " + str(manualcase)
+
+        result_instance = Result(**result)
 
         try:
             db.session.add(result_instance);
@@ -165,28 +182,24 @@ class CaseResultDetail(Resource):
         return res.as_dict()
 
 
-class ConflictList(Resource):
+class ErrorList(Resource):
     def get(self):
-        conflicts = Conflict.query.all()
+        ResultWithError = Result.query.filter(Result.error.isnot(None))
         ret = [];
-        for conflict in conflicts:
-            ret.append(conflict.as_dict())
+        for error in errors:
+            ret.append(error.as_dict())
         return ret
-
-
-class ConflictDetail(Resource):
-    def get(self, run_id, case_name):
-        res = Result.query.get((run_id, case_name))
-        if not res or not res.conflict:
-            return {'message': 'Conflict doesn\'t exists'}, 400
-        return res.conflict.as_dict()
 
 
 api.add_resource(TestRunList, '/run/')
 api.add_resource(TestRunDetail, '/run/<int:run_id>/')
 api.add_resource(CaseResultDetail, '/run/<int:run_id>/<string:case_name>')
-api.add_resource(ConflictDetail, '/run/<int:run_id>/<string:case_name>/conflict/')
-api.add_resource(ConflictList, '/conlicts/')
+api.add_resource(ErrorList, '/error/')
+
+
+@app.route('/submit', methods=['GET'])
+def submit_to_polarion():
+    return 'Processing!'
 
 
 if __name__ == '__main__':
