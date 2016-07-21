@@ -1,20 +1,48 @@
-- title: 'Dash board 1'
+- title: 'Dashboard Test 1'
   polarion:
-    VIRTTP-9362: {}
+    VIRTTP-9372: {}
   feature: virtual-disks
   cases:
   - a.b.c.d
 
-- title: 'Dash board 2'
+- title: 'Dashboard Test 2'
   polarion:
-    VIRTTP-9363: {}
+    VIRTTP-9373: {}
   feature: virtual-disks
   cases:
-  - a.b..e
+  - a.b.c..e
 
-- title: 'Dash board 3'
+- title: 'Dashboard Test 3'
   polarion:
-    VIRTTP-9364: {}
+    VIRTTP-9372: {}
+  feature: virtual-disks
+  cases:
+  - a.b.c..f
+
+- title: 'Dashboard Test 4'
+  polarion:
+    VIRTTP-9372: {}
+  feature: virtual-disks
+  cases:
+  - 1.1.1
+
+- title: 'Dashboard Test 5'
+  polarion:
+    VIRTTP-9372: {}
   feature: virtual-disks
   cases:
   - '1.2'
+
+- title: 'Dashboard Test 6'
+  polarion:
+    VIRTTP-9372: {}
+  feature: virtual-disks
+  cases:
+  - '1.3'
+
+- title: 'Dashboard Test 7'
+  polarion:
+    VIRTTP-9372: {}
+  feature: virtual-disks
+  cases:
+  - '1.4'

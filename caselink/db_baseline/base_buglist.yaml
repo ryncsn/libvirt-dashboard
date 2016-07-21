@@ -1,0 +1,29 @@
+- autocases:
+    - '1.1'
+  workitems:
+    - VIRTTP-9375
+  bug: '1'
+  # TODO
+  skip: false
+  fail-regex:
+      - "Failure 1"
+
+- autocases:
+    - '1.2'
+  workitems:
+    - VIRTTP-9376
+  bug: '2'
+  skip: false
+  fail-regex:
+      - "Failure 2"
+
+- autocases:
+    - '1.3.1'
+    - '1.3.2'
+    - '1.3.3'
+  workitems:
+    - VIRTTP-9376
+  bug: '3'
+  skip: false
+  fail-regex:
+      - "Failure 3"
