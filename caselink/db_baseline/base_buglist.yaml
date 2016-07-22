@@ -5,8 +5,7 @@
   bug: '1'
   # TODO
   skip: false
-  fail-regex:
-      - "Failure 1"
+  fail-regex: "Failure 1"
 
 - autocases:
     - '1.2'
@@ -14,16 +13,14 @@
     - VIRTTP-9376
   bug: '2'
   skip: false
-  fail-regex:
-      - "Failure 2"
+  fail-regex: "Failure 2"
 
 - autocases:
     - '1.3.1'
     - '1.3.2'
     - '1.3.3'
   workitems:
-    - VIRTTP-9376
+    - VIRTTP-9377
   bug: '3'
   skip: false
-  fail-regex:
-      - "Failure 3"
+  fail-regex: "Failure 3"
