@@ -9,7 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from requests import HTTPError
 
 import utils.caselink as CaseLink
-#import utils.polarion as Polarion
+import utils.polarion as Polarion
 
 app = Flask(__name__)
 app.config.from_object('config.ActiveConfig')
@@ -148,7 +148,9 @@ class TestRunDetail(Resource):
                     related_result = Result.query.get((run_id, related_autocase.id));
                     if not related_result or related_result.failure is not None:
                         ManualCasePassed = False
+                        result['error'] = 'INCOMPLETE'
                 if ManualCasePassed:
+                    result['error'] = None
                     if result.get('manualcases', None):
                         result['manualcases'] += "\n" + manualcase.id
                     else:
@@ -157,6 +159,7 @@ class TestRunDetail(Resource):
                         related_result = Result.query.get((run_id, related_autocase.id));
                         if related_autocase == autocase:
                             continue
+                        result['error'] = None
                         if not related_result.manualcases:
                             related_result.manualcases = manualcase.id
                         elif manualcase.id not in related_result['manualcases']:
@@ -199,7 +202,54 @@ api.add_resource(ErrorList, '/error/')
 
 @app.route('/submit', methods=['GET'])
 def submit_to_polarion():
-    return 'Processing!'
+    for test_run in Run.query.filter(Run.submitted==False):
+        polaroin_testrun = Polarion.TestRunRecord(
+            project=test_run.project,
+            name=test_run.name,
+            description="CI Job: " + str(test_run.description),
+            type=test_run.type,
+            date=test_run.date,
+            build=test_run.build,
+            version=test_run.version,
+            arch=test_run.arch
+        )
+
+        manual_cases = {}
+
+        for record in Result.query.filter(Result.run_id==test_run.id):
+            if record.bugs:
+                result='failed'
+            elif record.error:
+                continue
+            else:
+                result='passed'
+
+            manualcase_ids = record.manualcases.split("\n")
+            for id in manualcase_ids:
+                if id in manual_cases:
+                    if manual_cases[id]['result'] != result:
+                        raise RuntimeError("Result Inconsistent")
+                    manual_cases[id]['duration'] += record.time
+                else:
+                    manual_cases[id] = {
+                        "result": result,
+                        "duration": record.time, #Float
+                    }
+
+        for case in manual_cases:
+            polaroin_testrun.add_record(
+                case=case,
+                result=manual_cases[case]['result'],
+                duration=manual_cases[case]['duration'],
+                datetime=test_run.date, #Datetime
+                executed_by='CI',
+                comment='Dashboard Generated Record'
+            )
+
+        with Polarion.TestRunSession() as session:
+            polaroin_testrun.submit(session)
+
+    return "Done"
 
 
 if __name__ == '__main__':

@@ -47,7 +47,6 @@ class Result(db.Model):
     run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
     run = db.relationship('Run', back_populates='results')
 
-
     case = db.Column(db.String(255), nullable=False, primary_key=True)
     time = db.Column(db.Float(), nullable=False)
     failure = db.Column(db.String(65535), nullable=True)

@@ -135,7 +135,7 @@ class AutoCaseFailure(CaseLinkItem):
     def manualcases(self):
         cases = []
         for case in self.bug.manualcases:
-            cases.append(ManualCase(case))
+            cases.append(ManualCase(case.id))
         return cases
 
 
