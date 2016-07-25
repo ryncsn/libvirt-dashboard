@@ -1,0 +1,30 @@
+{% extends "index.html" %}
+{% block title %} {{title}} {% endblock %} </title>
+{% block content %}
+<table class='table' id='column_table'>
+    <thead>
+        <tr>
+            {% for col in columns %}
+            <th>{{ col }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+</table>
+{% endblock %}
+{% block footer %}
+<script type="text/javascript" charset="utf-8">
+    $(document).ready(function() {
+        $('#column_table').dataTable( {
+            pageLength: 50,
+            columns: [
+                {% for col in columns %}
+                { "data":"{{ col }}" },
+                {% endfor %}
+            ],
+            ajax: function (data, callback, settings) {
+                callback( JSON.parse('{"data": {{data}}}'));
+            },
+        });
+    } );
+</script>
+{% endblock %}

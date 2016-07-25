@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
-from flask import Flask, request
+from flask import Flask, request, Markup
+from flask import render_template, make_response
 from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
 from flask_restful import Resource, Api, reqparse, inputs
 from flask_sqlalchemy import SQLAlchemy
 
 from requests import HTTPError
+
+import json
 
 import utils.caselink as CaseLink
 import utils.polarion as Polarion
@@ -49,6 +52,20 @@ CaseResultParser.add_argument('skip', default=None);
 CaseResultParser.add_argument('source', default='');
 
 
+def column_to_table(data, code, headers=None):
+    if len(data) == 0:
+        resp = make_response("", 401)
+    columns = [str(col).split('.')[-1] for col in data[0].keys()]
+    resp = make_response(render_template('column2table.html', columns=columns, data=Markup(json.dumps(data))), 200)
+    resp.headers.extend(headers or {})
+    return resp
+
+
+@api.representation('text/html')
+def html(data, code, headers=None):
+    return column_to_table(data, code, headers=headers)
+
+
 class TestRunList(Resource):
     def get(self):
         runs = Run.query.all()
@@ -56,7 +73,6 @@ class TestRunList(Resource):
         for run in runs:
             ret.append(run.as_dict())
         return ret
-
 
     def post(self):
         args = TestRunParser.parse_args()
@@ -82,7 +98,6 @@ class TestRunDetail(Resource):
         for run in results:
             ret.append(run.as_dict())
         return ret
-
 
     def post(self, run_id):
         args = CaseResultParser.parse_args()
@@ -189,15 +204,15 @@ class ErrorList(Resource):
     def get(self):
         ResultWithError = Result.query.filter(Result.error.isnot(None))
         ret = [];
-        for error in errors:
+        for error in ResultWithError:
             ret.append(error.as_dict())
         return ret
 
 
-api.add_resource(TestRunList, '/run/')
-api.add_resource(TestRunDetail, '/run/<int:run_id>/')
-api.add_resource(CaseResultDetail, '/run/<int:run_id>/<string:case_name>')
-api.add_resource(ErrorList, '/error/')
+api.add_resource(TestRunList, '/api/run/')
+api.add_resource(TestRunDetail, '/api/run/<int:run_id>/')
+api.add_resource(CaseResultDetail, '/api/run/<int:run_id>/<string:case_name>')
+api.add_resource(ErrorList, '/api/error/')
 
 
 @app.route('/submit', methods=['GET'])
