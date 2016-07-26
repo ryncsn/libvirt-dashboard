@@ -1,9 +1,10 @@
 #!/bin/env python
 import requests
 
-DASHBOARD = 'http://127.0.0.1:5000/'
+DASHBOARD = 'http://127.0.0.1:5000/api/'
 
-def debug_post (url, json={}):
+
+def debug_post(url, json={}):
     res = requests.post(url, json=json)
     print "REQ:" + str(url)
     print "DATA:" + str(json)
@@ -28,20 +29,20 @@ res = debug_post(DASHBOARD + 'run/', json={
 run_id = res.json()['id']
 
 for case in [
-    "a.b.c.d",
-    "a.b.c.4.e",
-    "a.b.c.3.e",
-    "a.b.c.2.e",
-    "a.b.c.1.e",
-    "a.b.c.4.f",
-    "a.b.c.3.f",
-    "a.b.c.2.f",
-    "a.b.c.1.f"]:
+        "a.b.c.d",
+        "a.b.c.4.e",
+        "a.b.c.3.e",
+        "a.b.c.2.e",
+        "a.b.c.1.e",
+        "a.b.c.4.f",
+        "a.b.c.3.f",
+        "a.b.c.2.f",
+        "a.b.c.1.f"]:
 
     debug_post(DASHBOARD + 'run/' + str(run_id) + "/", json={
         "output": "WOW",
         "time": "123.456",
-        "case": case
+        "case": case,
     })
 
 

@@ -16,8 +16,8 @@ from pylarion.plan import Plan
 
 COMMIT_SIZE = 100
 logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s|%(message)s',
-        level=logging.INFO)
+    format='%(asctime)s %(levelname)-8s|%(message)s',
+    level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 
@@ -50,7 +50,6 @@ class TestRunSession():
         self.session.tx_begin()
         return self.session
 
-
     def __exit__(self, exception_type, exception_value, traceback):
         if exception_type:
             print exception_type
@@ -78,8 +77,7 @@ class TestRunRecord():
 
         self.records = []
         self.query = (('project.id:%s AND type:testcase ' % (self.project)
-                           + 'AND (%s)'))
-
+                       + 'AND (%s)'))
 
     def add_record(self, case=None, result=None, duration=None, datetime=None, executed_by=None, comment=None):
         """
@@ -104,7 +102,6 @@ class TestRunRecord():
 
         self.records.append(record)
 
-
     def fake_submit(self):
         #print get_nearest_plan(self.version):
         tr_name = '%s %s %s %s %s %s' % (
@@ -119,12 +116,10 @@ class TestRunRecord():
         for idx, record in enumerate(self.records):
             record.fake_polarion_object()
 
-
     def submit(self, session=None):
         self.session = session
         if not self.session:
             raise RuntimeError('Need to start a session.')
-
 
         tr_name = '%s %s %s %s %s %s' % (
             self.name, self.type, self.build, self.version, self.arch,
@@ -145,7 +140,6 @@ class TestRunRecord():
         self.session.tx_commit()
         self.session.tx_begin()
 
-
         self.client = self.session.test_management_client
         for idx, record in enumerate(self.records):
             self.client.service.addTestRecordToTestRun(test_run.uri,
@@ -155,8 +149,6 @@ class TestRunRecord():
         except ssl.SSLError as detail:
             logging.warning(detail)
         self.session.tx_begin()
-
-
 
         test_run.status = 'finished'
         LOGGER.info('Updating Test Run')
@@ -179,17 +171,16 @@ class Record():
         self.result = result
         self.comment = comment
 
-
     def fake_polarion_object(self):
         print ("subterra:data-service:objects:/default/"
-                                   "%s${WorkItem}%s" %
-                                   (self.project, self.case))
+               "%s${WorkItem}%s" %
+               (self.project, self.case))
         print self.duration
         print self.executed
         print self.result
         print self.comment
         print ("subterra:data-service:objects:/default/"
-                                     "${User}%s" % self.executed_by)
+               "${User}%s" % self.executed_by)
 
     def get_polarion_object(self, factory=None):
         """
@@ -197,7 +188,7 @@ class Record():
         """
         self.factory = factory
         if not self.factory:
-           raise RuntimeError()
+            raise RuntimeError()
 
         if hasattr(self, '_polarion_object'):
             return self._polarion_object

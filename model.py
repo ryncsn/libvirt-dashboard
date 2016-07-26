@@ -1,9 +1,10 @@
 from app import db
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 
+
 class Run(db.Model):
     __tablename__ = 'run'
-    __table_args__ = {'sqlite_autoincrement': True,}
+    __table_args__ = {'sqlite_autoincrement': True, }
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     project = db.Column(db.String(255), nullable=False)
     component = db.Column(db.String(255), nullable=False)
@@ -18,11 +19,9 @@ class Run(db.Model):
     results = db.relationship('Result', back_populates='run', lazy='dynamic')
     submitted = db.Column(db.Boolean(), nullable=False, default=False)
 
-
     @hybrid_property
     def polarion_id(self):
         return "Libvirt-Auto-Record-" + str(self.id)
-
 
     def __repr__(self):
         return '<TestRun %s>' % self.name

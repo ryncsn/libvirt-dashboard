@@ -3,8 +3,10 @@ from abc import ABCMeta, abstractproperty
 
 CASELINK_URL = 'http://10.66.69.170:8888/caselink/'
 
+
 class CaseLinkItem():
     __metaclass__ = ABCMeta
+
     def __init__(self):
         self._caselink_json
 
@@ -79,7 +81,6 @@ class AutoCase(CaseLinkItem):
         return failures
 
 
-
 class ManualCase(CaseLinkItem):
     def __init__(self, case_id):
         self.id = str(case_id)
@@ -129,7 +130,6 @@ class AutoCaseFailure(CaseLinkItem):
     @property
     def bug(self):
         return Bug(self.json['bug'])
-
 
     @property
     def manualcases(self):
