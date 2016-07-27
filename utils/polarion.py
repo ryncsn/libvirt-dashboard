@@ -1,3 +1,7 @@
+"""
+More specified ORM for Polaroin
+Wrapper for Pylaroin
+"""
 import logging
 import sys
 import datetime
@@ -8,10 +12,12 @@ import ssl
 
 from collections import OrderedDict
 
+from pylarion.base_polarion import BasePolarion
 from pylarion.document import Document
 from pylarion.work_item import TestCase
 from pylarion.test_run import TestRun
 from pylarion.plan import Plan
+from pylarion.exceptions import PylarionLibException
 
 
 COMMIT_SIZE = 100
@@ -41,25 +47,41 @@ def get_nearest_plan(version):
     return nearest_plan.plan_id
 
 
-class TestRunSession():
+class PolarionSession():
+    """
+    Manage session, allow tx_commit during session
+    """
     def __init__(self):
         pass
 
     def __enter__(self):
-        self.session = TestCase.session
+        self.session = BasePolarion.session
         self.session.tx_begin()
-        return self.session
+        return self
 
     def __exit__(self, exception_type, exception_value, traceback):
         if exception_type:
             print exception_type
             print exception_value
             print traceback
+            self.session.tx_rollback()
         else:
+            try:
+                self.session.tx_commit()
+                self.session.tx_release()
+            except ssl.SSLError as detail:
+                logging.warning(detail)
+
+    def commit(self):
+        if self.session.tx_in():
             try:
                 self.session.tx_commit()
             except ssl.SSLError as detail:
                 logging.warning(detail)
+        self.session.tx_begin()
+
+    def __getattr__(self, attr):
+        return getattr(self.session, attr)
 
 
 class TestRunRecord():
@@ -76,8 +98,20 @@ class TestRunRecord():
         self.description = description
 
         self.records = []
+
         self.query = (('project.id:%s AND type:testcase ' % (self.project)
                        + 'AND (%s)'))
+
+        # TODO: better test_run_id handling
+        self.test_run_id = '%s %s %s %s %s %s' % (
+            self.name, self.type, self.build, self.version, self.arch,
+            self.date.strftime('%Y-%m-%d %H-%M-%S')
+        )
+        # Replace unsupported characters
+        self.test_run_id = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', self.test_run_id)
+
+        # TODO: tempalte name
+        self.template_name = "libvirt-autotest"
 
     def add_record(self, case=None, result=None, duration=None, datetime=None, executed_by=None, comment=None):
         """
@@ -104,60 +138,60 @@ class TestRunRecord():
 
     def fake_submit(self):
         #print get_nearest_plan(self.version):
-        tr_name = '%s %s %s %s %s %s' % (
-            self.name, self.type, self.build, self.version, self.arch,
-            self.date.strftime('%Y-%m-%d %H-%M-%S'))
-        # Replace unsupported characters
-        tr_name = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', tr_name)
-        print tr_name
+        print self.test_run_id
         query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
         print query
 
         for idx, record in enumerate(self.records):
             record.fake_polarion_object()
 
+    def _create_on_polarion(self):
+        """
+        Create a empty Test Run with test_run_id on Polarion
+        """
+        self._test_run = TestRun.create(
+            self.project, self.test_run_id, self.template_name,
+            #plannedin=get_nearest_plan(self.version)
+        )
+        self.session.commit()
+
+    def _update_info_on_polarion(self):
+        """
+        Update Test Run info on Polarion
+        """
+        self._test_run.description = self.description
+        self._test_run.group_id = self.build
+        # [manualSelection, staticQueryResult, dynamicQueryResult, staticLiveDoc,
+        #  dynamicLiveDoc, automatedProcess]
+        self._test_run.select_test_cases_by = 'staticQueryResult'
+        self._test_run.query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
+        self.session.commit()
+
     def submit(self, session=None):
         self.session = session
         if not self.session:
             raise RuntimeError('Need to start a session.')
 
-        tr_name = '%s %s %s %s %s %s' % (
-            self.name, self.type, self.build, self.version, self.arch,
-            self.date.strftime('%Y-%m-%d %H-%M-%S'))
-        # Replace unsupported characters
-        tr_name = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', tr_name)
+        try:
+            self._test_run = TestRun(self.test_run_id, project_id=self.project)
+        except PylarionLibException as e:
+            if "not found" in e.message:
+                self._create_on_polarion()
 
-        test_run = TestRun.create(
-            self.project, tr_name, 'libvirt-autotest',
-            #plannedin=get_nearest_plan(self.version)
-        )
-        test_run.description = self.description
-        test_run.group_id = self.build
-        # [manualSelection, staticQueryResult, dynamicQueryResult, staticLiveDoc,
-        #  dynamicLiveDoc, automatedProcess]
-        test_run.select_test_cases_by = 'staticQueryResult'
-        test_run.query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
-        self.session.tx_commit()
-        self.session.tx_begin()
+        self._update_info_on_polarion()
 
         self.client = self.session.test_management_client
         for idx, record in enumerate(self.records):
-            self.client.service.addTestRecordToTestRun(test_run.uri,
-                                                       record.get_polarion_object(self.client.factory))
-        try:
-            session.tx_commit()
-        except ssl.SSLError as detail:
-            logging.warning(detail)
-        self.session.tx_begin()
+            self.client.service.addTestRecordToTestRun(self._test_run.uri,
+                                                       record.gen_polarion_object(self.client.factory))
 
-        test_run.status = 'finished'
+        self.session.commit()
+
+        self._test_run.status = 'finished'
         LOGGER.info('Updating Test Run')
-        test_run.update()
-        try:
-            session.tx_commit()
-        except ssl.SSLError as detail:
-            logging.warning(detail)
-        self.session.tx_begin()
+        self._test_run.update()
+
+        self.session.commit()
 
 
 class Record():
@@ -182,7 +216,7 @@ class Record():
         print ("subterra:data-service:objects:/default/"
                "${User}%s" % self.executed_by)
 
-    def get_polarion_object(self, factory=None):
+    def gen_polarion_object(self, factory=None):
         """
         Submit a test to polarion
         """
