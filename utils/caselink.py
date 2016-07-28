@@ -125,7 +125,7 @@ class Bug(CaseLinkItem):
 class AutoCaseFailure(CaseLinkItem):
     def __init__(self, id):
         self.id = str(id)
-        self.url = CASELINK_URL + 'autocase_failure/' + str(id) + '/'
+        self.url = CASELINK_URL + 'failure/' + str(id) + '/'
 
     @property
     def bug(self):
