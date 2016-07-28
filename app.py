@@ -54,10 +54,17 @@ CaseResultParser.add_argument('source', default='')
 
 
 def column_to_table(data, code, headers=None):
+    """
+    Render array of entrys of a database with datatable.
+    Array should contain dicts with the same keys.
+    """
     if len(data) == 0:
         resp = make_response("", 401)
     columns = [str(col).split('.')[-1] for col in data[0].keys()]
-    resp = make_response(render_template('column2table.html', columns=columns, data=Markup(json.dumps(data))), 200)
+    resp = make_response(render_template('column2table.html',
+                                         column_names=columns,
+                                         column_datas=columns,
+                                         data=Markup(json.dumps(data))), 200)
     resp.headers.extend(headers or {})
     return resp
 

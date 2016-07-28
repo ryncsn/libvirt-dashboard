@@ -4,7 +4,7 @@
 <table class='table' id='column_table'>
     <thead>
         <tr>
-            {% for col in columns %}
+            {% for col in column_names %}
             <th>{{ col }}</th>
             {% endfor %}
         </tr>
@@ -17,7 +17,7 @@
         $('#column_table').dataTable( {
             pageLength: 50,
             columns: [
-                {% for col in columns %}
+                {% for col in column_datas %}
                 { "data":"{{ col }}" },
                 {% endfor %}
             ],
