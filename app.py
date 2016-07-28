@@ -12,6 +12,8 @@ from requests import HTTPError
 
 import json
 
+import re
+
 import utils.caselink as CaseLink
 import utils.polarion as Polarion
 
@@ -26,6 +28,10 @@ migrate = Migrate(app, db)
 manager = Manager(app)
 manager.add_command('db', MigrateCommand)
 
+@app.template_filter('nl2br_simple')
+def nl2br_simple(s):
+    s = s.replace('\\n', ';')
+    return Markup(s)
 
 def bootstrap():
     db.create_all()
@@ -63,7 +69,7 @@ def column_to_table(model, data, code):
     resp = make_response(render_template('column2table.html',
                                          column_names=columns,
                                          column_datas=columns,
-                                         data=Markup(json.dumps(data))), 200)
+                                         data=data), 200)
     return resp
 
 
@@ -111,6 +117,122 @@ class TestRunDetail(Resource):
         return run, 201
 
 
+def check_test_result(result, session):
+    """
+    Take a unsaved result instance,
+    Check with other results in database and caselink.
+
+    'result' should only have attribute 'case', 'output',
+    and one of 'failure', 'skip', other attributes will be genereted.
+    """
+    try:
+        this_autocase = CaseLink.AutoCase(result.case)
+    except HTTPError as e:
+        if e.response.status_code == 404:
+            return {'message': 'Auto case not included in caselink'}, 400
+        else:
+            return {'message': 'Caselink didn\'t response in a expected way'}, 400
+
+    # Failed -> look up in failures, if any bug matches, mark manualcase failed
+    # Passed -> look up in linkages(manualcases), if all related autocase of a manualcase
+    #           passed, mark the manualcase passed
+
+    # Mark error when lookup failed
+
+    # First, generate attributes for this result instance only.
+    result.bugs = ''
+    result.manualcases = ''
+    result.error = ''
+
+    if result.failure:
+        # Auto Case failed with message <result.failure>
+        NoMatchingFailure = True
+        for failure in this_autocase.failures:
+            if re.match(failure.failure_regex, result.failure) is not None:
+                NoMatchingFailure = False
+                # From caselink
+                bug = failure.bug.id
+                if bug not in result.bugs:
+                    result.bugs += bug + "\n"
+
+                for manualcase_id in [manualcase.id for manualcase in failure.manualcases]:
+                    if manualcase_id not in result.manualcases:
+                        result.manualcases += manualcase_id + "\n"
+
+        if NoMatchingFailure:
+            result.error = 'UNKNOWN FAILURE'
+            print "UNKNOWN FAILURE For" + str(this_autocase)
+        else:
+            print "Manual Case Failure" + str(result.manualcases)
+
+    elif result.skip:
+        print "SKIPPED" + str(this_autocase)
+        pass
+
+    else:
+        # Test case passed
+        ManualCasePassed = []
+        ManualCaseUncovered = []
+        for manualcase in this_autocase.manualcases:
+            for related_autocase in manualcase.autocases:
+                # Check all related autocases covering the same manual case,
+                # manualcase can be marked as passed until all auto cases are passed.
+                if related_autocase == this_autocase:
+                    continue
+                related_result = Result.query.get((result.run_id, related_autocase.id))
+                if not related_result or related_result.failure is not None:
+                    ManualCaseUncovered.append(manualcase)
+                    break
+
+            if manualcase not in ManualCaseUncovered:
+                ManualCasePassed.append(manualcase)
+
+        # Generate errors and manualcases attr and
+        # updated related auto cases
+        for manualcase in ManualCaseUncovered:
+            error = "UNCOVER " + manualcase.id
+            result.error += error + "\n"
+
+            # Related autocases results, remove passed manualcase, add UNCOVER error
+            for related_autocase in manualcase.autocases:
+                related_result = Result.query.get((result.run_id, related_autocase.id))
+                if not related_result or related_result.failure is not None:
+                    continue
+
+                if related_autocase == this_autocase:
+                    continue
+
+                manualcases = related_result.manualcases.split("\n")
+                manualcases = filter(lambda x: x != manualcase.id, manualcases)
+                related_result.manualcases = "\n".join(manualcases)
+
+                if error not in related_result.error:
+                    related_result.error += error + "\n"
+
+                session.add(related_result)
+
+        for manualcase in ManualCasePassed:
+            result.manualcases += manualcase.id + "\n"
+            print "Passed manual case " + str(manualcase)
+
+            # Related autocases results, remove UNCOVER error, and add passed manualcase
+            for related_autocase in manualcase.autocases:
+                related_result = Result.query.get((result.run_id, related_autocase.id))
+                if not related_result or related_result.failure is not None:
+                    continue
+
+                if related_autocase == this_autocase:
+                    continue
+
+                errors = result.error.split("\n")
+                errors = filter(lambda x: x != "UNCOVER " + manualcase.id, errors)
+                related_result.error = "\n".join(errors)
+
+                if not manualcase.id in related_result.manualcases:
+                    related_result.manualcases += manualcase.id + "\n"
+
+                session.add(related_result)
+
 class CaseResultList(Resource):
     """
     Auto case results of a Auto run record
@@ -137,77 +259,9 @@ class CaseResultList(Resource):
         if result['failure'] and result['skip']:
             return {'message': 'failure and skip can\'t be set at the same time'}, 400
 
-        try:
-            # TODO better error handling
-            autocase = CaseLink.AutoCase(result['case'])
-            manualcases = autocase.manualcases
-            faulures = autocase.failures
-        except HTTPError as e:
-            if e.response.status_code == 404:
-                return {'message': 'Auto case not included in caselink'}, 400
-            else:
-                return {'message': 'Caselink didn\'t response in a expected way'}, 400
-
-        # Failed -> look up in bug list, if any bug matches, mark manualcase failed
-        # Passed -> look up in linkage list, if all autocase of a manualcase
-        #           passed, mark the manualcase passed
-
-        # Mark error when lookup failed
-
-        if result['failure']:
-            NoMatchingFailure = True
-            for failure in autocase.failures:
-                # TODO use regex
-                if result['failure'] == failure.failure_regex:
-                    NoMatchingFailure = False
-                    bugs = failure.bug.id
-                    if result.get('bugs', None):
-                        result['bugs'] += "\n" + bugs
-                    else:
-                        result['bugs'] = bugs
-
-                    manualcase_ids = "\n".join([manualcase.id for manualcase in failure.manualcases])
-                    if result.get('manualcases', None):
-                        result['manualcases'] += "\n" + manualcase_ids
-                    else:
-                        result['manualcases'] = manualcase_ids
-            if NoMatchingFailure:
-                result['error'] = 'UNKNOWN FAILURE'
-                print "UNKNOWN FAILURE For" + str(autocase)
-            else:
-                print "Manual Case Failure" + str(result['manualcases'])
-
-        elif result['skip']:
-            result['skip'] = result['skip']
-
-        else:
-            for manualcase in autocase.manualcases:
-                ManualCasePassed = True
-                for related_autocase in manualcase.autocases:
-                    if related_autocase == autocase:
-                        continue
-                    related_result = Result.query.get((run_id, related_autocase.id))
-                    if not related_result or related_result.failure is not None:
-                        ManualCasePassed = False
-                        result['error'] = 'INCOMPLETE'
-                if ManualCasePassed:
-                    result['error'] = None
-                    if result.get('manualcases', None):
-                        result['manualcases'] += "\n" + manualcase.id
-                    else:
-                        result['manualcases'] = manualcase.id
-                    for related_autocase in manualcase.autocases:
-                        related_result = Result.query.get((run_id, related_autocase.id))
-                        if related_autocase == autocase:
-                            continue
-                        result['error'] = None
-                        if not related_result.manualcases:
-                            related_result.manualcases = manualcase.id
-                        elif manualcase.id not in related_result['manualcases']:
-                            related_result.manualcases += "\n" + manualcase.id
-                    print "Passed manual case " + str(manualcase)
-
         result_instance = Result(**result)
+
+        check_test_result(result_instance, db.session)
 
         try:
             db.session.add(result_instance)
@@ -216,6 +270,7 @@ class CaseResultList(Resource):
             db.session.rollback()
             raise e
         return result_instance.as_dict()
+
 
 class CaseResultDetail(Resource):
     def get(self, run_id, case_name):
@@ -262,6 +317,7 @@ def case_result_table(run_id):
         200)
 
 @app.route('/submit', methods=['GET'])
+#TODO submit passed first, then failed
 def submit_to_polarion():
     for test_run in Run.query.filter(Run.submitted is False):
         polaroin_testrun = Polarion.TestRunRecord(

@@ -53,7 +53,6 @@ class Result(db.Model):
     case = db.Column(db.String(255), nullable=False, primary_key=True)
     time = db.Column(db.Float(), nullable=False)
     failure = db.Column(db.String(65535), nullable=True)
-    skip = db.Column(db.String(65535), nullable=True)
     output = db.Column(db.String(65535), nullable=True)
     source = db.Column(db.String(65535), nullable=False)
 
@@ -61,6 +60,7 @@ class Result(db.Model):
     # If bugs is None, manualcases means cases passed
     # If error is not None, dashboard faild to look up bug/cases for this autocase
     # Strings splited by '\n'
+    skip = db.Column(db.String(65535), nullable=True)
     manualcases = db.Column(db.String(65535), nullable=True)
     bugs = db.Column(db.String(65535), nullable=True)
     error = db.Column(db.String(65535), nullable=True)

@@ -22,7 +22,7 @@
                 {% endfor %}
             ],
             ajax: function (data, callback, settings) {
-                callback( JSON.parse('{"data": {{data}}}'));
+                callback( JSON.parse('{"data": {{data | tojson | nl2br_simple}}}'));
             },
         });
     } );
