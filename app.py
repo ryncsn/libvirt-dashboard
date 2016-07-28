@@ -109,6 +109,17 @@ class TestRunDetail(Resource):
             ret.append(run.as_dict())
         return ret
 
+    def put(self, run_id):
+        args = TestRunParser.parse_args()
+        run = Run.query.get(run_id)
+        if not run:
+            return {'message': 'Test Run doesn\'t exists'}, 400
+        for key in args.keys():
+            run[key] = args[key]
+        db.session.add(run)
+        db.session.commit()
+        return run, 201
+
     def post(self, run_id):
         args = CaseResultParser.parse_args()
         result = args
