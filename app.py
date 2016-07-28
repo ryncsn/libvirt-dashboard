@@ -53,25 +53,18 @@ CaseResultParser.add_argument('skip', default=None)
 CaseResultParser.add_argument('source', default='')
 
 
-def column_to_table(data, code, headers=None):
+def column_to_table(model, data, code):
     """
     Render array of entrys of a database with datatable.
     Array should contain dicts with the same keys.
     """
-    if len(data) == 0:
-        resp = make_response("", 401)
-    columns = [str(col).split('.')[-1] for col in data[0].keys()]
+    columns = model.__table__.columns
+    columns = [str(col).split('.')[-1] for col in columns]
     resp = make_response(render_template('column2table.html',
                                          column_names=columns,
                                          column_datas=columns,
                                          data=Markup(json.dumps(data))), 200)
-    resp.headers.extend(headers or {})
     return resp
-
-
-@api.representation('text/html')
-def html(data, code, headers=None):
-    return column_to_table(data, code, headers=headers)
 
 
 class TestRunList(Resource):
@@ -100,14 +93,11 @@ class TestRunList(Resource):
 
 class TestRunDetail(Resource):
     def get(self, run_id):
+        args = TestRunParser.parse_args()
         run = Run.query.get(run_id)
         if not run:
             return {'message': 'Test Run doesn\'t exists'}, 400
-        results = run.results.all()
-        ret = []
-        for run in results:
-            ret.append(run.as_dict())
-        return ret
+        return ret.as_dict
 
     def put(self, run_id):
         args = TestRunParser.parse_args()
@@ -119,6 +109,21 @@ class TestRunDetail(Resource):
         db.session.add(run)
         db.session.commit()
         return run, 201
+
+
+class CaseResultList(Resource):
+    """
+    Auto case results of a Auto run record
+    """
+    def get(self, run_id):
+        run = Run.query.get(run_id)
+        if not run:
+            return {'message': 'Test Run doesn\'t exists'}, 400
+        results = run.results.all()
+        ret = []
+        for run in results:
+            ret.append(run.as_dict())
+        return ret
 
     def post(self, run_id):
         args = CaseResultParser.parse_args()
@@ -212,13 +217,19 @@ class TestRunDetail(Resource):
             raise e
         return result_instance.as_dict()
 
-
 class CaseResultDetail(Resource):
     def get(self, run_id, case_name):
         res = Result.query.get((run_id, case_name))
         if not res:
             return {'message': 'Result doesn\'t exists'}, 400
         return res.as_dict()
+
+    def put(self, run_id, case_name):
+        res = Result.query.get((run_id, case_name))
+        if not res:
+            return {'message': 'Result doesn\'t exists'}, 400
+        return res.as_dict()
+
 
 
 class ErrorList(Resource):
@@ -230,11 +241,25 @@ class ErrorList(Resource):
         return ret
 
 
-api.add_resource(TestRunList, '/api/run/')
-api.add_resource(TestRunDetail, '/api/run/<int:run_id>/')
-api.add_resource(CaseResultDetail, '/api/run/<int:run_id>/<string:case_name>')
-api.add_resource(ErrorList, '/api/error/')
+api.add_resource(TestRunList, '/api/run/', endpoint='test_run_list')
+api.add_resource(TestRunDetail, '/api/run/<int:run_id>/', endpoint='test_run_detail')
+api.add_resource(CaseResultList, '/api/run/<int:run_id>/results/', endpoint='case_result_list')
+api.add_resource(CaseResultDetail, '/api/run/<int:run_id>/results/<string:case_name>', endpoint='case_result_detail')
+api.add_resource(ErrorList, '/api/error/', endpoint='error_list')
 
+@app.route('/table/run/', methods=['GET'])
+def test_run_table():
+    return column_to_table(
+        Run,
+        TestRunList().get(),
+        200)
+
+@app.route('/table/run/<int:run_id>/results', methods=['GET'])
+def case_result_table(run_id):
+    return column_to_table(
+        Result,
+        CaseResultList().get(run_id),
+        200)
 
 @app.route('/submit', methods=['GET'])
 def submit_to_polarion():
