@@ -6,6 +6,7 @@ from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
 from flask_restful import Resource, Api, reqparse, inputs
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 
 from requests import HTTPError
 
@@ -82,9 +83,11 @@ class TestRunList(Resource):
         db.session.add(run)
         try:
             db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            raise e
+        except IntegrityError as e:
+            if "UNIQUE constraint failed" in  e.message:
+                return make_response("Already exists.", 400)
+            else:
+                raise e
         return run.as_dict()
 
 
