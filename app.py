@@ -173,6 +173,7 @@ def check_test_result(result, session):
         # Test case passed
         ManualCasePassed = []
         ManualCaseUncovered = []
+        ManualCaseFailed = []
         for manualcase in this_autocase.manualcases:
             for related_autocase in manualcase.autocases:
                 # Check all related autocases covering the same manual case,
@@ -180,11 +181,15 @@ def check_test_result(result, session):
                 if related_autocase == this_autocase:
                     continue
                 related_result = Result.query.get((result.run_id, related_autocase.id))
-                if not related_result or related_result.failure is not None:
+                if not related_result:
                     ManualCaseUncovered.append(manualcase)
                     break
 
-            if manualcase not in ManualCaseUncovered:
+                if related_result.failure is not None:
+                    ManualCaseFailed.append(manualcase)
+                    break
+
+            if manualcase not in ManualCaseUncovered and manualcase not in ManualCaseFailed:
                 ManualCasePassed.append(manualcase)
 
         # Generate errors and manualcases attr and
