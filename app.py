@@ -201,6 +201,10 @@ def check_test_result(result, session):
             if manualcase not in ManualCaseUncovered and manualcase not in ManualCaseFailed:
                 ManualCasePassed.append(manualcase)
 
+        for manualcase in ManualCaseFailed:
+            error = "FAIED " + manualcase.id
+            result.error += error + "\n"
+
         # Generate errors and manualcases attr and
         # updated related auto cases
         for manualcase in ManualCaseUncovered:
