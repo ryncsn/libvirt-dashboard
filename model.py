@@ -72,9 +72,24 @@ class Result(db.Model):
         for key, value in result.iteritems():
             setattr(self, key, value)
 
+    @hybrid_property
+    def status(self):
+        if self.error:
+            return 'Error'
+        if self.skip:
+            return 'Skipped with: ' + self.skip
+        if self.bugs and self.manualcases:
+            return 'Failed ' + ' '.join(self.manualcases.split('\n'))
+        if not self.bugs and self.manualcases:
+            return 'Passed ' + ' '.join(self.manualcases.split('\n'))
+        else:
+            return 'Illegal'
+
+
     def as_dict(self):
         ret = {}
         for c in self.__table__.columns:
             if c.name != 'date':
                 ret[c.name] = getattr(self, c.name)
+        ret['status'] = self.status
         return ret

@@ -56,16 +56,25 @@ CaseResultParser.add_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), requ
 CaseResultParser.add_argument('output', required=True)
 CaseResultParser.add_argument('failure', default=None)
 CaseResultParser.add_argument('skip', default=None)
+CaseResultParser.add_argument('bugs', default=None)
+CaseResultParser.add_argument('error', default=None)
+CaseResultParser.add_argument('manualcases', default=None)
 CaseResultParser.add_argument('source', default='')
 
+CaseResultUpdateParser = CaseResultParser.copy()
+CaseResultUpdateParser.replace_argument('output', required=False)
+CaseResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=False)
+CaseResultUpdateParser.replace_argument('case', required=False)
 
-def column_to_table(model, data, code):
+
+def column_to_table(model, data, code, extra_column=[]):
     """
     Render array of entrys of a database with datatable.
     Array should contain dicts with the same keys.
     """
     columns = model.__table__.columns
     columns = [str(col).split('.')[-1] for col in columns]
+    columns += extra_column
     resp = make_response(render_template('column2table.html',
                                          column_names=columns,
                                          column_datas=columns,
@@ -266,7 +275,8 @@ class CaseResultList(Resource):
 
         result_instance = Result(**result)
 
-        check_test_result(result_instance, db.session)
+        if not any(key in request.json.keys() for key in ['error', 'manualcases', 'bugs']):
+            check_test_result(result_instance, db.session)
 
         try:
             db.session.add(result_instance)
@@ -288,6 +298,21 @@ class CaseResultDetail(Resource):
         res = Result.query.get((run_id, case_name))
         if not res:
             return {'message': 'Result doesn\'t exists'}, 400
+
+        args = CaseResultUpdateParser.parse_args()
+        result = args
+        result['run_id'] = run_id
+        result['run'] = Run.query.get(run_id)
+
+        for key in request.json.keys():
+            setattr(res, (key), result[(key)])
+
+        if not any(key in request.json.keys() for key in ['error', 'manualcases', 'bugs']):
+            check_test_result(res, db.session)
+
+        db.session.add(res)
+        db.session.commit()
+
         return res.as_dict()
 
 
@@ -319,7 +344,9 @@ def case_result_table(run_id):
     return column_to_table(
         Result,
         CaseResultList().get(run_id),
-        200)
+        200,
+        extra_column=['status']
+    )
 
 @app.route('/submit', methods=['GET'])
 #TODO submit passed first, then failed
