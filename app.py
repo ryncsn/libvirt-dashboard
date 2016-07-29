@@ -374,7 +374,7 @@ def submit_to_polarion():
             for record in Result.query.filter(Result.run_id == test_run.id):
                 if record.bugs:
                     result = 'failed'
-                elif record.error:
+                elif record.error or record.status == "Illegal":
                     raise ConflictError()
                 else:
                     result = 'passed'
