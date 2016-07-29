@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from flask import Flask, request, Markup
-from flask import render_template, make_response
+from flask import render_template, make_response, jsonify
 from flask_script import Manager
 from flask_migrate import Migrate, MigrateCommand
 from flask_restful import Resource, Api, reqparse, inputs
@@ -324,7 +324,12 @@ def case_result_table(run_id):
 @app.route('/submit', methods=['GET'])
 #TODO submit passed first, then failed
 def submit_to_polarion():
-    for test_run in Run.query.filter(Run.submitted is False):
+    submitted_runs = []
+    error_runs = []
+    class ConflictError(Exception):
+        pass
+
+    for test_run in Run.query.filter(Run.submitted == False):
         polaroin_testrun = Polarion.TestRunRecord(
             project=test_run.project,
             name=test_run.name,
@@ -338,25 +343,31 @@ def submit_to_polarion():
 
         manual_cases = {}
 
-        for record in Result.query.filter(Result.run_id == test_run.id):
-            if record.bugs:
-                result = 'failed'
-            elif record.error:
-                continue
-            else:
-                result = 'passed'
-
-            manualcase_ids = record.manualcases.split("\n")
-            for id in manualcase_ids:
-                if id in manual_cases:
-                    if manual_cases[id]['result'] != result:
-                        raise RuntimeError("Result Inconsistent")
-                    manual_cases[id]['duration'] += record.time
+        try:
+            for record in Result.query.filter(Result.run_id == test_run.id):
+                if record.bugs:
+                    result = 'failed'
+                elif record.error:
+                    raise ConflictError()
                 else:
-                    manual_cases[id] = {
-                        "result": result,
-                        "duration": record.time,  # Float
-                    }
+                    result = 'passed'
+
+                manualcase_ids = record.manualcases.split("\n")
+                for id in manualcase_ids:
+                    if id == "":
+                        continue
+                    if id in manual_cases:
+                        if manual_cases[id]['result'] != result:
+                            raise RuntimeError("Result Inconsistent: %s" % id)
+                        manual_cases[id]['duration'] += record.time
+                    else:
+                        manual_cases[id] = {
+                            "result": result,
+                            "duration": record.time,  # Float
+                        }
+        except ConflictError:
+            error_runs.append(test_run.as_dict())
+            continue
 
         for case in manual_cases:
             polaroin_testrun.add_record(
@@ -371,7 +382,12 @@ def submit_to_polarion():
         with Polarion.TestRunSession() as session:
             polaroin_testrun.submit(session)
 
-    return "Done"
+        test_run.submitted = True
+        db.session.add(test_run)
+        db.session.commit()
+        submitted_runs.append(test_run.as_dict())
+
+    return jsonify( {'submitted': submitted_runs, 'error': error_runs, })
 
 
 if __name__ == '__main__':
