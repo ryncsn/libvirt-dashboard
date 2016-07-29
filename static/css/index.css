@@ -1,1 +1,10 @@
 body { padding-top: 70px; }
+
+div.slider {
+    padding-top: 15px;
+    display: none;
+}
+
+tr.error {
+    background-color: lavenderblush;
+}

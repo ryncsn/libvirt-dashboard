@@ -83,7 +83,7 @@ class Result(db.Model):
         if not self.bugs and self.manualcases:
             return 'Passed ' + ' '.join(self.manualcases.split('\n'))
         else:
-            return 'Illegal'
+            return 'Error'
 
 
     def as_dict(self):

@@ -294,6 +294,14 @@ class CaseResultDetail(Resource):
             return {'message': 'Result doesn\'t exists'}, 400
         return res.as_dict()
 
+    def delete(self, run_id, case_name):
+        res = Result.query.get((run_id, case_name))
+        if not res:
+            return {'message': 'Result doesn\'t exists'}, 400
+        db.session.delete(res)
+        db.session.commit()
+        return res.as_dict()
+
     def put(self, run_id, case_name):
         res = Result.query.get((run_id, case_name))
         if not res:
@@ -347,6 +355,18 @@ def case_result_table(run_id):
         200,
         extra_column=['status']
     )
+
+@app.route('/table/run/<int:run_id>/results/resolve', methods=['GET'])
+def resolve(run_id):
+    data = CaseResultList().get(run_id)
+    columns = Result.__table__.columns
+    columns = [str(col).split('.')[-1] for col in columns]
+    columns += ["status"]
+    resp = make_response(render_template('resolve.html',
+                                         column_names=columns,
+                                         column_datas=columns,
+                                         data=data), 200)
+    return resp
 
 @app.route('/submit', methods=['GET'])
 #TODO submit passed first, then failed
