@@ -74,6 +74,8 @@ class Result(db.Model):
 
     @hybrid_property
     def status(self):
+        if self.skip == "SKIP by dashboard":
+            return 'Skipped with: ' + self.skip
         if self.error:
             return 'Error'
         if self.skip:

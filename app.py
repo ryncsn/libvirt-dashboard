@@ -396,10 +396,12 @@ def submit_to_polarion():
 
         try:
             for record in Result.query.filter(Result.run_id == test_run.id):
-                if record.bugs:
-                    result = 'failed'
-                elif record.error or record.status == "Illegal":
+                if record.skip:
+                    continue
+                if record.status == "Error":
                     raise ConflictError()
+                elif record.bugs:
+                    result = 'failed'
                 else:
                     result = 'passed'
 
@@ -416,6 +418,7 @@ def submit_to_polarion():
                             "result": result,
                             "duration": record.time,  # Float
                         }
+
         except ConflictError:
             error_runs.append(test_run.as_dict())
             continue
@@ -430,7 +433,7 @@ def submit_to_polarion():
                 comment='Dashboard Generated Record'
             )
 
-        with Polarion.TestRunSession() as session:
+        with Polarion.PolarionSession() as session:
             polaroin_testrun.submit(session)
 
         test_run.submitted = True
