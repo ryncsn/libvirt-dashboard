@@ -153,7 +153,11 @@ def check_test_result(result, session):
     result.manualcases = ''
     result.error = ''
 
-    if result.failure:
+    if result.skip:
+        print "SKIPPED" + str(this_autocase)
+        pass
+
+    elif result.failure:
         # Auto Case failed with message <result.failure>
         NoMatchingFailure = True
         for failure in this_autocase.failures:
@@ -173,10 +177,6 @@ def check_test_result(result, session):
             print "UNKNOWN FAILURE For" + str(this_autocase)
         else:
             print "Manual Case Failure" + str(result.manualcases)
-
-    elif result.skip:
-        print "SKIPPED" + str(this_autocase)
-        pass
 
     else:
         # Test case passed
@@ -273,9 +273,6 @@ class CaseResultList(Resource):
 
         if Result.query.get((run_id, args['case'])):
             return {'message': 'Case already exist'}, 400
-
-        if result['failure'] and result['skip']:
-            return {'message': 'failure and skip can\'t be set at the same time'}, 400
 
         result_instance = Result(**result)
 
