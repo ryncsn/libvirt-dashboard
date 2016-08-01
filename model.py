@@ -89,10 +89,12 @@ class Result(db.Model):
             return 'Error'
 
 
-    def as_dict(self):
+    def as_dict(self, detailed=False):
         ret = {}
         for c in self.__table__.columns:
-            if c.name != 'date':
+            if c.name not in ['date', 'output']:
                 ret[c.name] = getattr(self, c.name)
         ret['status'] = self.status
+        if not detailed:
+            ret['output'] = 'Not showing'
         return ret
