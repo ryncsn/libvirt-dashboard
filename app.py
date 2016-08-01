@@ -59,6 +59,7 @@ CaseResultParser.add_argument('skip', default=None)
 CaseResultParser.add_argument('bugs', default=None)
 CaseResultParser.add_argument('error', default=None)
 CaseResultParser.add_argument('manualcases', default=None)
+CaseResultParser.add_argument('comment', default='')
 CaseResultParser.add_argument('source', default='')
 
 CaseResultUpdateParser = CaseResultParser.copy()
@@ -427,7 +428,7 @@ def submit_to_polarion():
                 duration=manual_cases[case]['duration'],
                 datetime=test_run.date,  # Datetime
                 executed_by='CI',
-                comment='Dashboard Generated Record'
+                comment=manual_cases[case]['comment']
             )
 
         with Polarion.PolarionSession() as session:

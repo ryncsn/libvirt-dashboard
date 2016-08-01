@@ -55,6 +55,7 @@ class Result(db.Model):
     failure = db.Column(db.String(65535), nullable=True)
     output = db.Column(db.String(65535), nullable=True)
     source = db.Column(db.String(65535), nullable=False)
+    comment = db.Column(db.String(65535), nullable=False)
 
     # If bugs is not None, manualcases means cases failed
     # If bugs is None, manualcases means cases passed
