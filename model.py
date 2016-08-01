@@ -76,17 +76,24 @@ class Result(db.Model):
     @hybrid_property
     def status(self):
         if self.skip == "SKIP by dashboard":
-            return 'Skipped with: ' + self.skip
+            return 'Skipped by dashboard'
         if self.error:
-            return 'Error'
+            return 'Error:' + self.error
         if self.skip:
             return 'Skipped with: ' + self.skip
+        if not self.output:
+            return 'Error: Test result don\'t have any output information.'
+        if not self.bugs and not self.manualcases:
+            return 'Error: Can\'t find maualcase on Caselink.'
+        if self.failure and not self.bug:
+            return 'Error: Can\'t find any matched bug pattern.'
+
         if self.bugs and self.manualcases:
             return 'Failed ' + ' '.join(self.manualcases.split('\n'))
         if not self.bugs and self.manualcases:
             return 'Passed ' + ' '.join(self.manualcases.split('\n'))
-        else:
-            return 'Error'
+
+        return "Error: Unexpected Error."
 
 
     def as_dict(self, detailed=False):

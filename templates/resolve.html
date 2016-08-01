@@ -27,7 +27,7 @@
     function format(row){
         // Row child renderer.
         d = row.data()
-        if(d.status != "Error"){
+        if(d.status.indexOf('Error') === -1){
             return '<div class="alert alert-success" role="alert">Nothing to process</div>'
         }
         return error_panel.html()
@@ -49,7 +49,7 @@
                 {% endfor %}
             ],
             createdRow: function(row, data, index){
-                if(data.status === 'Error'){
+                if(data.status.indexOf('Error') === 0){
                     $(row).addClass('error');
                 }
             },
