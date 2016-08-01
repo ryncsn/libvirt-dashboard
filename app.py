@@ -100,8 +100,15 @@ class TestRunList(Resource):
         try:
             db.session.commit()
         except IntegrityError as e:
+            db.session.rollback()
             if "UNIQUE constraint failed" in  e.message:
-                return make_response("Already exists.", 400)
+                run = Run.query.filter(Run.name == args['name'],
+                                       Run.type == args['type'],
+                                       Run.build == args['build'],
+                                       Run.version == args['version'],
+                                       Run.arch == args['arch'],
+                                       Run.date == args['date']).one()
+                return run.as_dict(), 400
             else:
                 raise e
         return run.as_dict()
@@ -272,8 +279,9 @@ class CaseResultList(Resource):
         result['run_id'] = run_id
         result['run'] = Run.query.get(run_id)
 
-        if Result.query.get((run_id, args['case'])):
-            return {'message': 'Case already exist'}, 400
+        res = Result.query.get((run_id, args['case']))
+        if res:
+            return res.as_dict(), 400
 
         result_instance = Result(**result)
 
