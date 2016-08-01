@@ -21,8 +21,9 @@
                 { "data":"{{ col }}" },
                 {% endfor %}
             ],
-            ajax: function (data, callback, settings) {
-                callback( JSON.parse('{"data": {{data | tojson | nl2br_simple}}}'));
+            ajax: {
+                url: '{{ajax}}',
+                dataSrc: ''
             },
         });
     } );

@@ -68,7 +68,7 @@ CaseResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]
 CaseResultUpdateParser.replace_argument('case', required=False)
 
 
-def column_to_table(model, data, code, extra_column=[]):
+def column_to_table(model, ajax_url, code, extra_column=[]):
     """
     Render array of entrys of a database with datatable.
     Array should contain dicts with the same keys.
@@ -79,7 +79,7 @@ def column_to_table(model, data, code, extra_column=[]):
     resp = make_response(render_template('column2table.html',
                                          column_names=columns,
                                          column_datas=columns,
-                                         data=data), 200)
+                                         ajax=ajax_url), 200)
     return resp
 
 
@@ -354,28 +354,28 @@ api.add_resource(ErrorList, '/api/error/', endpoint='error_list')
 def test_run_table():
     return column_to_table(
         Run,
-        TestRunList().get(),
+        '/api/run/',
         200)
 
 @app.route('/table/run/<int:run_id>/results', methods=['GET'])
 def case_result_table(run_id):
     return column_to_table(
         Result,
-        CaseResultList().get(run_id),
+        '/api/run/' + str(run_id) + '/results/',
         200,
         extra_column=['status']
     )
 
 @app.route('/table/run/<int:run_id>/results/resolve', methods=['GET'])
 def resolve(run_id):
-    data = CaseResultList().get(run_id)
     columns = Result.__table__.columns
     columns = [str(col).split('.')[-1] for col in columns]
     columns += ["status"]
     resp = make_response(render_template('resolve.html',
                                          column_names=columns,
                                          column_datas=columns,
-                                         data=data), 200)
+                                         ajax='/api/run/' + str(run_id) + '/results/'),
+                         200)
     return resp
 
 @app.route('/submit', methods=['GET'])
