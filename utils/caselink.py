@@ -1,7 +1,7 @@
 import requests
 from abc import ABCMeta, abstractproperty
 
-CASELINK_URL = 'http://127.0.0.1:8888/caselink/'
+CASELINK_URL = 'http://10.66.4.102:8888/caselink/'
 
 
 class CaseLinkItem():
