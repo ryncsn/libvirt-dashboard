@@ -69,7 +69,7 @@ AutoResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]
 AutoResultUpdateParser.replace_argument('case', required=False)
 
 ManualResultUpdateParser = reqparse.RequestParser(bundle_errors=True)
-ManualResultUpdateParser.replace_argument('result', required=False)
+ManualResultUpdateParser.add_argument('result', required=False)
 
 def column_to_table(model, ajax_url, code, extra_column=[]):
     """
@@ -324,13 +324,13 @@ class ManualResultDetail(Resource):
     def get(self, run_id, case_name):
         res = ManualResult.query.get((run_id, case_name))
         if not res:
-            return {'message': 'AutoResult doesn\'t exists'}, 400
+            return {'message': 'ManualResult doesn\'t exists'}, 400
         return res.as_dict()
 
     def delete(self, run_id, case_name):
         res = ManualResult.query.get((run_id, case_name))
         if not res:
-            return {'message': 'AutoResult doesn\'t exists'}, 400
+            return {'message': 'ManualResult doesn\'t exists'}, 400
         db.session.delete(res)
         db.session.commit()
         return res.as_dict()
@@ -338,14 +338,14 @@ class ManualResultDetail(Resource):
     def put(self, run_id, case_name):
         res = ManualResult.query.get((run_id, case_name))
         if not res:
-            return {'message': 'AutoResult doesn\'t exists'}, 400
+            return {'message': 'ManualResult doesn\'t exists'}, 400
 
         args = ManualResultUpdateParser.parse_args()
         result = args
         result['run_id'] = run_id
         result['run'] = Run.query.get(run_id)
 
-        for key in request.json.keys():
+        for key in args.keys():
             setattr(res, (key), result[(key)])
 
         db.session.add(res)
@@ -396,12 +396,24 @@ def manual_result_table(run_id):
 def resolve_autocase(run_id):
     columns = AutoResult.__table__.columns
     columns = [str(col).split('.')[-1] for col in columns]
-    resp = make_response(render_template('resolve.html',
+    resp = make_response(render_template('resolve_auto.html',
                                          column_names=columns,
                                          column_datas=columns,
                                          ajax='/api/run/' + str(run_id) + '/auto/'),
                          200)
     return resp
+
+@app.route('/table/run/<int:run_id>/manual/resolve', methods=['GET'])
+def resolve_manualcase(run_id):
+    columns = ManualResult.__table__.columns
+    columns = [str(col).split('.')[-1] for col in columns]
+    resp = make_response(render_template('resolve_manual.html',
+                                         column_names=columns,
+                                         column_datas=columns,
+                                         ajax='/api/run/' + str(run_id) + '/manual/'),
+                         200)
+    return resp
+
 
 @app.route('/submit', methods=['GET'])
 @app.route('/submit/<int:run_id>', methods=['GET'])
