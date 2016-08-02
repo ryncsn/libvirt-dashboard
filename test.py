@@ -39,76 +39,76 @@ for case in [
         "a.b.c.2.f",
         "a.b.c.1.f"]:
 
-    debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+    debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
         "output": "WOW",
         "time": "123.456",
         "case": case,
     })
 
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 1",
     "case": "1.1.1"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 2",
     "case": "1.2.1"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 2",
     "case": "1.2.2"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 2",
     "case": "1.2.3"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 2",
     "case": "1.2.4"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 3",
     "case": "1.3.1"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 3",
     "case": "1.3.2"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure 3",
     "case": "1.3.3"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "case": "1.3.4"
 })
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/results/", json={
+debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
     "output": "WOW",
     "time": "123.456",
     "failure": "Failure UnKnown",

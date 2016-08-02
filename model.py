@@ -1,6 +1,16 @@
 from app import db
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy.orm import validates
 
+def get_or_create(session, model, **kwargs):
+    instance = session.query(model).filter_by(**kwargs).first()
+    if instance:
+        return instance
+    else:
+        instance = model(**kwargs)
+        session.add(instance)
+        session.commit()
+        return instance
 
 class Run(db.Model):
     __tablename__ = 'run'
@@ -20,8 +30,9 @@ class Run(db.Model):
     version = db.Column(db.String(255), unique=False, nullable=False)
     framework = db.Column(db.String(255), unique=False, nullable=False)
     description = db.Column(db.String(255), unique=False, nullable=True)
-    results = db.relationship('Result', back_populates='run', lazy='dynamic')
-    submitted = db.Column(db.Boolean(), nullable=False, default=False)
+    auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
+    manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
+    submit_date = db.Column(db.DateTime(), unique=False, nullable=True)
 
     @hybrid_property
     def polarion_id(self):
@@ -44,27 +55,25 @@ class Run(db.Model):
         return ret
 
 
-class Result(db.Model):
-    __tablename__ = 'result'
+class AutoResult(db.Model):
+    __tablename__ = 'auto_result'
 
     run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
-    run = db.relationship('Run', back_populates='results')
+    run = db.relationship('Run', back_populates='auto_results')
 
     case = db.Column(db.String(255), nullable=False, primary_key=True)
     time = db.Column(db.Float(), nullable=False)
+    skip = db.Column(db.String(65535), nullable=True)
     failure = db.Column(db.String(65535), nullable=True)
     output = db.Column(db.String(65535), nullable=True)
-    source = db.Column(db.String(65535), nullable=False)
-    comment = db.Column(db.String(65535), nullable=False)
+    source = db.Column(db.String(65535), nullable=True)
+    comment = db.Column(db.String(65535), nullable=True)
 
     # If bugs is not None, manualcases means cases failed
     # If bugs is None, manualcases means cases passed
     # If error is not None, dashboard faild to look up bug/cases for this autocase
-    # Strings splited by '\n'
-    skip = db.Column(db.String(65535), nullable=True)
-    manualcases = db.Column(db.String(65535), nullable=True)
-    bugs = db.Column(db.String(65535), nullable=True)
-    error = db.Column(db.String(65535), nullable=True)
+    error = db.Column(db.String(255), nullable=True)
+    result = db.Column(db.String(255), nullable=True)
 
     def __repr__(self):
         return '<TestResult %s-%s>' % (self.run_id, self.case)
@@ -73,35 +82,42 @@ class Result(db.Model):
         for key, value in result.iteritems():
             setattr(self, key, value)
 
-    @hybrid_property
-    def status(self):
-        if self.skip == "SKIP by dashboard":
-            return 'Skipped by dashboard'
-        if self.error:
-            return 'Error:' + self.error
-        if self.skip:
-            return 'Skipped with: ' + self.skip
-        if not self.output:
-            return 'Error: Test result don\'t have any output information.'
-        if not self.bugs and not self.manualcases:
-            return 'Error: Can\'t find maualcase on Caselink.'
-        if self.failure and not self.bug:
-            return 'Error: Can\'t find any matched bug pattern.'
-
-        if self.bugs and self.manualcases:
-            return 'Failed ' + ' '.join(self.manualcases.split('\n'))
-        if not self.bugs and self.manualcases:
-            return 'Passed ' + ' '.join(self.manualcases.split('\n'))
-
-        return "Error: Unexpected Error."
-
-
     def as_dict(self, detailed=False):
         ret = {}
         for c in self.__table__.columns:
             if c.name not in ['date', 'output']:
                 ret[c.name] = getattr(self, c.name)
-        ret['status'] = self.status
         if not detailed:
             ret['output'] = 'Not showing'
+        return ret
+
+
+class ManualResult(db.Model):
+    __tablename__ = 'manual_result'
+
+    run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
+    run = db.relationship('Run', back_populates='manual_results')
+
+    case = db.Column(db.String(255), nullable=False, primary_key=True)
+    time = db.Column(db.Float(), default=0.0, nullable=False)
+    comment = db.Column(db.String(65535), nullable=True)
+
+    result = db.Column(db.String(255), nullable=True)
+
+    @validates('result')
+    def validate_result(self, key, result):
+        assert result in ['passed', 'failed', 'incomplete', ]
+        return result
+
+    def __repr__(self):
+        return '<ManualCaseResult %s-%s: %s>' % (self.run_id, self.case, self.result)
+
+    def __init__(self, **result):
+        for key, value in result.iteritems():
+            setattr(self, key, value)
+
+    def as_dict(self, detailed=False):
+        ret = {}
+        for c in self.__table__.columns:
+            ret[c.name] = getattr(self, c.name)
         return ret

@@ -10,6 +10,8 @@ from sqlalchemy.exc import IntegrityError
 
 from requests import HTTPError
 
+import datetime
+
 import json
 
 import re
@@ -50,23 +52,24 @@ TestRunParser.add_argument('framework', required=None)
 TestRunParser.add_argument('description', default=None)
 
 
-CaseResultParser = reqparse.RequestParser(bundle_errors=True)
-CaseResultParser.add_argument('case', required=True)
-CaseResultParser.add_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=True)
-CaseResultParser.add_argument('output', required=True)
-CaseResultParser.add_argument('failure', default=None)
-CaseResultParser.add_argument('skip', default=None)
-CaseResultParser.add_argument('bugs', default=None)
-CaseResultParser.add_argument('error', default=None)
-CaseResultParser.add_argument('manualcases', default=None)
-CaseResultParser.add_argument('comment', default='')
-CaseResultParser.add_argument('source', default='')
+AutoResultParser = reqparse.RequestParser(bundle_errors=True)
+AutoResultParser.add_argument('case', required=True)
+AutoResultParser.add_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=True)
+AutoResultParser.add_argument('output', required=True)
+AutoResultParser.add_argument('failure', default=None)
+AutoResultParser.add_argument('source', default=None)
+AutoResultParser.add_argument('skip', default=None)
+AutoResultParser.add_argument('error', default=None)
+AutoResultParser.add_argument('result', default=None)
+AutoResultParser.add_argument('comment', default=None)
 
-CaseResultUpdateParser = CaseResultParser.copy()
-CaseResultUpdateParser.replace_argument('output', required=False)
-CaseResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=False)
-CaseResultUpdateParser.replace_argument('case', required=False)
+AutoResultUpdateParser = AutoResultParser.copy()
+AutoResultUpdateParser.replace_argument('output', required=False)
+AutoResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=False)
+AutoResultUpdateParser.replace_argument('case', required=False)
 
+ManualResultUpdateParser = reqparse.RequestParser(bundle_errors=True)
+ManualResultUpdateParser.replace_argument('result', required=False)
 
 def column_to_table(model, ajax_url, code, extra_column=[]):
     """
@@ -94,7 +97,6 @@ class TestRunList(Resource):
     def post(self):
         args = TestRunParser.parse_args()
         run = args
-        run['submitted'] = False
         run = Run(**args)
         db.session.add(run)
         try:
@@ -134,7 +136,7 @@ class TestRunDetail(Resource):
         return run, 201
 
 
-def check_test_result(result, session):
+def gen_manual_case_and_error(result, session):
     """
     Take a unsaved result instance,
     Check with other results in database and caselink.
@@ -145,112 +147,79 @@ def check_test_result(result, session):
     # Failed -> look up in failures, if any bug matches, mark manualcase failed
     # Passed -> look up in linkages(manualcases), if all related autocase of a manualcase
     #           passed, mark the manualcase passed
-
     # Mark error when lookup failed
-
-    # First, generate attributes for this result instance only.
-    result.bugs = ''
-    result.manualcases = ''
-    result.error = ''
 
     this_autocase = CaseLink.AutoCase(result.case)
 
     if result.skip:
+        #TODO
+        result.result = 'Skip'
         pass
 
     elif result.failure:
-        # Auto Case failed with message <result.failure>
+        # Auto Case failed with message <result['failure']>
+        BugMatched = False
         for failure in this_autocase.failures:
             if re.match(failure.failure_regex, result.failure) is not None:
-                MatchedFailures.append(failure)
+                BugMatched = True
 
-            for failure in MatchedFailures:
-                bug = failure.bug.id
-                if bug not in result.bugs:
-                    result.bugs += bug + "\n"
+                for case in failure.manualcases:
+                    manualcase = get_or_create(session, ManualResult, run_id=result.run_id, case=case.id)
+                    manualcase.result = 'failed'
+                    manualcase.time += float(result.time)
+                    if not manualcase.comment:
+                        manualcase.comment = ''
+                    if failure.bug.id not in manualcase.comment:
+                        manualcase.comment += ('\nFailed By BUG: "%s", Auto case: "%s"' %
+                                                (failure.bug.id, result.case))
 
-                # Failed Manualcases
-                for manualcase_id in [manualcase.id for manualcase in failure.manualcases]:
-                    if manualcase_id not in result.manualcases:
-                        result.manualcases += manualcase_id + "\n"
+        if not BugMatched:
+            result.error = 'Unknown Issue'
+        else:
+            result.result = 'Known Issue'
+        return
 
-    else:
-        # Test case passed
+    elif result.output:
         ManualCasePassed = []
         ManualCaseImcomplete = []
         ManualCaseAlreadyFailed = []
-        for manualcase in this_autocase.manualcases:
-            for related_autocase in manualcase.autocases:
+
+        if not this_autocase.manualcases or len(this_autocase.manualcases) == 0:
+            result.error = 'No Linkage'
+            return
+
+        for caselink_manualcase in this_autocase.manualcases:
+            for related_autocase in caselink_manualcase.autocases:
                 # Check all related autocases covering the same manual case,
                 # manualcase can be marked as passed only if all ralated auto cases are passed.
-                if related_autocase == this_autocase:
-                    continue
+                related_result = AutoResult.query.get((result.run_id, related_autocase.id))
 
-                related_result = Result.query.get((result.run_id, related_autocase.id))
                 if not related_result or related_result.skip is not None:
-                    ManualCaseImcomplete.append(manualcase)
-                    break
+                    if related_autocase != this_autocase:
+                        manualcase = get_or_create(session, ManualResult, run_id=result.run_id, case=caselink_manualcase.id)
+                        manualcase.result = 'incomplete'
+                        manualcase.time += float(result.time)
+                        if not manualcase.comment:
+                            manualcase.comment = ''
+                        if result.case not in manualcase.comment:
+                            manualcase.comment += ('\nPassed Auto case: "%s"' % result.case)
 
-                if related_result.failure is not None:
-                    ManualCaseAlreadyFailed.append(manualcase)
-                    break
+                elif related_result.failure is not None:
+                    # Failed Already
+                    pass
 
-            if manualcase not in ManualCaseImcomplete and manualcase not in ManualCaseAlreadyFailed:
-                ManualCasePassed.append(manualcase)
-
-        # Generate errors for failed cases.
-        for manualcase in ManualCaseAlreadyFailed:
-            error = "BLOCKED " + manualcase.id
-            result.error += error + "\n"
-
-        # Generate errors for imcomplete cases.
-        for manualcase in ManualCaseImcomplete:
-            error = "INCOMPLETE " + manualcase.id
-            result.error += error + "\n"
-
-            # Update related autocases results errors.
-            for related_autocase in manualcase.autocases:
-                related_result = Result.query.get((result.run_id, related_autocase.id))
-                if not related_result or related_result.failure is not None:
-                    continue
-
-                if related_autocase == this_autocase:
-                    continue
-
-                manualcases = related_result.manualcases.split("\n")
-                manualcases = filter(lambda x: x != manualcase.id, manualcases)
-                related_result.manualcases = "\n".join(manualcases)
-
-                if error not in related_result.error:
-                    related_result.error += error + "\n"
-
-                session.add(related_result)
-
-        # Generate manualcase list for passed manualcases.
-        for manualcase in ManualCasePassed:
-            result.manualcases += manualcase.id + "\n"
-            print "Passed manual case " + str(manualcase)
-
-            # Related autocases results, remove UNCOVER error, and add passed manualcase
-            for related_autocase in manualcase.autocases:
-                related_result = Result.query.get((result.run_id, related_autocase.id))
-                if not related_result or related_result.failure is not None:
-                    continue
-
-                if related_autocase == this_autocase:
-                    continue
-
-                errors = result.error.split("\n")
-                errors = filter(lambda x: x != "IMCOMPLETE " + manualcase.id, errors)
-                related_result.error = "\n".join(errors)
-
-                if not manualcase.id in related_result.manualcases:
-                    related_result.manualcases += manualcase.id + "\n"
-
-                session.add(related_result)
+                else:
+                    manualcase = get_or_create(session, ManualResult, run_id=result.run_id, case=caselink_manualcase.id)
+                    manualcase.result = 'passed'
+                    manualcase.time += float(result.time)
+                    if not manualcase.comment:
+                        manualcase.comment = ''
+                    if result.case not in manualcase.comment:
+                        manualcase.comment += ('\nPassed Auto case: "%s"' % result.case)
+        result.result = 'Pass'
 
 
-class CaseResultList(Resource):
+class AutoResultList(Resource):
     """
     Auto case results of a Auto run record
     """
@@ -258,33 +227,31 @@ class CaseResultList(Resource):
         run = Run.query.get(run_id)
         if not run:
             return {'message': 'Test Run doesn\'t exists'}, 400
-        results = run.results.all()
+        results = run.auto_results.all()
         ret = []
         for run in results:
             ret.append(run.as_dict())
         return ret
 
     def post(self, run_id):
-        args = CaseResultParser.parse_args()
+        args = AutoResultParser.parse_args()
         result = args
         result['run_id'] = run_id
         result['run'] = Run.query.get(run_id)
 
-        res = Result.query.get((run_id, args['case']))
+        res = AutoResult.query.get((run_id, args['case']))
         if res:
             return res.as_dict(), 400
 
-        result_instance = Result(**result)
+        result_instance = AutoResult(**result)
 
-        if not any(key in request.json.keys() for key in ['error', 'manualcases', 'bugs']):
-            try:
-                check_test_result(result_instance, db.session)
-            except HTTPError as e:
-                if e.response.status_code == 404:
-                    # Leave empty
-                    return {'message': 'No case link entry'}, 400
-                else:
-                    return {'message': 'Caselink didn\'t response in a expected way'}, 400
+        try:
+            gen_manual_case_and_error(result_instance, db.session)
+        except HTTPError as e:
+            if e.response.status_code == 404:
+                return {'message': 'Failed Look up Caselink'}, 400
+            else:
+                return {'message': 'Caselink didn\'t response in a expected way'}, 400
 
         try:
             db.session.add(result_instance)
@@ -295,27 +262,27 @@ class CaseResultList(Resource):
         return result_instance.as_dict()
 
 
-class CaseResultDetail(Resource):
+class AutoResultDetail(Resource):
     def get(self, run_id, case_name):
-        res = Result.query.get((run_id, case_name))
+        res = AutoResult.query.get((run_id, case_name))
         if not res:
-            return {'message': 'Result doesn\'t exists'}, 400
+            return {'message': 'AutoResult doesn\'t exists'}, 400
         return res.as_dict()
 
     def delete(self, run_id, case_name):
-        res = Result.query.get((run_id, case_name))
+        res = AutoResult.query.get((run_id, case_name))
         if not res:
-            return {'message': 'Result doesn\'t exists'}, 400
+            return {'message': 'AutoResult doesn\'t exists'}, 400
         db.session.delete(res)
         db.session.commit()
         return res.as_dict()
 
     def put(self, run_id, case_name):
-        res = Result.query.get((run_id, case_name))
+        res = AutoResult.query.get((run_id, case_name))
         if not res:
-            return {'message': 'Result doesn\'t exists'}, 400
+            return {'message': 'AutoResult doesn\'t exists'}, 400
 
-        args = CaseResultUpdateParser.parse_args()
+        args = AutoResultUpdateParser.parse_args()
         result = args
         result['run_id'] = run_id
         result['run'] = Run.query.get(run_id)
@@ -323,13 +290,12 @@ class CaseResultDetail(Resource):
         for key in request.json.keys():
             setattr(res, (key), result[(key)])
 
-        if not any(key in request.json.keys() for key in ['error', 'manualcases', 'bugs']):
+        if not 'result' in request.json.keys():
             try:
-                check_test_result(res, db.session)
+                gen_manual_case_and_error(res, db.session)
             except HTTPError as e:
                 if e.response.status_code == 404:
-                    # Leave empty
-                    return {'message': 'No case link entry'}, 400
+                    return {'message': 'Failed Look up Caselink'}, 400
                 else:
                     return {'message': 'Caselink didn\'t response in a expected way'}, 400
 
@@ -339,10 +305,58 @@ class CaseResultDetail(Resource):
         return res.as_dict()
 
 
+class ManualResultList(Resource):
+    """
+    Auto case results of a Auto run record
+    """
+    def get(self, run_id):
+        run = Run.query.get(run_id)
+        if not run:
+            return {'message': 'Test Run doesn\'t exists'}, 400
+        results = run.manual_results.all()
+        ret = []
+        for run in results:
+            ret.append(run.as_dict())
+        return ret
+
+
+class ManualResultDetail(Resource):
+    def get(self, run_id, case_name):
+        res = ManualResult.query.get((run_id, case_name))
+        if not res:
+            return {'message': 'AutoResult doesn\'t exists'}, 400
+        return res.as_dict()
+
+    def delete(self, run_id, case_name):
+        res = ManualResult.query.get((run_id, case_name))
+        if not res:
+            return {'message': 'AutoResult doesn\'t exists'}, 400
+        db.session.delete(res)
+        db.session.commit()
+        return res.as_dict()
+
+    def put(self, run_id, case_name):
+        res = ManualResult.query.get((run_id, case_name))
+        if not res:
+            return {'message': 'AutoResult doesn\'t exists'}, 400
+
+        args = ManualResultUpdateParser.parse_args()
+        result = args
+        result['run_id'] = run_id
+        result['run'] = Run.query.get(run_id)
+
+        for key in request.json.keys():
+            setattr(res, (key), result[(key)])
+
+        db.session.add(res)
+        db.session.commit()
+
+        return res.as_dict()
+
 
 class ErrorList(Resource):
     def get(self):
-        ResultWithError = Result.query.filter(Result.error.isnot(None))
+        ResultWithError = AutoResult.query.filter(AutoResult.error.isnot(None))
         ret = []
         for error in ResultWithError:
             ret.append(error.as_dict())
@@ -351,8 +365,10 @@ class ErrorList(Resource):
 
 api.add_resource(TestRunList, '/api/run/', endpoint='test_run_list')
 api.add_resource(TestRunDetail, '/api/run/<int:run_id>/', endpoint='test_run_detail')
-api.add_resource(CaseResultList, '/api/run/<int:run_id>/results/', endpoint='case_result_list')
-api.add_resource(CaseResultDetail, '/api/run/<int:run_id>/results/<string:case_name>', endpoint='case_result_detail')
+api.add_resource(AutoResultList, '/api/run/<int:run_id>/auto/', endpoint='auto_result_list')
+api.add_resource(AutoResultDetail, '/api/run/<int:run_id>/auto/<string:case_name>', endpoint='auto_result_detail')
+api.add_resource(ManualResultList, '/api/run/<int:run_id>/manual/', endpoint='manual_result_list')
+api.add_resource(ManualResultDetail, '/api/run/<int:run_id>/manual/<string:case_name>', endpoint='manual_result_detail')
 api.add_resource(ErrorList, '/api/error/', endpoint='error_list')
 
 @app.route('/table/run/', methods=['GET'])
@@ -362,36 +378,45 @@ def test_run_table():
         '/api/run/',
         200)
 
-@app.route('/table/run/<int:run_id>/results', methods=['GET'])
-def case_result_table(run_id):
+@app.route('/table/run/<int:run_id>/auto/', methods=['GET'])
+def auto_result_table(run_id):
     return column_to_table(
-        Result,
-        '/api/run/' + str(run_id) + '/results/',
-        200,
-        extra_column=['status']
-    )
+        AutoResult,
+        '/api/run/' + str(run_id) + '/auto/',
+        200)
 
-@app.route('/table/run/<int:run_id>/results/resolve', methods=['GET'])
-def resolve(run_id):
-    columns = Result.__table__.columns
+@app.route('/table/run/<int:run_id>/manual/', methods=['GET'])
+def manual_result_table(run_id):
+    return column_to_table(
+        ManualResult,
+        '/api/run/' + str(run_id) + '/manual/',
+        200)
+
+@app.route('/table/run/<int:run_id>/auto/resolve', methods=['GET'])
+def resolve_autocase(run_id):
+    columns = AutoResult.__table__.columns
     columns = [str(col).split('.')[-1] for col in columns]
-    columns += ["status"]
     resp = make_response(render_template('resolve.html',
                                          column_names=columns,
                                          column_datas=columns,
-                                         ajax='/api/run/' + str(run_id) + '/results/'),
+                                         ajax='/api/run/' + str(run_id) + '/auto/'),
                          200)
     return resp
 
 @app.route('/submit', methods=['GET'])
-#TODO submit passed first, then failed
-def submit_to_polarion():
+@app.route('/submit/<int:run_id>', methods=['GET'])
+def submit_to_polarion(run_id=None):
     submitted_runs = []
     error_runs = []
     class ConflictError(Exception):
         pass
 
-    for test_run in Run.query.filter(Run.submitted == False):
+    if run_id:
+        test_runs = Run.query.filter(Run.submit_date == None, Run.id == run_id)
+    else:
+        test_runs = Run.query.filter(Run.submit_date == None)
+
+    for test_run in test_runs:
         polaroin_testrun = Polarion.TestRunRecord(
             project=test_run.project,
             name=test_run.name,
@@ -403,51 +428,31 @@ def submit_to_polarion():
             arch=test_run.arch
         )
 
-        manual_cases = {}
-
         try:
-            for record in Result.query.filter(Result.run_id == test_run.id):
-                if record.skip:
-                    continue
-                if record.status.startswith("Error"):
+            for record in AutoResult.query.filter(AutoResult.run_id == test_run.id):
+                print record
+                if not record.result:
                     raise ConflictError()
-                elif record.bugs:
-                    result = 'failed'
-                else:
-                    result = 'passed'
-
-                manualcase_ids = record.manualcases.split("\n")
-                for id in manualcase_ids:
-                    if id == "":
-                        continue
-                    if id in manual_cases:
-                        if manual_cases[id]['result'] != result:
-                            raise RuntimeError("Result Inconsistent: %s" % id)
-                        manual_cases[id]['duration'] += record.time
-                    else:
-                        manual_cases[id] = {
-                            "result": result,
-                            "duration": record.time,  # Float
-                        }
-
         except ConflictError:
             error_runs.append(test_run.as_dict())
             continue
 
-        for case in manual_cases:
+        for record in ManualResult.query.filter(ManualResult.run_id == test_run.id):
             polaroin_testrun.add_record(
-                case=case,
-                result=manual_cases[case]['result'],
-                duration=manual_cases[case]['duration'],
+                case=record.case,
+                result=record.result,
+                duration=record.time,
                 datetime=test_run.date,  # Datetime
                 executed_by='CI',
-                comment=manual_cases[case]['comment']
+                comment=record.comment
             )
 
         with Polarion.PolarionSession() as session:
             polaroin_testrun.submit(session)
 
-        test_run.submitted = True
+        #TODO issue a caselink backup
+
+        test_run.submit_date = datetime.datetime.now()
         db.session.add(test_run)
         db.session.commit()
         submitted_runs.append(test_run.as_dict())
