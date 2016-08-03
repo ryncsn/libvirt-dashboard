@@ -118,11 +118,10 @@ class TestRunList(Resource):
 
 class TestRunDetail(Resource):
     def get(self, run_id):
-        args = TestRunParser.parse_args()
         run = Run.query.get(run_id)
         if not run:
             return {'message': 'Test Run doesn\'t exists'}, 400
-        return ret.as_dict()
+        return run.as_dict()
 
     def put(self, run_id):
         args = TestRunParser.parse_args()
