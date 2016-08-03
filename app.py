@@ -249,9 +249,9 @@ class AutoResultList(Resource):
             gen_manual_case_and_error(result_instance, db.session)
         except HTTPError as e:
             if e.response.status_code == 404:
-                return {'message': 'Failed Look up Caselink'}, 400
+                result_instance.error = 'No Caselink'
             else:
-                return {'message': 'Caselink didn\'t response in a expected way'}, 400
+                result_instance.error = 'Caselink Failure'
 
         try:
             db.session.add(result_instance)
@@ -295,9 +295,9 @@ class AutoResultDetail(Resource):
                 gen_manual_case_and_error(res, db.session)
             except HTTPError as e:
                 if e.response.status_code == 404:
-                    return {'message': 'Failed Look up Caselink'}, 400
+                    result_instance.error = 'No Caselink'
                 else:
-                    return {'message': 'Caselink didn\'t response in a expected way'}, 400
+                    result_instance.error = 'Caselink Failure'
 
         db.session.add(res)
         db.session.commit()
