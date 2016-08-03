@@ -44,7 +44,18 @@
                     "width": '10',
                 },
                 {% for col in column_datas %}
+                {% if col in ['output', 'failure', 'skip', 'comment'] %}
+                {
+                    "data":"{{ col }}",
+                    "render": function(data){
+                        if(!data)
+                            return "---"
+                        return data.replace(/(?:\r\n|\r|\n)/g, '<br/>');
+                    }
+                },
+                {% else %}
                 { "data":"{{ col }}" },
+                {% endif %}
                 {% endfor %}
             ],
             createdRow: function(row, data, index){
