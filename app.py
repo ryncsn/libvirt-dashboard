@@ -169,7 +169,7 @@ def gen_manual_case_and_error(result, session):
                     if not manualcase.comment:
                         manualcase.comment = ''
                     if failure.bug.id not in manualcase.comment:
-                        manualcase.comment += ('\nFailed By BUG: "%s", Auto case: "%s"' %
+                        manualcase.comment += ('Failed By BUG: "%s", Auto case: "%s"\n' %
                                                 (failure.bug.id, result.case))
 
         if not BugMatched:
@@ -201,7 +201,7 @@ def gen_manual_case_and_error(result, session):
                         if not manualcase.comment:
                             manualcase.comment = ''
                         if result.case not in manualcase.comment:
-                            manualcase.comment += ('\nPassed Auto case: "%s"' % result.case)
+                            manualcase.comment += ('Passed Auto case: "%s"\n' % result.case)
 
                 elif related_result.failure is not None:
                     # Failed Already
@@ -214,7 +214,7 @@ def gen_manual_case_and_error(result, session):
                     if not manualcase.comment:
                         manualcase.comment = ''
                     if result.case not in manualcase.comment:
-                        manualcase.comment += ('\nPassed Auto case: "%s"' % result.case)
+                        manualcase.comment += ('Passed Auto case: "%s"\n' % result.case)
         result.result = 'Pass'
 
 
