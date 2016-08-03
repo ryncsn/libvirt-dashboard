@@ -15,12 +15,15 @@
 {% block footer %}
 
 <div id="_proto_error_panel">
-    <div class="well">
-        <button type="button" class="btn btn-warning btn-mark-fail btn-result">Mark Failed</button>
-        <button type="button" class="btn btn-success btn-mark-pass btn-result">Mark Passed</button>
-        <button type="button" class="btn btn-danger btn-delete btn-result">Delete</button>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <button type="button" class="btn btn-warning btn-mark-fail btn-result">Mark Failed</button>
+            <button type="button" class="btn btn-success btn-mark-pass btn-result">Mark Passed</button>
+            <button type="button" class="btn btn-danger btn-delete btn-result">Delete</button>
+        </div>
     </div>
 </div>
+
 <script type="text/javascript" charset="utf-8">
     var error_panel = $("#_proto_error_panel").detach()
 
@@ -72,6 +75,7 @@
                     button.removeClass('fa-minus');
                 });
             }
+
             else {
                 // Open this row
                 row.child('<div class="slider row-child">' + format(row) + '</div>', 'no-padding').show();
