@@ -122,7 +122,7 @@ class TestRunDetail(Resource):
         run = Run.query.get(run_id)
         if not run:
             return {'message': 'Test Run doesn\'t exists'}, 400
-        return ret.as_dict
+        return ret.as_dict()
 
     def put(self, run_id):
         args = TestRunParser.parse_args()
@@ -267,7 +267,7 @@ class AutoResultDetail(Resource):
         res = AutoResult.query.get((run_id, case_name))
         if not res:
             return {'message': 'AutoResult doesn\'t exists'}, 400
-        return res.as_dict()
+        return res.as_dict(detailed=True)
 
     def delete(self, run_id, case_name):
         res = AutoResult.query.get((run_id, case_name))
@@ -366,9 +366,9 @@ class ErrorList(Resource):
 api.add_resource(TestRunList, '/api/run/', endpoint='test_run_list')
 api.add_resource(TestRunDetail, '/api/run/<int:run_id>/', endpoint='test_run_detail')
 api.add_resource(AutoResultList, '/api/run/<int:run_id>/auto/', endpoint='auto_result_list')
-api.add_resource(AutoResultDetail, '/api/run/<int:run_id>/auto/<string:case_name>', endpoint='auto_result_detail')
+api.add_resource(AutoResultDetail, '/api/run/<int:run_id>/auto/<string:case_name>/', endpoint='auto_result_detail')
 api.add_resource(ManualResultList, '/api/run/<int:run_id>/manual/', endpoint='manual_result_list')
-api.add_resource(ManualResultDetail, '/api/run/<int:run_id>/manual/<string:case_name>', endpoint='manual_result_detail')
+api.add_resource(ManualResultDetail, '/api/run/<int:run_id>/manual/<string:case_name>/', endpoint='manual_result_detail')
 api.add_resource(ErrorList, '/api/error/', endpoint='error_list')
 
 @app.route('/table/run/', methods=['GET'])

@@ -89,6 +89,8 @@ class AutoResult(db.Model):
                 ret[c.name] = getattr(self, c.name)
         if not detailed:
             ret['output'] = 'Not showing'
+        else:
+            ret['output'] = self.output
         return ret
 
 

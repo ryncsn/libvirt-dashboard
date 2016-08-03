@@ -15,12 +15,17 @@
 {% block footer %}
 
 <div id="_proto_error_panel">
-    <div class="well">
-        <button type="button" class="btn btn-warning btn-ignore btn-result">Ignore/Skip</button>
-        <button type="button" class="btn btn-success btn-refresh btn-result">Refresh</button>
-        <button type="button" class="btn btn-danger btn-delete btn-result">Delete</button>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <button type="button" class="btn btn-warning btn-ignore btn-result">Ignore/Skip</button>
+            <button type="button" class="btn btn-success btn-refresh btn-result">Refresh</button>
+            <button type="button" class="btn btn-danger btn-delete btn-result">Delete</button>
+        </div>
+    </div>
+    <div class="well detail-well">
     </div>
 </div>
+
 <script type="text/javascript" charset="utf-8">
     var error_panel = $("#_proto_error_panel").detach()
 
@@ -28,7 +33,7 @@
         // Row child renderer.
         d = row.data()
         if(d.result){
-            return '<div class="alert alert-success" role="alert">Nothing to process</div>'
+            return '<div class="alert alert-success" role="alert">Nothing to process</div> <div class="well detail-well"></div>'
         }
         return error_panel.html()
     }
@@ -76,21 +81,33 @@
                     button.removeClass('fa-minus');
                 });
             }
+
             else {
                 // Open this row
                 row.child('<div class="slider row-child">' + format(row) + '</div>', 'no-padding').show();
-
+                var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
                 button.removeClass('fa-plus');
                 button.addClass('fa-minus');
 
-                $('div.slider', row.child()).slideDown();
+                //Load Detail
+                $.get("/api/run/" + run_id + "/auto/" + d.case + "/")
+                .done(function(data){
+                    $('div.detail-well', row.child())
+                    .append("<p> Test Output: "+data.output.replace(/(?:\r\n|\r|\n)/g, '<br/>')+"</p>")
+                    .append("<p> Test Failure Message: "+data.failure+"</p>")
+                    .append("<p> Test Skip Message : "+data.skip+"</p>")
+                })
+                .fail(function(err){
+                    alert("Ajax Failed with " + JSON.stringify(err))
+                })
+                .always(function(){
+                    $('div.slider', row.child()).slideDown();
+                });
 
                 //Add button event
                 $(row.child()).find("button").on('click', function(event){
-                    var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
-                    _ajax_call =  function(method, data){
-                        console.log(data)
-                        return $.ajax("/api/run/" + run_id + "/auto/" + d.case ,{
+                    function _ajax_call(method, data){
+                        return $.ajax("/api/run/" + run_id + "/auto/" + d.case + "/" , {
                             contentType: "application/json; charset=utf-8",
                             method: method,
                             dataType: "json",

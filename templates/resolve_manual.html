@@ -85,8 +85,7 @@
                 $(row.child()).find("button").on('click', function(event){
                     var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
                     _ajax_call =  function(method, data){
-                        console.log(data)
-                        return $.ajax("/api/run/" + run_id + "/manual/" + d.case ,{
+                        return $.ajax("/api/run/" + run_id + "/manual/" + d.case + "/", {
                             contentType: "application/json; charset=utf-8",
                             method: method,
                             dataType: "json",
