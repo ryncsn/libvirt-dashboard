@@ -4,6 +4,16 @@ from abc import ABCMeta, abstractproperty
 CASELINK_URL = 'http://10.66.4.102:8888/caselink/'
 
 
+def lazy_property(fn):
+    lazy_name = '__lazy__' + fn.__name__
+    @property
+    def lazy_eval(self):
+        if not hasattr(self, lazy_name):
+            setattr(self, lazy_name, fn(self))
+        return getattr(self, lazy_name)
+    return lazy_eval
+
+
 class CaseLinkItem():
     __metaclass__ = ABCMeta
 
@@ -33,6 +43,7 @@ class CaseLinkItem():
         #Raise error if anything went wrong.
         respons.raise_for_status()
         self.json = respons.json()
+        return self
 
     # Following functions consider caselink stay the same during
     # the life circle of a CaseLinkItem object.
@@ -59,21 +70,21 @@ class AutoCase(CaseLinkItem):
         self.id = str(case_id)
         self.url = CASELINK_URL + 'auto/' + str(case_id) + '/'
 
-    @property
+    @lazy_property
     def manualcases(self):
         cases = []
         for link in [Linkage(link_id) for link_id in self.json['caselinks']]:
             cases.append(ManualCase(link.workitem))
         return cases
 
-    @property
+    @lazy_property
     def bugs(self):
         bugs = []
         for bug in self.json['bugs']:
             bugs.append(Bug(bug))
         return bugs
 
-    @property
+    @lazy_property
     def failures(self):
         failures = []
         for failure in self.json['failures']:
@@ -86,7 +97,7 @@ class ManualCase(CaseLinkItem):
         self.id = str(case_id)
         self.url = CASELINK_URL + 'manual/' + str(case_id) + '/'
 
-    @property
+    @lazy_property
     def autocases(self):
         cases = []
         for link in [Linkage(link_id) for link_id in self.json['caselinks']]:
@@ -94,7 +105,7 @@ class ManualCase(CaseLinkItem):
                 cases.append(AutoCase(autocase))
         return cases
 
-    @property
+    @lazy_property
     def bugs(self):
         bugs = []
         for bug in self.json['bugs']:
@@ -107,14 +118,14 @@ class Bug(CaseLinkItem):
         self.id = str(bz_id)
         self.url = CASELINK_URL + 'bug/' + str(bz_id) + '/'
 
-    @property
+    @lazy_property
     def autocases(self):
         cases = []
         for case in self.json['autocases']:
             cases.append(AutoCase(case))
         return cases
 
-    @property
+    @lazy_property
     def manualcases(self):
         cases = []
         for case in self.json['manualcases']:
@@ -127,11 +138,11 @@ class AutoCaseFailure(CaseLinkItem):
         self.id = str(id)
         self.url = CASELINK_URL + 'failure/' + str(id) + '/'
 
-    @property
+    @lazy_property
     def bug(self):
         return Bug(self.json['bug'])
 
-    @property
+    @lazy_property
     def manualcases(self):
         cases = []
         for case in self.bug.manualcases:
