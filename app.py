@@ -137,18 +137,21 @@ class TestRunDetail(Resource):
 
 def gen_manual_case_and_error(result, session):
     """
-    Take a unsaved result instance,
-    Check with other results in database and caselink.
-
-    'result' should only have attribute 'case', 'output',
-    and one of 'failure', 'skip', other attributes will be genereted.
+    Take a unsaved result instance, rewrite it's error and result
+    with data in caselink.
     """
     # Failed -> look up in failures, if any bug matches, mark manualcase failed
     # Passed -> look up in linkages(manualcases), if all related autocase of a manualcase
     #           passed, mark the manualcase passed
     # Mark error when lookup failed
-
-    this_autocase = CaseLink.AutoCase(result.case)
+    try:
+        this_autocase = CaseLink.AutoCase(result.case).refresh()
+    except HTTPError as e:
+        if e.response.status_code == 404:
+            result.error = 'No Caselink'
+        else:
+            result.error = 'Caselink Failure'
+        return
 
     if result.skip:
         #TODO
@@ -244,13 +247,7 @@ class AutoResultList(Resource):
 
         result_instance = AutoResult(**result)
 
-        try:
-            gen_manual_case_and_error(result_instance, db.session)
-        except HTTPError as e:
-            if e.response.status_code == 404:
-                result_instance.error = 'No Caselink'
-            else:
-                result_instance.error = 'Caselink Failure'
+        gen_manual_case_and_error(result_instance, db.session)
 
         try:
             db.session.add(result_instance)
@@ -290,13 +287,7 @@ class AutoResultDetail(Resource):
             setattr(res, (key), result[(key)])
 
         if not 'result' in request.json.keys():
-            try:
-                gen_manual_case_and_error(res, db.session)
-            except HTTPError as e:
-                if e.response.status_code == 404:
-                    result_instance.error = 'No Caselink'
-                else:
-                    result_instance.error = 'Caselink Failure'
+            gen_manual_case_and_error(res, db.session)
 
         db.session.add(res)
         db.session.commit()
@@ -412,8 +403,25 @@ def resolve_manualcase(run_id):
     return resp
 
 
-@app.route('/submit', methods=['GET'])
-@app.route('/submit/<int:run_id>', methods=['GET'])
+@app.route('/trigger/run/<int:run_id>/refresh', methods=['GET'])
+def refresh_testrun(run_id):
+    ManualResult.query.filter(ManualResult.run_id == run_id).\
+            delete(synchronize_session=False)
+
+    for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
+        gen_manual_case_and_error(result_instance, db.session)
+        db.session.add(result_instance)
+
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        db.session.rollback()
+
+    return jsonify({'message': 'success'}), 200
+
+
+@app.route('/trigger/run/submit', methods=['GET'])
+@app.route('/trigger/run/<int:run_id>/submit', methods=['GET'])
 def submit_to_polarion(run_id=None):
     submitted_runs = []
     error_runs = []
