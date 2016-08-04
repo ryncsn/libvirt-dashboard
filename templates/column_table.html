@@ -18,7 +18,10 @@
             pageLength: 50,
             columns: [
                 {% for col in column_datas %}
-                { "data":"{{ col }}" },
+                {
+                    "data":"{{ col }}",
+                    "render": prettier
+                },
                 {% endfor %}
             ],
             ajax: {

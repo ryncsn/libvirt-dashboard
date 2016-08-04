@@ -10,6 +10,14 @@
             {% endfor %}
         </tr>
     </thead>
+    <tfoot>
+        <tr>
+            <th></th>
+            {% for col in column_names %}
+            <th>{{ col }}</th>
+            {% endfor %}
+        </tr>
+    </tfoot>
 </table>
 {% endblock %}
 {% block footer %}
@@ -39,8 +47,19 @@
     }
 
     $(document).ready(function() {
-        var table = $('#column_table').DataTable({
+        var table = $('#column_table').DataSearchTable({
             pageLength: 50,
+            select: true,
+            selectorColumns: [
+                {
+                    column:"error",
+                    render: prettier
+                },
+                {
+                    column:"result",
+                    render: prettier
+                },
+            ],
             columns: [
                 {
                     "data": null,
@@ -50,18 +69,10 @@
                     "width": '10',
                 },
                 {% for col in column_datas %}
-                {% if col in ['output', 'failure', 'skip', 'comment'] %}
                 {
                     "data":"{{ col }}",
-                    "render": function(data){
-                        if(!data)
-                            return "---"
-                        return data.replace(/(?:\r\n|\r|\n)/g, '<br/>');
-                    }
+                    "render": prettier
                 },
-                {% else %}
-                { "data":"{{ col }}" },
-                {% endif %}
                 {% endfor %}
             ],
             createdRow: function(row, data, index){

@@ -79,7 +79,7 @@ def column_to_table(model, ajax_url, code, extra_column=[]):
     columns = model.__table__.columns
     columns = [str(col).split('.')[-1] for col in columns]
     columns += extra_column
-    resp = make_response(render_template('column2table.html',
+    resp = make_response(render_template('column_table.html',
                                          column_names=columns,
                                          column_datas=columns,
                                          ajax=ajax_url), 200)
@@ -393,8 +393,7 @@ def manual_result_table(run_id):
 
 @app.route('/table/run/<int:run_id>/auto/resolve', methods=['GET'])
 def resolve_autocase(run_id):
-    columns = AutoResult.__table__.columns
-    columns = [str(col).split('.')[-1] for col in columns]
+    columns = ["case", "time", "error", "result"]
     resp = make_response(render_template('resolve_auto.html',
                                          column_names=columns,
                                          column_datas=columns,
@@ -404,8 +403,7 @@ def resolve_autocase(run_id):
 
 @app.route('/table/run/<int:run_id>/manual/resolve', methods=['GET'])
 def resolve_manualcase(run_id):
-    columns = ManualResult.__table__.columns
-    columns = [str(col).split('.')[-1] for col in columns]
+    columns = ["case", "time", "comment", "result"]
     resp = make_response(render_template('resolve_manual.html',
                                          column_names=columns,
                                          column_datas=columns,
