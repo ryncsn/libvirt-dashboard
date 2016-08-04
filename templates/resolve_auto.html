@@ -36,6 +36,7 @@
 
 <script type="text/javascript" charset="utf-8">
     var error_panel = $("#_proto_error_panel").detach()
+    var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
 
     function format(row){
         // Row child renderer.
@@ -46,9 +47,79 @@
         return error_panel.html()
     }
 
+    function _ajax_call(method, case_name, data){
+        return $.ajax("/api/run/" + run_id + "/auto/" + case_name + "/" , {
+            contentType: "application/json; charset=utf-8",
+            method: method,
+            dataType: "json",
+            data: JSON.stringify(data),
+        }).fail(function(err){
+            alert("Ajax failed with: " + JSON.stringify(err));
+        })
+    }
+
+    function skip_case(case_name){
+        return _ajax_call("PUT", case_name, {
+            result: "SKIP by dashboard"
+        })
+    }
+
+    function refresh_case(case_name){
+        return _ajax_call("PUT", case_name, {
+        })
+    }
+
+    function delete_case(case_name){
+        return _ajax_call("DELETE", case_name, {
+        })
+    }
+
     $(document).ready(function() {
         var table = $('#column_table').DataSearchTable({
             pageLength: 50,
+            dom: '<<"row" <"col-md-2"l><"col-md-6"B><"col-md-4"f>>r<t><"row"<"col-md-6"i><"col-md-6"p>>>',
+            buttons: [
+                {
+                    text: 'Skip selected',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            skip_case(d.case).done(function(data){
+                                row.data(data);
+                                row.draw();
+                            });
+                        })
+                    }
+                },
+                {
+                    text: 'Refresh selected',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            refresh_case(d.case).done(function(data){
+                                row.data(data).draw();
+                            });
+                        })
+                    }
+                },
+                {
+                    text: 'Refresh selected',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            delete_case(d.case).done(function(data){
+                                table
+                                .row(idx)
+                                .remove()
+                                .draw();
+                            });
+                        });
+                    }
+                },
+            ],
             select: true,
             selectorColumns: [
                 {
@@ -107,7 +178,6 @@
             else {
                 // Open this row
                 row.child('<div class="slider row-child">' + format(row) + '</div>', 'no-padding').show();
-                var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
                 button.removeClass('fa-plus');
                 button.addClass('fa-minus');
 
@@ -128,42 +198,24 @@
 
                 //Add button event
                 $(row.child()).find("button").on('click', function(event){
-                    function _ajax_call(method, data){
-                        return $.ajax("/api/run/" + run_id + "/auto/" + d.case + "/" , {
-                            contentType: "application/json; charset=utf-8",
-                            method: method,
-                            dataType: "json",
-                            data: JSON.stringify(data),
-                        }).fail(function(err){
-                            alert("Failed with: " + JSON.stringify(err));
-                        })
-                    }
                     if($(event.target).hasClass('btn-ignore')){
-                        _ajax_call("PUT", {
-                            case: d.case,
-                            result: "SKIP by dashboard"
-                        }).
-                            done(function(data){
-                                row.data(data);
-                                row.draw();
-                            })
+                        skip_case(d.case).done(function(data){
+                            row.data(data);
+                            row.draw();
+                        });
                     }
                     else if($(event.target).hasClass('btn-refresh')){
-                        _ajax_call("PUT", {
-                            case: d.case,
-                        }).
-                            done(function(data){
-                                row.data(data).draw();
-                            })
+                        refresh_case(d.case).done(function(data){
+                            row.data(data).draw();
+                        });
                     }
                     else if($(event.target).hasClass('btn-delete')){
-                        _ajax_call("DELETE").
-                            done(function(data){
-                                table
-                                .row(tr)
-                                .remove()
-                                .draw();
-                            })
+                        delete_case(d.case).done(function(data){
+                            table
+                            .row(tr)
+                            .remove()
+                            .draw();
+                        });
                     }
                 });
             }

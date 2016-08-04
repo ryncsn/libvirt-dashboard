@@ -35,15 +35,86 @@
 
 <script type="text/javascript" charset="utf-8">
     var error_panel = $("#_proto_error_panel").detach()
+    var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
 
     function format(row){
         // Row child renderer.
         return error_panel.html()
     }
+    function _ajax_call(method, case_name, data){
+        return $.ajax("/api/run/" + run_id + "/manual/" + case_name + "/", {
+            contentType: "application/json; charset=utf-8",
+            method: method,
+            dataType: "json",
+            data: JSON.stringify(data),
+        }).fail(function(err){
+            alert("Ajax failed with: " + JSON.stringify(err));
+        });
+    }
+
+    function mark_case_fail(case_name){
+        return _ajax_call("PUT", case_name, {
+            result: "failed"
+        });
+    }
+
+    function mark_case_pass(case_name){
+        return _ajax_call("PUT", case_name, {
+            result: "passed"
+        });
+    }
+
+    function delete_case(case_name){
+        return _ajax_call("DELETE", case_name);
+    }
 
     $(document).ready(function() {
         var table = $('#column_table').DataSearchTable({
             pageLength: 50,
+            dom: '<<"row" <"col-md-2"l><"col-md-6"B><"col-md-4"f>>r<t><"row"<"col-md-6"i><"col-md-6"p>>>',
+            buttons: [
+                {
+                    text: 'Pass selected',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            mark_case_pass(d.case).done(function(data){
+                                row.data(data);
+                                row.draw();
+                            });
+                        })
+                    }
+                },
+                {
+                    text: 'Fail selected',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            mark_case_fail(d.case).done(function(data){
+                                row.data(data);
+                                row.draw();
+                            });
+                        })
+                    }
+                },
+                {
+                    text: 'Delete selected',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            delete_case(d.case).done(function(data){
+                                table
+                                .row(idx)
+                                .remove()
+                                .draw();
+                            });
+                        });
+                    }
+                },
+            ],
             select: true,
             selectorColumns: [
                 {
@@ -106,45 +177,25 @@
 
                 //Add button event
                 $(row.child()).find("button").on('click', function(event){
-                    var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
-                    _ajax_call =  function(method, data){
-                        return $.ajax("/api/run/" + run_id + "/manual/" + d.case + "/", {
-                            contentType: "application/json; charset=utf-8",
-                            method: method,
-                            dataType: "json",
-                            data: JSON.stringify(data),
-                        }).fail(function(err){
-                            alert("Failed with: " + JSON.stringify(err));
-                        })
-                    }
                     if($(event.target).hasClass('btn-mark-fail')){
-                        _ajax_call("PUT", {
-                            case: d.case,
-                            result: "failed"
-                        }).
-                            done(function(data){
-                                row.data(data);
-                                row.draw();
-                            })
+                        mark_case_fail(d.case).done(function(data){
+                            row.data(data);
+                            row.draw();
+                        });
                     }
                     else if($(event.target).hasClass('btn-mark-pass')){
-                        _ajax_call("PUT", {
-                            case: d.case,
-                            result: "passed"
-                        }).
-                            done(function(data){
-                                row.data(data);
-                                row.draw();
-                            })
+                        mark_case_pass(d.case).done(function(data){
+                            row.data(data);
+                            row.draw();
+                        });
                     }
                     else if($(event.target).hasClass('btn-delete')){
-                        _ajax_call("DELETE").
-                            done(function(data){
-                                table
-                                .row(tr)
-                                .remove()
-                                .draw();
-                            })
+                        delete_case(d.case). done(function(data){
+                            table
+                            .row(tr)
+                            .remove()
+                            .draw();
+                        });
                     }
                 });
             }
