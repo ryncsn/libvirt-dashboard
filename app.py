@@ -371,10 +371,6 @@ class AutoResultDetail(Resource):
         for key in request.json.keys():
             setattr(res, (key), result[(key)])
 
-        gen_result =  not 'result' in request.json.keys()
-        gen_error =  not 'error' in request.json.keys()
-        (success, message) = refresh_result(res, db.session, gen_result = gen_result, gen_error = gen_error)
-
         db.session.add(res)
         db.session.commit()
 
@@ -512,14 +508,37 @@ def refresh_testrun(run_id):
     return jsonify(ret), 200
 
 
+@app.route('/trigger/run/<int:run_id>/auto/<string:case>/refresh', methods=['GET'])
 @app.route('/trigger/run/<int:run_id>/auto/refresh', methods=['GET'])
-def refresh_auto(run_id):
-    ret = {}
-    for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
-        (success, message) = refresh_result(result_instance, db.session, gen_manual=False)
+def refresh_auto(run_id, case=None):
+
+    gen_error = request.args.get('error', False)
+    gen_result = request.args.get('result', False)
+
+    if gen_error == 'true':
+        gen_error = True
+    else:
+        gen_error = False
+
+    if gen_result == 'true':
+        gen_result = True
+    else:
+        gen_result = False
+
+    fail_message = {}
+    if case:
+        query = AutoResult.query.filter(AutoResult.run_id == run_id, AutoResult.case == case)
+    else:
+        query = AutoResult.query.filter(AutoResult.run_id == run_id)
+
+    for result_instance in query:
+        (success, message) = refresh_result(result_instance, db.session,
+                                            gen_error = gen_error,
+                                            gen_result = gen_result,
+                                            gen_manual = False)
         db.session.add(result_instance)
         if not success:
-            ret[result_instance.case] = message
+            fail_message[result_instance.case] = message
 
     try:
         db.session.commit()
@@ -527,14 +546,14 @@ def refresh_auto(run_id):
         db.session.rollback()
         return jsonify({'message': 'db error'}), 500
 
-    if len(ret.keys()) == 0:
+    if len(fail_message.keys()) == 0:
         return jsonify({'message': 'success'}), 200
-    return jsonify(ret), 200
+    return jsonify(fail_message), 200
 
 
 @app.route('/trigger/run/<int:run_id>/manual/refresh', methods=['GET'])
 def refresh_manual(run_id):
-    ret = {}
+    fail_message = {}
     ManualResult.query.filter(ManualResult.run_id == run_id).\
             delete(synchronize_session=False)
 
@@ -542,7 +561,7 @@ def refresh_manual(run_id):
         (success, message) = refresh_result(result_instance, db.session, gen_error=False, gen_result=False)
         db.session.add(result_instance)
         if not success:
-            ret[result_instance.case] = message
+            fail_message[result_instance.case] = message
 
     try:
         db.session.commit()
@@ -550,9 +569,9 @@ def refresh_manual(run_id):
         db.session.rollback()
         return jsonify({'message': 'db error'}), 500
 
-    if len(ret.keys()) == 0:
+    if len(fail_message.keys()) == 0:
         return jsonify({'message': 'success'}), 200
-    return jsonify(ret), 200
+    return jsonify(fail_message), 200
 
 
 @app.route('/trigger/run/submit', methods=['GET'])
