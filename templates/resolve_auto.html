@@ -64,8 +64,17 @@
         })
     }
 
-    function refresh_case(case_name){
-        return _ajax_call("PUT", case_name, {
+    function refresh_case(case_name, error, result){
+        if(error){
+            error = 'true';
+        }
+        if(result){
+            result = 'true';
+        }
+        return $.ajax("/trigger/run/" + run_id + "/auto/" + case_name + "/refresh?error=" + error + "&result=" + result , {
+            method: 'GET',
+        }).fail(function(err){
+            alert("Ajax failed with: " + JSON.stringify(err));
         })
     }
 
@@ -90,7 +99,8 @@
                                 row.draw();
                             });
                         })
-                    }
+                    },
+                    className: 'btn-default',
                 },
                 {
                     text: 'Refresh selected',
@@ -98,14 +108,30 @@
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
                             var d = this.data();
-                            refresh_case(d.case).done(function(data){
+                            refresh_case(d.case, true, false).done(function(data){
                                 row.data(data).draw();
                             });
                         })
-                    }
+                    },
+                    className: 'btn-default',
                 },
                 {
-                    text: 'Refresh selected',
+                    text: 'Reset selected',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            refresh_case(d.case, true, true).done(function(data){
+                                _ajax_call("GET", d.case).done(function(data){
+                                    row.data(data).draw();
+                                });
+                            });
+                        })
+                    },
+                    className: 'btn-warning',
+                },
+                {
+                    text: 'Delete selected',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
@@ -117,7 +143,8 @@
                                 .draw();
                             });
                         });
-                    }
+                    },
+                    className: 'btn-danger',
                 },
             ],
             select: true,
@@ -146,7 +173,7 @@
                 },
                 {% endfor %}
             ],
-            createdRow: function(row, data, index){
+            rowCallback: function(row, data, index){
                 if(!data.result){
                     $(row).addClass('error');
                 }

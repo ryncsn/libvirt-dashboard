@@ -84,7 +84,8 @@
                                 row.draw();
                             });
                         })
-                    }
+                    },
+                    className: 'btn-default',
                 },
                 {
                     text: 'Fail selected',
@@ -97,7 +98,8 @@
                                 row.draw();
                             });
                         })
-                    }
+                    },
+                    className: 'btn-default',
                 },
                 {
                     text: 'Delete selected',
@@ -112,7 +114,8 @@
                                 .draw();
                             });
                         });
-                    }
+                    },
+                    className: 'btn-default',
                 },
             ],
             select: true,
@@ -137,7 +140,7 @@
                 },
                 {% endfor %}
             ],
-            createdRow: function(row, data, index){
+            rowCallback: function(row, data, index){
                 if(data.result == 'incomplete'){
                     $(row).addClass('error');
                 }
