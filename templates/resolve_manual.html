@@ -115,8 +115,46 @@
                             });
                         });
                     },
-                    className: 'btn-default',
+                    className: 'btn-danger',
                 },
+                {
+                    text: 'Regenerate Manual Results',
+                    action: function ( e, dt, node, config ) {
+                        $.ajax("/trigger/run/" + run_id + "/manual/refresh", {
+                            method: "GET",
+                        }).fail(function(err){
+                            alert("Ajax failed with: " + JSON.stringify(err));
+                        }).done(function(data){
+                            if(data.message == 'success'){
+                                window.location.reload(false);
+                            }
+                            else{
+                                alert("Failed with: " + JSON.stringify(data));
+                                window.location.reload(false);
+                            }
+                        });
+                    },
+                    className: 'btn-danger',
+                },
+                {
+                    text: 'Submit to Polarion',
+                    action: function ( e, dt, node, config ) {
+                        $.ajax("/trigger/run/" + run_id + "/submit", {
+                            method: "GET",
+                        }).fail(function(err){
+                            alert("Ajax failed with: " + JSON.stringify(err));
+                        }).done(function(data){
+                            if(data.submitted.length == 1){
+                                alert('Success!')
+                            }
+                            else if(data.error.length !== 0){
+                                alert('Not submitted, please check for errors for both auto results and manual result of this test run then try again.');
+                            }
+                        });
+                    },
+                    className: 'btn-success',
+                },
+
             ],
             select: true,
             selectorColumns: [
