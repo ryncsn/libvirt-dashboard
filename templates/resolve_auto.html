@@ -96,7 +96,7 @@
                             var d = this.data();
                             skip_case(d.case).done(function(data){
                                 row.data(data);
-                                row.draw();
+                                row.draw().rowCallback();
                             });
                         })
                     },
@@ -109,7 +109,9 @@
                             var row = this;
                             var d = this.data();
                             refresh_case(d.case, true, false).done(function(data){
-                                row.data(data).draw();
+                                _ajax_call("GET", d.case).done(function(data){
+                                    row.data(data).draw().rowCallback();
+                                });
                             });
                         })
                     },
@@ -123,7 +125,7 @@
                             var d = this.data();
                             refresh_case(d.case, true, true).done(function(data){
                                 _ajax_call("GET", d.case).done(function(data){
-                                    row.data(data).draw();
+                                    row.data(data).draw().rowCallback();
                                 });
                             });
                         })
@@ -177,6 +179,9 @@
                 if(!data.result){
                     $(row).addClass('error');
                 }
+                else{
+                    $(row).removeClass('error');
+                }
             },
             ajax: {
                 url: '{{ajax}}',
@@ -228,12 +233,12 @@
                     if($(event.target).hasClass('btn-ignore')){
                         skip_case(d.case).done(function(data){
                             row.data(data);
-                            row.draw();
+                            row.draw().rowCallback();
                         });
                     }
                     else if($(event.target).hasClass('btn-refresh')){
                         refresh_case(d.case).done(function(data){
-                            row.data(data).draw();
+                            row.data(data).draw().rowCallback();
                         });
                     }
                     else if($(event.target).hasClass('btn-delete')){

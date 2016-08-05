@@ -81,7 +81,7 @@
                             var d = this.data();
                             mark_case_pass(d.case).done(function(data){
                                 row.data(data);
-                                row.draw();
+                                row.draw().rowCallback();
                             });
                         })
                     },
@@ -95,7 +95,7 @@
                             var d = this.data();
                             mark_case_fail(d.case).done(function(data){
                                 row.data(data);
-                                row.draw();
+                                row.draw().rowCallback();
                             });
                         })
                     },
@@ -182,6 +182,9 @@
                 if(data.result == 'incomplete'){
                     $(row).addClass('error');
                 }
+                else{
+                    $(row).removeClass('error');
+                }
             },
             ajax: {
                 url: '{{ajax}}',
@@ -221,13 +224,13 @@
                     if($(event.target).hasClass('btn-mark-fail')){
                         mark_case_fail(d.case).done(function(data){
                             row.data(data);
-                            row.draw();
+                            row.draw().rowCallback();
                         });
                     }
                     else if($(event.target).hasClass('btn-mark-pass')){
                         mark_case_pass(d.case).done(function(data){
                             row.data(data);
-                            row.draw();
+                            row.draw().rowCallback();
                         });
                     }
                     else if($(event.target).hasClass('btn-delete')){

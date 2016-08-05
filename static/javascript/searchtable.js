@@ -40,7 +40,7 @@ $.fn.extend({
                     });
                     column.data().each(function(d, j){
                         if($.isArray(d)){
-                            selections = selections.concat($.map(d, function(n){return render(n)}));
+                            selections = selections.concat(render($.map(d, function(n){return n})));
                         }
                         else{
                             selections = selections.concat(render(d));
