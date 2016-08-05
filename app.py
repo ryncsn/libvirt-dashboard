@@ -135,7 +135,117 @@ class TestRunDetail(Resource):
         return run, 201
 
 
-def gen_manual_case_and_error(result, session):
+def _update_manual(autocase, manualcase_id, session,
+                   expected_results=None, from_results=None, to_result=None, comment=''):
+    manualcase = get_or_create(session, ManualResult, run_id=autocase.run_id, case=manualcase_id)
+    if expected_results:
+        if not manualcase.result in expected_results:
+            #print "expected + " + str(expected_results)+ "get "+ str(manualcase.result)
+            return None
+    if to_result:
+        if not from_results or manualcase.result in from_results:
+            manualcase.result = to_result
+        else:
+            #print "expected + " + str(from_results)+ "get "+str(manualcase.result)
+            pass
+    manualcase.time += float(autocase.time)
+    if not manualcase.comment:
+        manualcase.comment = comment
+    else:
+        manualcase.comment += "\n" + comment
+    return manualcase
+
+
+def gen_manual_case(result, caselink, session):
+    """
+    Take a unsaved result instance, generate it's ralated manual cases.
+
+    Need to clean all manual cases for a test run first.
+    """
+
+    if not caselink:
+        return (False, "No caselink")
+
+    if result.result.startswith('skipped'):
+        if not caselink.manualcases or len(caselink.manualcases) == 0:
+            return (False, "No manual case for skipped auto case")
+        for caselink_manualcase in caselink.manualcases:
+            if not _update_manual(result, caselink_manualcase.id, session,
+                                  expected_results = [None, 'incomplete', 'failed'],
+                                  from_results = [None], to_result = 'incomplete',
+                                  comment = ('Skipped Auto case: "%s"\n' % result.case)):
+                #print "Skip for non incomplete case"
+                pass
+        return (True, "Manual case updated.")
+
+    elif result.result == 'failed':
+        # Auto Case failed with message <result['failure']>
+        if not caselink.failures or len(caselink.failures) == 0:
+            return (False, "No manual case for failed auto case")
+        for failure in caselink.failures:
+            if re.match(failure.failure_regex, result.failure) is not None:
+                for case in failure.manualcases:
+                    if not _update_manual(result, case.id, session,
+                                          expected_results = [None, 'incomplete', 'failed'],
+                                          from_results = [None, 'incomplete'], to_result = 'failed',
+                                          comment = ('Failed auto case: "%s", BUG: "%s"\n' %
+                                                     (failure.bug.id, result.case))):
+                        #print "Failed for non incomplete case"
+                        pass
+        return (True, "Manual Case marked failed.")
+
+    elif result.result == 'passed':
+        if not caselink.manualcases or len(caselink.manualcases) == 0:
+            return (False, "No manual case for passed auto case")
+        for caselink_manualcase in caselink.manualcases:
+            ManualCasePassed=True
+            for related_autocase in caselink_manualcase.autocases:
+                related_result = AutoResult.query.get((result.run_id, related_autocase.id))
+                if not related_result and related_autocase != caselink:
+                    # This auto case passed, but some related auto case are not submitted yet.
+                    ManualCasePassed = False
+                    if not _update_manual(result, caselink_manualcase.id, session,
+                                          expected_results = [None, 'incomplete', 'failed'],
+                                          from_results = [None], to_result = 'incomplete',
+                                          comment = ('Passed Auto case: "%s"\n' % result.case)):
+                        #print "Incomplete case makred passed"
+                        pass
+                    break
+
+                elif related_result.skip is not None:
+                    # This auto case passed, but some related auto case are skipped.
+                    ManualCasePassed = False
+                    if not _update_manual(result, caselink_manualcase.id, session,
+                                          expected_results = [None, 'incomplete', 'failed'],
+                                          from_results = [None], to_result = 'incomplete',
+                                          comment = ('Passed Auto case: "%s"\n' % result.case)):
+                        #print "Skipped case makred passed"
+                        pass
+                    break
+
+                elif related_result.failure is not None:
+                    # This auto case passed, but some related auto case are failed.
+                    ManualCasePassed = False
+                    if not _update_manual(result, caselink_manualcase.id, session,
+                                          expected_results = [None, 'failed'],
+                                          from_results = [None], to_result = 'incomplete',
+                                          comment = ('Passed Auto case: "%s"\n' % result.case)):
+                        #print "Manual already failed, not properly marked"
+                        pass
+                    break
+
+            if ManualCasePassed:
+                # This auto case passed, and all related auto case are passed.
+                if not _update_manual(result, caselink_manualcase.id, session,
+                                      expected_results = [None, 'incomplete'],
+                                      from_results = [None, 'incomplete'], to_result = 'passed',
+                                      comment = ('Passed Auto case: "%s"\n' % result.case)):
+                    #print "Trying to pass already failed case"
+                    pass
+        return (True, "Manual Case updated.")
+
+
+def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=True):
     """
     Take a unsaved result instance, rewrite it's error and result
     with data in caselink.
@@ -144,81 +254,56 @@ def gen_manual_case_and_error(result, session):
     # Passed -> look up in linkages(manualcases), if all related autocase of a manualcase
     #           passed, mark the manualcase passed
     # Mark error when lookup failed
+    if gen_error:
+        result.error = None
+    if gen_result:
+        result.result = None
+
+    def _set_error(err):
+        if gen_error:
+            result.error = err
+
+    def _set_result(res):
+        if gen_result:
+            result.result = res
+
     try:
         this_autocase = CaseLink.AutoCase(result.case).refresh()
     except HTTPError as e:
         if e.response.status_code == 404:
-            result.error = 'No Caselink'
+            _set_error('No Caselink')
         else:
-            result.error = 'Caselink Failure'
-        return
+            _set_error('Caselink Failure')
+        return False, result.error
 
     if result.skip:
-        #TODO
-        result.result = 'Skip'
-        pass
+        _set_result('skipped')
 
     elif result.failure:
         # Auto Case failed with message <result['failure']>
-        BugMatched = False
+        BugFound = False
         for failure in this_autocase.failures:
             if re.match(failure.failure_regex, result.failure) is not None:
-                BugMatched = True
+                BugFound = True
+                _set_result('failed')
 
-                for case in failure.manualcases:
-                    manualcase = get_or_create(session, ManualResult, run_id=result.run_id, case=case.id)
-                    manualcase.result = 'failed'
-                    manualcase.time += float(result.time)
-                    if not manualcase.comment:
-                        manualcase.comment = ''
-                    if failure.bug.id not in manualcase.comment:
-                        manualcase.comment += ('Failed By BUG: "%s", Auto case: "%s"\n' %
-                                                (failure.bug.id, result.case))
-
-        if not BugMatched:
-            result.error = 'Unknown Issue'
-        else:
-            result.result = 'Known Issue'
-        return
+        if not BugFound:
+            _set_error('Unknown Issue')
 
     elif result.output:
-        ManualCasePassed = []
-        ManualCaseImcomplete = []
-        ManualCaseAlreadyFailed = []
-
         if not this_autocase.manualcases or len(this_autocase.manualcases) == 0:
-            result.error = 'No Linkage'
-            return
+            _set_error('No Linkage')
+        else:
+            _set_result('passed')
 
-        for caselink_manualcase in this_autocase.manualcases:
-            for related_autocase in caselink_manualcase.autocases:
-                # Check all related autocases covering the same manual case,
-                # manualcase can be marked as passed only if all ralated auto cases are passed.
-                related_result = AutoResult.query.get((result.run_id, related_autocase.id))
+    if not result.result:
+        return False, result.error
 
-                if not related_result or related_result.skip is not None:
-                    if related_autocase != this_autocase:
-                        manualcase = get_or_create(session, ManualResult, run_id=result.run_id, case=caselink_manualcase.id)
-                        manualcase.result = 'incomplete'
-                        manualcase.time += float(result.time)
-                        if not manualcase.comment:
-                            manualcase.comment = ''
-                        if result.case not in manualcase.comment:
-                            manualcase.comment += ('Passed Auto case: "%s"\n' % result.case)
-
-                elif related_result.failure is not None:
-                    # Failed Already
-                    pass
-
-                else:
-                    manualcase = get_or_create(session, ManualResult, run_id=result.run_id, case=caselink_manualcase.id)
-                    manualcase.result = 'passed'
-                    manualcase.time += float(result.time)
-                    if not manualcase.comment:
-                        manualcase.comment = ''
-                    if result.case not in manualcase.comment:
-                        manualcase.comment += ('Passed Auto case: "%s"\n' % result.case)
-        result.result = 'Pass'
+    else:
+        if gen_manual:
+            return gen_manual_case(result, this_autocase, session)
+        else:
+            return True, result.result
 
 
 class AutoResultList(Resource):
@@ -247,7 +332,7 @@ class AutoResultList(Resource):
 
         result_instance = AutoResult(**result)
 
-        gen_manual_case_and_error(result_instance, db.session)
+        (success, message) = refresh_result(result_instance, db.session)
 
         try:
             db.session.add(result_instance)
@@ -286,8 +371,9 @@ class AutoResultDetail(Resource):
         for key in request.json.keys():
             setattr(res, (key), result[(key)])
 
-        if not 'result' in request.json.keys():
-            gen_manual_case_and_error(res, db.session)
+        gen_result =  not 'result' in request.json.keys()
+        gen_error =  not 'error' in request.json.keys()
+        (success, message) = refresh_result(res, db.session, gen_result = gen_result, gen_error = gen_error)
 
         db.session.add(res)
         db.session.commit()
@@ -405,19 +491,68 @@ def resolve_manualcase(run_id):
 
 @app.route('/trigger/run/<int:run_id>/refresh', methods=['GET'])
 def refresh_testrun(run_id):
+    ret = {}
     ManualResult.query.filter(ManualResult.run_id == run_id).\
             delete(synchronize_session=False)
 
     for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
-        gen_manual_case_and_error(result_instance, db.session)
+        (success, message) = refresh_result(result_instance, db.session)
         db.session.add(result_instance)
+        if not success:
+            ret[result_instance.case] = message
 
     try:
         db.session.commit()
     except IntegrityError as e:
         db.session.rollback()
+        return jsonify({'message': 'db error'}), 500
 
-    return jsonify({'message': 'success'}), 200
+    if len(ret.keys()) == 0:
+        return jsonify({'message': 'success'}), 200
+    return jsonify(ret), 200
+
+
+@app.route('/trigger/run/<int:run_id>/auto/refresh', methods=['GET'])
+def refresh_auto(run_id):
+    ret = {}
+    for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
+        (success, message) = refresh_result(result_instance, db.session, gen_manual=False)
+        db.session.add(result_instance)
+        if not success:
+            ret[result_instance.case] = message
+
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({'message': 'db error'}), 500
+
+    if len(ret.keys()) == 0:
+        return jsonify({'message': 'success'}), 200
+    return jsonify(ret), 200
+
+
+@app.route('/trigger/run/<int:run_id>/manual/refresh', methods=['GET'])
+def refresh_manual(run_id):
+    ret = {}
+    ManualResult.query.filter(ManualResult.run_id == run_id).\
+            delete(synchronize_session=False)
+
+    for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
+        (success, message) = refresh_result(result_instance, db.session, gen_error=False, gen_result=False)
+        db.session.add(result_instance)
+        if not success:
+            ret[result_instance.case] = message
+
+    try:
+        db.session.commit()
+    except IntegrityError as e:
+        db.session.rollback()
+        return jsonify({'message': 'db error'}), 500
+
+    if len(ret.keys()) == 0:
+        return jsonify({'message': 'success'}), 200
+    return jsonify(ret), 200
 
 
 @app.route('/trigger/run/submit', methods=['GET'])
@@ -447,7 +582,6 @@ def submit_to_polarion(run_id=None):
 
         try:
             for record in AutoResult.query.filter(AutoResult.run_id == test_run.id):
-                print record
                 if not record.result:
                     raise ConflictError()
         except ConflictError:
