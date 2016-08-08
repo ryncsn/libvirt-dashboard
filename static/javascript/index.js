@@ -12,3 +12,13 @@ function prettier(data){
     }
     return data
 }
+
+$.whenWithProgress = function(arrayOfPromises, progessCallback) {
+    var cntr = 0;
+    for (var i = 0; i < arrayOfPromises.length; i++) {
+        arrayOfPromises[i].done(function() {
+            progressCallback(++cntr, arrayOfPromises.length);
+        });
+    }
+    return jQuery.when.apply(jQuery, arrayOfPromises);
+}

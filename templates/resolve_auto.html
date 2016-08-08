@@ -4,7 +4,6 @@
 <table class='table' id='column_table'>
     <thead>
         <tr>
-            <th></th>
             {% for col in column_names %}
             <th>{{ col }}</th>
             {% endfor %}
@@ -12,7 +11,6 @@
     </thead>
     <tfoot>
         <tr>
-            <th></th>
             {% for col in column_names %}
             <th>{{ col }}</th>
             {% endfor %}
@@ -37,15 +35,6 @@
 <script type="text/javascript" charset="utf-8">
     var error_panel = $("#_proto_error_panel").detach()
     var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
-
-    function format(row){
-        // Row child renderer.
-        d = row.data()
-        if(d.result){
-            return '<div class="alert alert-success" role="alert">Nothing to process</div> <div class="well detail-well"></div>'
-        }
-        return error_panel.html()
-    }
 
     function _ajax_call(method, case_name, data){
         return $.ajax("/api/run/" + run_id + "/auto/" + case_name + "/" , {
@@ -85,8 +74,8 @@
 
     $(document).ready(function() {
         var table = $('#column_table').DataSearchTable({
+            BaseTable: [DataTableWithChildRow, DataTableWithInlineButton],
             pageLength: 50,
-            dom: '<<"row" <"col-md-2"l><"col-md-6"B><"col-md-4"f>>r<t><"row"<"col-md-6"i><"col-md-6"p>>>',
             buttons: [
                 {
                     text: 'Skip selected',
@@ -161,13 +150,6 @@
                 },
             ],
             columns: [
-                {
-                    "data": null,
-                    "className": 'details-control',
-                    "orderable": false,
-                    "defaultContent": '<i class="fa fa-fw fa-plus" aria-hidden="true"></i>',
-                    "width": '10',
-                },
                 {% for col in column_datas %}
                 {
                     "data":"{{ col }}",
@@ -187,49 +169,18 @@
                 url: '{{ajax}}',
                 dataSrc: ''
             },
-            initComplete: function(settings, json) {
-            },
-        });
-
-        // Add event listener for opening and closing details
-        $('#column_table tbody').on('click', 'td.details-control', function(){
-            var tr = $(this).closest('tr');
-            var button = $(this).find('i');
-            var row = table.row(tr);
-            var d = row.data()
-
-            if (row.child.isShown()) {
-                // This row is already open - close it
-                $('div.slider', row.child()).slideUp(function(){
-                    row.child.hide();
-                    button.addClass('fa-plus');
-                    button.removeClass('fa-minus');
-                });
-            }
-
-            else {
-                // Open this row
-                row.child('<div class="slider row-child">' + format(row) + '</div>', 'no-padding').show();
-                button.removeClass('fa-plus');
-                button.addClass('fa-minus');
-
-                //Load Detail
-                $.get("/api/run/" + run_id + "/auto/" + d.case + "/")
-                .done(function(data){
-                    $('div.detail-well', row.child())
-                    .append("<p> Test Output: "+data.output.replace(/(?:\r\n|\r|\n)/g, '<br/>')+"</p>")
-                    .append("<p> Test Failure Message: "+data.failure+"</p>")
-                    .append("<p> Test Skip Message : "+data.skip+"</p>")
-                })
-                .fail(function(err){
-                    alert("Ajax Failed with " + JSON.stringify(err))
-                })
-                .always(function(){
-                    $('div.slider', row.child()).slideDown();
-                });
+            childContent: function(row, child, finish){
+                var d = row.data();
+                var head;
+                if(d.result){
+                    head = $($.parseHTML('<div><div class="alert alert-success" role="alert">Nothing to process</div> <div class="well detail-well"></div></div>'))
+                }
+                else{
+                    head = error_panel.clone();
+                }
 
                 //Add button event
-                $(row.child()).find("button").on('click', function(event){
+                $(head).find("button").on('click', function(event){
                     if($(event.target).hasClass('btn-ignore')){
                         skip_case(d.case).done(function(data){
                             row.data(data);
@@ -250,9 +201,25 @@
                         });
                     }
                 });
-            }
-        });
 
+                //Load Detail
+                $.get("/api/run/" + run_id + "/auto/" + d.case + "/")
+                .done(function(data){
+                    $('div.detail-well', head)
+                    .append("<p> Test Output: "+data.output.replace(/(?:\r\n|\r|\n)/g, '<br/>')+"</p>")
+                    .append("<p> Test Failure Message: "+data.failure+"</p>")
+                    .append("<p> Test Skip Message : "+data.skip+"</p>")
+                })
+                .fail(function(err){
+                    $('div.detail-well', head)
+                    .append("<p> <strong> Failed to Load Result detail! </strong> </p>")
+                })
+                .always(function(){
+                    child.append(head)
+                    finish()
+                });
+            },
+        });
     });
 </script>
 {% endblock %}
