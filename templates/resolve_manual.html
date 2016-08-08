@@ -81,7 +81,7 @@
                             var d = this.data();
                             mark_case_pass(d.case).done(function(data){
                                 row.data(data);
-                                row.draw().rowCallback();
+                                row.draw();
                             });
                         })
                     },
@@ -95,7 +95,7 @@
                             var d = this.data();
                             mark_case_fail(d.case).done(function(data){
                                 row.data(data);
-                                row.draw().rowCallback();
+                                row.draw();
                             });
                         })
                     },
@@ -224,13 +224,13 @@
                     if($(event.target).hasClass('btn-mark-fail')){
                         mark_case_fail(d.case).done(function(data){
                             row.data(data);
-                            row.draw().rowCallback();
+                            row.draw();
                         });
                     }
                     else if($(event.target).hasClass('btn-mark-pass')){
                         mark_case_pass(d.case).done(function(data){
                             row.data(data);
-                            row.draw().rowCallback();
+                            row.draw();
                         });
                     }
                     else if($(event.target).hasClass('btn-delete')){

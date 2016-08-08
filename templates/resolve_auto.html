@@ -96,7 +96,7 @@
                             var d = this.data();
                             skip_case(d.case).done(function(data){
                                 row.data(data);
-                                row.draw().rowCallback();
+                                row.draw();
                             });
                         })
                     },
@@ -110,7 +110,7 @@
                             var d = this.data();
                             refresh_case(d.case, true, false).done(function(data){
                                 _ajax_call("GET", d.case).done(function(data){
-                                    row.data(data).draw().rowCallback();
+                                    row.data(data).draw();
                                 });
                             });
                         })
@@ -125,7 +125,7 @@
                             var d = this.data();
                             refresh_case(d.case, true, true).done(function(data){
                                 _ajax_call("GET", d.case).done(function(data){
-                                    row.data(data).draw().rowCallback();
+                                    row.data(data).draw();
                                 });
                             });
                         })
@@ -233,12 +233,12 @@
                     if($(event.target).hasClass('btn-ignore')){
                         skip_case(d.case).done(function(data){
                             row.data(data);
-                            row.draw().rowCallback();
+                            row.draw();
                         });
                     }
                     else if($(event.target).hasClass('btn-refresh')){
                         refresh_case(d.case).done(function(data){
-                            row.data(data).draw().rowCallback();
+                            row.data(data).draw();
                         });
                     }
                     else if($(event.target).hasClass('btn-delete')){
