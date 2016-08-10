@@ -189,7 +189,9 @@
                     }
                     else if($(event.target).hasClass('btn-refresh')){
                         refresh_case(d.case).done(function(data){
-                            row.data(data).draw();
+                            _ajax_call("GET", d.case).done(function(data){
+                                row.data(data).draw();
+                            });
                         });
                     }
                     else if($(event.target).hasClass('btn-delete')){
