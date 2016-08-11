@@ -1,0 +1,36 @@
+/*
+ * Table styles
+ */
+table.dataTable {
+  font-size: 90%;
+}
+
+.table > tbody > tr > td {
+    vertical-align: middle;
+}
+
+table.dataTable tbody td.no-padding {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+div.slider {
+    padding-top: 15px;
+    display: none;
+}
+
+.dataTables_length,
+.dataTables_filter,
+.dataTables_paginate,
+.dataTables_info,
+.dt-buttons,
+.btn-group
+{
+    padding: 8px;
+    padding-left: 15px;
+    padding-right: 15px
+}
+
+tr.error {
+    background-color: lavenderblush;
+}

@@ -20,7 +20,7 @@
 {% endblock %}
 {% block footer %}
 
-<div id="_proto_error_panel">
+<div id="_proto_error_panel" class="hidden">
     <div class="panel panel-default">
         <div class="panel-body">
             <button type="button" class="btn btn-warning btn-ignore btn-result">Ignore/Skip</button>
@@ -33,7 +33,7 @@
 </div>
 
 <script type="text/javascript" charset="utf-8">
-    var error_panel = $("#_proto_error_panel").detach()
+    var error_panel = $("#_proto_error_panel").removeClass('hidden').detach()
     var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
 
     function _ajax_call(method, case_name, data){

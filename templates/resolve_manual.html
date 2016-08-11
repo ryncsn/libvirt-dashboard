@@ -21,7 +21,7 @@
 {% endblock %}
 {% block footer %}
 
-<div id="_proto_error_panel">
+<div id="_proto_error_panel" class="hidden">
     <div class="panel panel-default">
         <div class="panel-body">
             <button type="button" class="btn btn-warning btn-mark-fail btn-result">Mark Failed</button>
@@ -32,7 +32,7 @@
 </div>
 
 <script type="text/javascript" charset="utf-8">
-    var error_panel = $("#_proto_error_panel").detach()
+    var error_panel = $("#_proto_error_panel").removeClass('hidden').detach()
     var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
 
     function _ajax_call(method, case_name, data){
@@ -181,7 +181,7 @@
             childContent: function(row, child, finish){
                 var d = row.data()
                 // Open this row
-                var head = $($.parseHTML(error_panel.html()));
+                var head = error_panel.clone();
                 //Add button event
                 $(head).find("button").on('click', function(event){
                     if($(event.target).hasClass('btn-mark-fail')){
