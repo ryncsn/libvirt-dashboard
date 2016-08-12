@@ -1,0 +1,132 @@
+{% extends "index.html" %}
+{% block title %} Libvirt Dashboard - Generated Manuals {% endblock %}
+{% block extra_header %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/testrun-overview.css') }}"></link>
+{% endblock %}
+{% block content %}
+{% set column_names = ['Test Run', 'Date', 'Polarion Submit Date'] %}
+<div class="container">
+    <div class="panel panel-default">
+        <div class="panel-heading test-run-panel">Test Runs</div>
+        <table class='table' id='column_table'>
+            <thead>
+                <tr>
+                    {% for col in column_names %}
+                    <th>{{ col }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block footer %}
+<div id="_proto_child" class="hidden">
+    <div class="testrun-child row">
+        <div class="btn-group col-md-4">
+            <div class="dropdown dropdown-auto">
+                <button class="btn btn-default dropdown-toggle" type="button" id="runDropDown" data-toggle="dropdown" aria-haspopup="true">
+                    Auto Results
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="runDropDown">
+                    <li><a href="#" class='dashboard-resolve'>Resolve</a></li>
+                    <li role="separator" class="divider"></li>
+                    <li><a href="#" class='dashboard-table'>Table</a></li>
+                    <li><a href="#" class='dashboard-api'>API</a></li>
+                </ul>
+            </div>
+            <span class="label dashboard-info-auto"></span>
+        </div>
+        <div class="btn-group col-md-4">
+            <div class="dropdown dropdown-manual">
+                <button class="btn btn-default dropdown-toggle" type="button" id="runDropDown" data-toggle="dropdown" aria-haspopup="true">
+                    Manual Results
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="runDropDown">
+                    <li><a href="#" class='dashboard-resolve'>Resolve</a></li>
+                    <li role="separator" class="divider"></li>
+                    <li><a href="#" class='dashboard-table'>Table</a></li>
+                    <li><a href="#" class='dashboard-api'>API</a></li>
+                </ul>
+            </div>
+            <span class="label dashboard-info-manual "></span>
+        </div>
+        <div class="btn-group col-md-4">
+        <a class="btn btn-success dashboard-submit">
+            Submit to Polaroin
+        </a>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" charset="utf-8">
+    var child_panel = $("#_proto_child").removeClass('hidden').detach()
+
+    $(document).ready(function() {
+        var table = $('#column_table').DataTableWithChildRow({
+            pageLength: 100,
+            dom: '<t><"row"<"col-md-6"i><"col-md-6"p>>',
+            columns: [
+                {% set column_datas = ['name', 'date', 'submit_date'] %}
+                {% for col in column_datas %}
+                {
+                    "data":"{{ col }}",
+                    "render": prettier
+                },
+                {% endfor %}
+            ],
+            rowCallback: function(row, data, index){
+            },
+            ajax: {
+                url: '{{ url_for('test_run_list')}}',
+                dataSrc: ''
+            },
+
+            childContent: function(row, child, finish){
+                var d = row.data()
+                // Open this row
+                var head = child_panel.clone();
+                //Add button event
+                $(head).find(".dashboard-submit").click(function(){
+                    $.ajax("/trigger/run/" + d.id + "/submit", {
+                        method: "GET",
+                    }).fail(function(err){
+                        alert("Ajax failed with: " + JSON.stringify(err));
+                    }).done(function(data){
+                        if(data.submitted.length == 1){
+                            alert('Success!')
+                        }
+                        else if(data.error.length !== 0){
+                            alert('Not submitted, please check for errors for both auto results and manual result of this test run then try again.');
+                        }
+                    });
+                });
+                $(head).find(".dropdown-manual .dashboard-resolve").attr('href', '/table/run/' + d.id + '/manual/resolve')
+                $(head).find(".dropdown-manual .dashboard-table").attr('href', '/table/run/' + d.id + '/manual/')
+                $(head).find(".dropdown-manual .dashboard-api").attr('href', '/api/run/' + d.id + '/manual/')
+                if(d.manual_errors){
+                    $(head).find(".dashboard-info-manual").addClass("label-danger").text(d.manual_errors + ' errors to resolve.')
+                    $(head).find(".dashboard-submit").addClass('btn-disabled');
+                }
+                else{
+                    $(head).find(".dashboard-info-manual").addClass("label-info").text('Cleared!.')
+                }
+                $(head).find(".dropdown-auto .dashboard-resolve").attr('href', '/table/run/' + d.id + '/auto/resolve')
+                $(head).find(".dropdown-auto .dashboard-table").attr('href', '/table/run/' + d.id + '/auto/')
+                $(head).find(".dropdown-auto .dashboard-api").attr('href', '/api/run/' + d.id + '/auto/')
+                if(d.auto_errors){
+                    $(head).find(".dashboard-info-auto").addClass("label-danger").text(d.auto_errors + ' errors to resolve.')
+                    $(head).find(".dashboard-submit").addClass('btn-disabled');
+                }
+                else{
+                    $(head).find(".dashboard-info-auto").addClass("label-info").text('Cleared!.')
+                }
+                child.append(head);
+                finish();
+            }
+        });
+    });
+</script>
+{% endblock %}

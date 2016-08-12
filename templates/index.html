@@ -22,6 +22,8 @@
         <script type="text/javascript" charset="utf8" src="https://cdnjs.cloudflare.com/ajax/libs/pace/1.0.2/pace.js"></script>
         <script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='javascript/datatable_templates.js') }}"></script>
         <script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='javascript/index.js') }}"></script>
+        {% block extra_header %}
+        {% endblock %}
     </head>
     <body>
         <nav class="navbar navbar-default navbar-fixed-top">

@@ -7,6 +7,8 @@ from flask_migrate import Migrate, MigrateCommand
 from flask_restful import Resource, Api, reqparse, inputs
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
+
 
 from requests import HTTPError
 
@@ -91,7 +93,15 @@ class TestRunList(Resource):
         runs = Run.query.all()
         ret = []
         for run in runs:
+            manual_errors = db.session.query(func.count(ManualResult.case))\
+                    .filter(ManualResult.run_id == run.id)\
+                    .filter(ManualResult.result == "incomplete")
+            auto_errors = db.session.query(func.count(AutoResult.case))\
+                    .filter(AutoResult.run_id == run.id)\
+                    .filter(AutoResult.result == None)
             ret.append(run.as_dict())
+            ret[-1]['auto_errors'] = auto_errors.first()[0]
+            ret[-1]['manual_errors'] = manual_errors.first()[0]
         return ret
 
     def post(self):
@@ -463,6 +473,10 @@ def manual_result_table(run_id):
         ManualResult,
         '/api/run/' + str(run_id) + '/manual/',
         200)
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('testrun_overview.html')
 
 @app.route('/table/run/<int:run_id>/auto/resolve', methods=['GET'])
 def resolve_autocase(run_id):
