@@ -67,6 +67,17 @@
             pageLength: 50,
             BaseTable: [DataTableWithChildRow, DataTableWithInlineButton],
             buttons: [
+                'selectAll',
+                {
+                    text: 'Select All Shown',
+                    action: function ( e, dt, node, config ) {
+                        var filterSet = table.$('tr', {filter:'applied'});
+                        filterSet.each(function(){
+                            table.row(this).select();
+                        })
+                    }
+                },
+                'selectNone',
                 {
                     text: 'Pass selected',
                     action: function ( e, dt, node, config ) {
