@@ -21,15 +21,17 @@
 {% block footer %}
 
 <div id="_proto_error_panel" class="hidden">
-    <div class="panel panel-default">
+    <div class="panel panel-default detail-operatoins">
         <div class="panel-body">
             <button type="button" class="btn btn-warning btn-ignore btn-result">Ignore/Skip</button>
             <button type="button" class="btn btn-success btn-refresh btn-result">Refresh</button>
             <button type="button" class="btn btn-danger btn-delete btn-result">Delete</button>
         </div>
     </div>
-    <div class="well detail-well">
-    </div>
+    <pre>
+        <code class="detail-well">
+        </code>
+    </pre>
 </div>
 
 <script type="text/javascript" charset="utf-8">
@@ -182,12 +184,10 @@
             },
             childContent: function(row, child, finish){
                 var d = row.data();
-                var head;
+                var head = error_panel.clone();
                 if(d.result){
-                    head = $($.parseHTML('<div><div class="alert alert-success" role="alert">Nothing to process</div> <div class="well detail-well"></div></div>'))
-                }
-                else{
-                    head = error_panel.clone();
+                    head.find('.detail-operatoins').remove();
+                    head.prepend('<div class="alert alert-success" role="alert">Nothing to process</div>');
                 }
 
                 //Add button event
@@ -218,13 +218,13 @@
                 //Load Detail
                 $.get("/api/run/" + run_id + "/auto/" + d.case + "/")
                 .done(function(data){
-                    $('div.detail-well', head)
-                    .append("<p> Test Output: "+data.output.replace(/(?:\r\n|\r|\n)/g, '<br/>')+"</p>")
-                    .append("<p> Test Failure Message: "+data.failure+"</p>")
-                    .append("<p> Test Skip Message : "+data.skip+"</p>")
+                    $('code.detail-well', head)
+                    .append("<p> Test Output: "+ colorize(prettier(data.output)) +"</p>")
+                    .append("<p> Test Failure Message: " + colorize(prettier(data.failure)) +"</p>")
+                    .append("<p> Test Skip Message : "+ colorize(prettier(data.skip)) +"</p>")
                 })
                 .fail(function(err){
-                    $('div.detail-well', head)
+                    $('code.detail-well', head)
                     .append("<p> <strong> Failed to Load Result detail! </strong> </p>")
                 })
                 .always(function(){
