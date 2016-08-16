@@ -133,6 +133,19 @@ class TestRunDetail(Resource):
             return {'message': 'Test Run doesn\'t exists'}, 400
         return run.as_dict()
 
+    def delete(self, run_id):
+        res = Run.query.get(run_id)
+        if not res:
+            return {'message': 'Test Run doesn\'t exists'}, 400
+        for record in AutoResult.query.filter(AutoResult.run_id == run_id):
+            db.session.delete(record)
+        for record in ManualResult.query.filter(ManualResult.run_id == run_id):
+            db.session.delete(record)
+        db.session.delete(res)
+        db.session.commit()
+        return res.as_dict()
+
+
     def put(self, run_id):
         args = TestRunParser.parse_args()
         run = Run.query.get(run_id)

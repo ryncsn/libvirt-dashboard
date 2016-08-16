@@ -57,6 +57,9 @@
         <a class="btn btn-success dashboard-submit">
             Submit to Polaroin
         </a>
+        <a class="btn btn-danger dashboard-delete">
+            Delete
+        </a>
         </div>
     </div>
 </div>
@@ -103,6 +106,23 @@
                         }
                     });
                 });
+                $(head).find(".dashboard-delete").click(function(){
+                    var r = confirm("Delete this test run and all related autotest/manual results?");
+                    if (r == true){
+                        $.ajax("/api/run/" + d.id + "/", {
+                            method: "DELETE",
+                        }).fail(function(err){
+                            alert("Ajax failed with: " + JSON.stringify(err));
+                        }).done(function(data){
+                            alert('Test Run deleted.');
+                            table
+                            .row(row)
+                            .remove()
+                            .draw();
+                        });
+                    }
+                });
+
                 $(head).find(".dropdown-manual .dashboard-resolve").attr('href', '/table/run/' + d.id + '/manual/resolve')
                 $(head).find(".dropdown-manual .dashboard-table").attr('href', '/table/run/' + d.id + '/manual/')
                 $(head).find(".dropdown-manual .dashboard-api").attr('href', '/api/run/' + d.id + '/manual/')
