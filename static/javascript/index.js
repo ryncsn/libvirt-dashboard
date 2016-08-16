@@ -31,15 +31,21 @@ function colorize(data){
     //TODO performance
     if(typeof data === 'string'){
         var color_keyword = {
-            'INFO': '<span style="color:green">INFO</span>',
-            'DEBUG': '<span style="color:gray">DEBUG</span>',
-            'ERROR': '<span style="color:red">ERROR</span>',
-            'WARNI': '<span style="color:yellow">WARNI</span>',
-            'WARN': '<span style="color:yellow">WARN</span>',
+            'HEADER': 'blue',
+            'INFO': 'green',
+            'PASS': 'green',
+            'DEBUG': 'gray',
+            'SKIP': 'yellow',
+            'WARNI': 'yellow',
+            'WARN': 'yellow',
+            'ERROR': 'red',
+            'FAIL': 'red',
+            'TIMEOUT': 'red',
+            'INVALID': 'red',
         };
         var regex = Object.keys(color_keyword).join("|");
         data = data.replace(new RegExp("(" + regex + ")", "g"), function(m){
-            return color_keyword[m];
+            return '<span style="color:' + color_keyword[m] + '">' + m + '</span>'
         });
     }
     return data;
