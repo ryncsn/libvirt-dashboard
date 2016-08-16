@@ -1,14 +1,28 @@
 function prettier(data){
-    var regex = /^\s*$/ ;
+    var entityMap = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': '&quot;',
+        "'": '&#39;',
+        "/": '&#x2F;',
+        "\n\r": '<br/>',
+        "\n": '<br/>',
+        "\r": '<br/>',
+    };
+
+    var empty_regex = /^\s*$/ ;
     if(!data)
         return "---"
     if(data instanceof Array)
         if(data.length === 0)
             return "---"
     if(typeof data === 'string'){
-        if(data.match(regex))
+        if(data.match(empty_regex))
             return "---"
-        return data.replace(/(?:\r\n|\r|\n)/g, '<br/>');
+        return data.replace(new RegExp("(" + Object.keys(entityMap).join("|") + ")", "g"), function (s) {
+            return entityMap[s];
+        });
     }
     return data
 }
@@ -20,13 +34,12 @@ function colorize(data){
             'INFO': '<span style="color:green">INFO</span>',
             'DEBUG': '<span style="color:gray">DEBUG</span>',
             'ERROR': '<span style="color:red">ERROR</span>',
-            'WARN': '<span style="color:yellow">WARN</span>',
             'WARNI': '<span style="color:yellow">WARNI</span>',
+            'WARN': '<span style="color:yellow">WARN</span>',
         };
         var regex = Object.keys(color_keyword).join("|");
-        console.log("(" + regex + ")", "g");
-        data = data.replace(new RegExp("(" + regex + ")", "g"), function(m, key){
-            return color_keyword[key];
+        data = data.replace(new RegExp("(" + regex + ")", "g"), function(m){
+            return color_keyword[m];
         });
     }
     return data;
