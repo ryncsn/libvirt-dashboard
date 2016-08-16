@@ -67,7 +67,6 @@
             pageLength: 50,
             BaseTable: [DataTableWithChildRow, DataTableWithInlineButton],
             buttons: [
-                'selectAll',
                 {
                     text: 'Select All Shown',
                     action: function ( e, dt, node, config ) {
@@ -123,7 +122,7 @@
                     className: 'btn-danger',
                 },
                 {
-                    text: 'Regenerate Manual Results',
+                    text: 'Regenerate Results',
                     action: function ( e, dt, node, config ) {
                         $.ajax("/trigger/run/" + run_id + "/manual/refresh", {
                             method: "GET",
