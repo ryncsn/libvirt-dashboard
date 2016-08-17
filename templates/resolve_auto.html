@@ -78,6 +78,8 @@
         var table = $('#column_table').DataSearchTable({
             BaseTable: [DataTableWithChildRow, DataTableWithInlineButton],
             pageLength: 50,
+            "iDisplayLength": 20,
+            "bAutoWidth": false,
             buttons: [
                 {
                     text: 'Select All Shown',
