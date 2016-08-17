@@ -7,7 +7,14 @@
 {% set column_names = ['Test Run', 'Date', 'Polarion Submit Date'] %}
 <div class="container">
     <div class="panel panel-default">
-        <div class="panel-heading test-run-panel">Test Runs</div>
+        <div class="panel-heading test-run-panel">Test Runs
+            <a class="pull-right" href="/api/run/">
+                API
+            </a>
+            <a class="pull-right" href="/table/run/" style="padding-right: 10px;">
+                Table
+            </a>
+        </div>
         <table class='table' id='column_table'>
             <thead>
                 <tr>
