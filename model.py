@@ -89,6 +89,11 @@ class AutoResult(db.Model):
     error = db.Column(db.String(255), nullable=True)
     result = db.Column(db.String(255), nullable=True)
 
+    @validates('result')
+    def validate_result(self, key, result):
+        assert result in ['passed', 'failed', None, ]
+        return result
+
     def __repr__(self):
         return '<TestResult %s-%s>' % (self.run_id, self.case)
 
