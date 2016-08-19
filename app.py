@@ -93,15 +93,7 @@ class TestRunList(Resource):
         runs = Run.query.all()
         ret = []
         for run in runs:
-            manual_errors = db.session.query(func.count(ManualResult.case))\
-                    .filter(ManualResult.run_id == run.id)\
-                    .filter(ManualResult.result == "incomplete")
-            auto_errors = db.session.query(func.count(AutoResult.case))\
-                    .filter(AutoResult.run_id == run.id)\
-                    .filter(AutoResult.result == None)
-            ret.append(run.as_dict())
-            ret[-1]['auto_errors'] = auto_errors.first()[0]
-            ret[-1]['manual_errors'] = manual_errors.first()[0]
+            ret.append(run.as_dict(detailed=True))
         return ret
 
     def post(self):
@@ -131,7 +123,7 @@ class TestRunDetail(Resource):
         run = Run.query.get(run_id)
         if not run:
             return {'message': 'Test Run doesn\'t exists'}, 400
-        return run.as_dict()
+        return run.as_dict(detailed=True)
 
     def delete(self, run_id):
         res = Run.query.get(run_id)

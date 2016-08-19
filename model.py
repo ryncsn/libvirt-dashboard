@@ -1,6 +1,7 @@
 from app import db
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.orm import validates
+from sqlalchemy import func
 
 def get_or_create(session, model, **kwargs):
     instance = session.query(model).filter_by(**kwargs).first()
@@ -45,13 +46,26 @@ class Run(db.Model):
         for key, value in run.iteritems():
             setattr(self, key, value)
 
-    def as_dict(self):
+    def as_dict(self, detailed=False):
         ret = {}
         for c in self.__table__.columns:
             if c.name != 'date':
                 ret[c.name] = getattr(self, c.name)
         ret['date'] = self.date.isoformat()
         ret['polarion_id'] = self.polarion_id
+        if detailed:
+            auto_results = dict(db.session.query(AutoResult.result, func.count(AutoResult.case))\
+                                .filter(AutoResult.run_id == self.id)\
+                                .group_by(AutoResult.result).all())
+            manual_results = dict(db.session.query(ManualResult.result, func.count(ManualResult.case))\
+                                  .filter(ManualResult.run_id == self.id)\
+                                  .group_by(ManualResult.result).all())
+            ret['auto_errors'] = auto_results.get(None, 0)
+            ret['auto_passed'] = auto_results.get('passed', 0)
+            ret['auto_failed'] = auto_results.get('failed', 0)
+            ret['manual_errors'] = manual_results.get('incomplete', 0)
+            ret['manual_passed'] = manual_results.get('passed', 0)
+            ret['manual_failed'] = manual_results.get('failed', 0)
         return ret
 
 
