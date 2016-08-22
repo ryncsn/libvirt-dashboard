@@ -51,7 +51,7 @@
 
     function skip_case(case_name){
         return _ajax_call("PUT", case_name, {
-            result: "skipped by dashboard"
+            result: "ignored"
         })
     }
 
@@ -92,7 +92,7 @@
                 },
                 'selectNone',
                 {
-                    text: 'Skip selected',
+                    text: 'Ignore selected',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
