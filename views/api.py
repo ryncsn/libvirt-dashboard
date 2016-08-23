@@ -232,10 +232,10 @@ class ErrorList(Resource):
         return ret
 
 
-api.add_resource(TestRunList, '/api/run/', endpoint='test_run_list')
-api.add_resource(TestRunDetail, '/api/run/<int:run_id>/', endpoint='test_run_detail')
-api.add_resource(AutoResultList, '/api/run/<int:run_id>/auto/', endpoint='auto_result_list')
-api.add_resource(AutoResultDetail, '/api/run/<int:run_id>/auto/<string:case_name>/', endpoint='auto_result_detail')
-api.add_resource(ManualResultList, '/api/run/<int:run_id>/manual/', endpoint='manual_result_list')
-api.add_resource(ManualResultDetail, '/api/run/<int:run_id>/manual/<string:case_name>/', endpoint='manual_result_detail')
-api.add_resource(ErrorList, '/api/error/', endpoint='error_list')
+api.add_resource(TestRunList, '/run/', endpoint='test_run_list')
+api.add_resource(TestRunDetail, '/run/<int:run_id>/', endpoint='test_run_detail')
+api.add_resource(AutoResultList, '/run/<int:run_id>/auto/', endpoint='auto_result_list')
+api.add_resource(AutoResultDetail, '/run/<int:run_id>/auto/<string:case_name>/', endpoint='auto_result_detail')
+api.add_resource(ManualResultList, '/run/<int:run_id>/manual/', endpoint='manual_result_list')
+api.add_resource(ManualResultDetail, '/run/<int:run_id>/manual/<string:case_name>/', endpoint='manual_result_detail')
+api.add_resource(ErrorList, '/error/', endpoint='error_list')

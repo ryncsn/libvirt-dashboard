@@ -14,7 +14,7 @@ def index():
     return render_template('testrun_overview.html')
 
 
-@dashboard.route('/table/run/<int:run_id>/auto/resolve', methods=['GET'])
+@dashboard.route('/resolve/run/<int:run_id>/auto/', methods=['GET'])
 def resolve_autocase(run_id):
     columns = ["case", "time", "error", "result"]
     return render_template('resolve_auto.html',
@@ -23,7 +23,7 @@ def resolve_autocase(run_id):
                            ajax='/api/run/' + str(run_id) + '/auto/')
 
 
-@dashboard.route('/table/run/<int:run_id>/manual/resolve', methods=['GET'])
+@dashboard.route('/resolve/run/<int:run_id>/manual/', methods=['GET'])
 def resolve_manualcase(run_id):
     columns = ["case", "time", "comment", "result"]
     return render_template('resolve_manual.html',

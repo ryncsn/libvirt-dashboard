@@ -18,21 +18,21 @@ def column_to_table(model, ajax_url, code, extra_column=[]):
     return resp
 
 
-@table.route('/table/run/', methods=['GET'])
+@table.route('/run/', methods=['GET'])
 def test_run_table():
     return column_to_table(
         Run,
         '/api/run/',
         200)
 
-@table.route('/table/run/<int:run_id>/auto/', methods=['GET'])
+@table.route('/run/<int:run_id>/auto/', methods=['GET'])
 def auto_result_table(run_id):
     return column_to_table(
         AutoResult,
         '/api/run/' + str(run_id) + '/auto/',
         200)
 
-@table.route('/table/run/<int:run_id>/manual/', methods=['GET'])
+@table.route('/run/<int:run_id>/manual/', methods=['GET'])
 def manual_result_table(run_id):
     return column_to_table(
         ManualResult,
