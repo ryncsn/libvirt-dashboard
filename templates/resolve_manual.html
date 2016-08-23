@@ -80,7 +80,7 @@
                 },
                 'selectNone',
                 {
-                    text: 'Pass selected',
+                    text: 'Mark Pass',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
@@ -91,10 +91,11 @@
                             });
                         })
                     },
-                    className: 'btn-default',
+                    className: 'btn-warning',
+                    titleAttr: 'Mark selected manual test result as passed.'
                 },
                 {
-                    text: 'Fail selected',
+                    text: 'Makr Fail',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
@@ -105,10 +106,11 @@
                             });
                         })
                     },
-                    className: 'btn-default',
+                    className: 'btn-warning',
+                    titleAttr: 'Mark selected manual test result as failed.'
                 },
                 {
-                    text: 'Delete selected',
+                    text: 'Delete',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
@@ -122,9 +124,10 @@
                         });
                     },
                     className: 'btn-danger',
+                    titleAttr: 'Delete selected test results, to recovery deleted manual test result, you have to regenerate all manual test cases.'
                 },
                 {
-                    text: 'Regenerate Results',
+                    text: 'Regenerate',
                     action: function ( e, dt, node, config ) {
                         $.ajax("/trigger/run/" + run_id + "/manual/refresh", {
                             method: "GET",
@@ -140,7 +143,8 @@
                             }
                         });
                     },
-                    className: 'btn-danger',
+                    className: 'btn-info',
+                    titleAttr: 'Regenerate all Manual test result according to auto test results and linkage on Caselink. (slow, page will be refreshed after finished)'
                 },
                 {
                     text: 'Submit to Polarion',

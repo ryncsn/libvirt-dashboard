@@ -92,21 +92,7 @@
                 },
                 'selectNone',
                 {
-                    text: 'Ignore selected',
-                    action: function ( e, dt, node, config ) {
-                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-                            var row = this;
-                            var d = this.data();
-                            skip_case(d.case).done(function(data){
-                                row.data(data);
-                                row.draw();
-                            });
-                        })
-                    },
-                    className: 'btn-default',
-                },
-                {
-                    text: 'Refresh selected',
+                    text: 'Refresh',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
@@ -118,10 +104,26 @@
                             });
                         })
                     },
-                    className: 'btn-default',
+                    className: 'btn-success',
+                    titleAttr: 'Refresh selected test results, Libvirt-Dashboard will lookup in Caselink, override test results\' "error" column.',
                 },
                 {
-                    text: 'Reset selected',
+                    text: 'Ignore',
+                    action: function ( e, dt, node, config ) {
+                        table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+                            var row = this;
+                            var d = this.data();
+                            skip_case(d.case).done(function(data){
+                                row.data(data);
+                                row.draw();
+                            });
+                        })
+                    },
+                    className: 'btn-warning',
+                    titleAttr: 'Ignore selected test results, set test\'s result to ignored and no longer consider this case as a failure bloking polarion submition anymore.',
+                },
+                {
+                    text: 'Reset',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
@@ -134,9 +136,10 @@
                         })
                     },
                     className: 'btn-warning',
+                    titleAttr: 'Reset selected test results, Libvirt-Dashboard will lookup in Caselink, override test results\' "error" and "result" column.',
                 },
                 {
-                    text: 'Delete selected',
+                    text: 'Delete',
                     action: function ( e, dt, node, config ) {
                         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
                             var row = this;
@@ -150,6 +153,7 @@
                         });
                     },
                     className: 'btn-danger',
+                    titleAttr: 'Delete selected test results, can\'t recovery once deleted.'
                 },
             ],
             select: true,

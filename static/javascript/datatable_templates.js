@@ -96,7 +96,7 @@ function DataSearchTable(param){
 }
 
 function DataTableWithInlineButton(param){
-    param.dom = '<<"row" <"col-md-2"l><"col-md-6"B><"col-md-4"f>>r<t><"row"<"col-md-6"i><"col-md-6"p>>>';
+    param.dom = '<<"row" <"col-md-2"l><"col-md-8"B><"col-md-2"f>>r<t><"row"<"col-md-6"i><"col-md-6"p>>>';
     var BaseTable = param.BaseTable || this.DataTable;
     if (BaseTable instanceof Array){
         Base = param.BaseTable.shift();
