@@ -1,0 +1,6 @@
+Flask
+flask-restful
+Flask-SQLAlchemy
+Flask-Migrate
+requests
+#pylarion

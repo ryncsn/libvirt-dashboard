@@ -1,1 +1,7 @@
-dependencies: Flask flask-restful Flask-SQLAlchemy pylarion Flask-Migrate requests
+A webservice to manage auto test cases statics, powered by Flask.
+
+Install Requirement:
+pip install -r requirement.txt
+
+Run Server:
+./app.py runserver
