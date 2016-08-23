@@ -1,6 +1,11 @@
-import utils.polarion as Polarion
 from flask import Blueprint, Markup, render_template, request, jsonify
 from model import db, AutoResult, ManualResult, refresh_result, Run
+
+try:
+    import utils.polarion as Polarion
+    PYLARION_INSTALLED = True
+except ImportError:
+    PYLARION_INSTALLED = False
 
 dashboard = Blueprint('dashboard', __name__)
 
@@ -118,6 +123,9 @@ def refresh_manual(run_id):
 @dashboard.route('/trigger/run/submit', methods=['GET'])
 @dashboard.route('/trigger/run/<int:run_id>/submit', methods=['GET'])
 def submit_to_polarion(run_id=None):
+    if not PYLARION_INSTALLED:
+        return jsonify({'message': 'Pylarion not installed, you need to\
+                        install it manually or Pylarion support is disabled.'}), 200
     submitted_runs = []
     error_runs = []
     class ConflictError(Exception):
