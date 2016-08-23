@@ -1,15 +1,6 @@
 #!/usr/bin/env python
-from flask import Flask, request, Markup
-from flask import render_template, make_response, jsonify
-from flask_script import Manager
-from flask_migrate import Migrate, MigrateCommand
-from flask_restful import Resource, Api, reqparse, inputs
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import func
-from requests import HTTPError
-
 # Load Flask and config
+from flask import Flask
 app = Flask(__name__)
 app.config.from_object('config.ActiveConfig')
 
@@ -25,7 +16,9 @@ app.register_blueprint(table)
 app.register_blueprint(dashboard)
 app.register_blueprint(restful_api)
 
-# Load Migration
+# Load Manager and Migration
+from flask_migrate import Migrate, MigrateCommand
+from flask_script import Manager
 migrate = Migrate(app, db)
 manager = Manager(app)
 manager.add_command('db', MigrateCommand)
