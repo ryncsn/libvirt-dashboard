@@ -1,116 +1,114 @@
 #!/bin/env python
-import requests
+import sys
+import os
+import app
+import unittest
+import tempfile
 
-DASHBOARD = 'http://127.0.0.1:5000/api/'
-
-
-def debug_post(url, json={}):
-    res = requests.post(url, json=json)
-    print "REQ:" + str(url)
-    print "DATA:" + str(json)
-    print "GOT:" + str(res)
-    print "IN JSON:" + str(res.json())
-    return res
-
-res = debug_post(DASHBOARD + 'run/', json={
-    "arch": "x86",
-    "build": "2.0.1",
-    "component": "libvirt",
-    "date": "2016-07-18T17:02:28.798848",
-    "description": "debuging",
-    "framework": "libvirt-autotest",
-    "name": "libvirt-RHEL-7.3-runtest-x86_64-function-migration",
-    "polarion_id": "Libvirt-Auto-Record-1",
-    "project": "VIRTTP",
-    "type": "function",
-    "version": "7.3"
-})
-
-run_id = res.json()['id']
-
-for case in [
-        "a.b.c.d",
-        "a.b.c.4.e",
-        "a.b.c.3.e",
-        "a.b.c.2.e",
-        "a.b.c.1.e",
-        "a.b.c.4.f",
-        "a.b.c.3.f",
-        "a.b.c.2.f",
-        "a.b.c.1.f"]:
-
-    debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-        "output": "WOW",
-        "time": "123.456",
-        "case": case,
-    })
+from flask import json, jsonify
 
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 1",
-    "case": "1.1.1"
-})
+class DashboardTestCase(unittest.TestCase):
+    keep_data = False
+    def setUp(self):
+        (self.db_fd, self.db_fn) = tempfile.mkstemp()
+        app.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + self.db_fn
+        app.app.config['TESTING'] = True
+        self.app = app.app.test_client()
+        app.init_db()
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 2",
-    "case": "1.2.1"
-})
+    def tearDown(self):
+        os.close(self.db_fd)
+        os.unlink(self.db_fn)
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 2",
-    "case": "1.2.2"
-})
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 2",
-    "case": "1.2.3"
-})
+class EmptyDBTest(DashboardTestCase):
+    def test_empty_db(self):
+        rv = self.app.get('/api/run/')
+        assert b'[]' in rv.data
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 2",
-    "case": "1.2.4"
-})
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 3",
-    "case": "1.3.1"
-})
+class TestResultSubmitTest(DashboardTestCase):
+    #TODO: Keep data
+    def submit_test_run(self):
+        post_data = {
+            "arch": "x86",
+            "build": "2.0.1",
+            "component": "libvirt",
+            "date": "2016-07-18T17:02:28.798848",
+            "description": "debuging",
+            "framework": "libvirt-autotest",
+            "name": "libvirt-RHEL-7.3-runtest-x86_64-function-migration",
+            "polarion_id": "Libvirt-Auto-Record-1",
+            "project": "VIRTTP",
+            "type": "function",
+            "version": "7.3"
+        }
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 3",
-    "case": "1.3.2"
-})
+        rv = self.app.post('/api/run/', data=post_data);
+        rv_data = json.loads(rv.data)
+        for key in post_data:
+            assert key in rv_data
+            assert post_data[key] == rv_data[key]
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure 3",
-    "case": "1.3.3"
-})
+        assert "id" in rv_data
+        self.run_id = str(rv_data.get("id"))
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "case": "1.3.4"
-})
+    def submit_auto_success_result(self, name):
+        post_data = {
+            "output": "OUTPUT CONTENT",
+            "time": "1.345",
+            "case": name,
+        }
+        rv = self.app.post('/api/run/' + self.run_id + "/auto/", data=post_data);
+        rv_data = json.loads(rv.data)
+        for key in ["time", "case"]:
+            assert key in rv_data
+            #TODO: Number / String
+            assert str(post_data[key]) == str(rv_data[key])
 
-debug_post(DASHBOARD + 'run/' + str(run_id) + "/auto/", json={
-    "output": "WOW",
-    "time": "123.456",
-    "failure": "Failure UnKnown",
-    "case": "1.4.1"
-})
+
+    def submit_auto_failed_result(self, name, failure):
+        post_data = {
+            "output": "OUTPUT CONTENT",
+            "time": "1.345",
+            "case": name,
+            "failure": failure
+        }
+        rv = self.app.post('/api/run/' + self.run_id + "/auto/", data=post_data);
+        rv_data = json.loads(rv.data)
+        for key in ["time", "case"]:
+            assert key in rv_data
+            assert str(post_data[key]) == str(rv_data[key])
+
+
+    def test_run(self):
+        self.submit_test_run()
+        for case in ["a.b.c.d",
+                     "a.b.c.4.e",
+                     "a.b.c.3.e",
+                     "a.b.c.2.e",
+                     "a.b.c.1.e",
+                     "a.b.c.4.f",
+                     "a.b.c.3.f",
+                     "a.b.c.2.f",
+                     "a.b.c.1.f",
+                     "1.3.4"]:
+            self.submit_auto_success_result(case)
+
+        for failure, case in [
+            ("Failure 1", "1.1.1"),
+            ("Failure 2", "1.2.1"),
+            ("Failure 2", "1.2.2"),
+            ("Failure 2", "1.2.3"),
+            ("Failure 2", "1.2.4"),
+            ("Failure 3", "1.3.1"),
+            ("Failure 3", "1.3.2"),
+            ("Failure 3", "1.3.3"),
+            ("Failure UnKnown", "1.4.1")]:
+            self.submit_auto_failed_result(case, failure)
+
+
+if __name__ == '__main__':
+    unittest.main()
+    sys.exit(0)

@@ -29,8 +29,11 @@ def nl2br_simple(s):
     s = s.replace('\\n', ';')
     return Markup(s)
 
-# Start the server
-if __name__ == '__main__':
+def init_db():
     with app.app_context():
         db.create_all()
+
+# Start the server
+if __name__ == '__main__':
+    init_db()
     manager.run()
