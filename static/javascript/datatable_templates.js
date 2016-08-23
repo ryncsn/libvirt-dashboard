@@ -1,6 +1,6 @@
 function DataSearchTable(param){
     // Setup - First add a text input to each footer cell
-    that = this
+    var that = this
     this.find('tfoot th').each(function(){
         var title = that.find('thead th').eq($(this).index()).text();
         if(title.length > 0){
@@ -33,34 +33,54 @@ function DataSearchTable(param){
                 .appendTo($(column.footer()).empty())
                 .on('change', function () {
                     var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                    if(selectorColumns[title].strict){
+                        var reg = val ? "^" + val + "$" : '^$';
+                    }
+                    else{
+                        var reg = val ? val : '';
+                    }
                     column
-                    .search( val ? val : '', true, false )
+                    .search(reg , true, false )
                     .draw();
                 });
                 column.data().each(function(d, j){
                     if($.isArray(d)){
-                        selections = selections.concat(render($.map(d, function(n){return n})));
+                        if(d.length == 0){
+                            var new_select = render(d);
+                            if(selections.indexOf(new_select) == -1){
+                                selections.push(new_select);
+                            }
+                        }
+                        for (var i = 0, len = d.length; i < len; i++) {
+                            var new_select = render(d[i]);
+                            if(selections.indexOf(new_select) == -1){
+                                selections.push(new_select);
+                            };
+                        }
                     }
                     else{
-                        selections = selections.concat(render(d));
+                        var new_select = render(d);
+                        if(selections.indexOf(new_select) == -1){
+                            selections.push(new_select);
+                        };
                     }
                 });
+                selections.sort();
                 $.each(
-                    $.grep(selections, function(el, index) {
-                        return index === $.inArray(el, selections);
-                    }),
+                    selections,
                     function(key, value){
                         select.append('<option value="'+value+'">'+value+'</option>');
                     }
                 );
             }
             // Apply the search
-            var that = this;
-            $('input', this.footer()).on('keyup change', function(){
-                that
-                .search( this.value)
-                .draw();
-            });
+            if(column.visible()){
+                $('input', column.footer()).on('keyup change', function(){
+                    column
+                    .search(this.value)
+                    .draw();
+                });
+            }
         });
         if(initCompleteNext)
             initCompleteNext.apply(this, [setting, json]);
@@ -114,13 +134,20 @@ function DataTableWithChildRow(param){
             var button = $(this).find('i');
             var row = table.row(tr);
 
-            if (row.child.isShown()) {
-                // This row is already open - close it
+            function slideDown(){
+                $('div.slider', row.child()).slideDown();
+            }
+
+            function slideUp(){
                 $('div.slider', row.child()).slideUp(function(){
                     row.child.hide();
                     button.addClass('fa-plus');
                     button.removeClass('fa-minus');
                 });
+            }
+
+            if (row.child.isShown()) {
+                slideUp();
             }
             else {
                 // Open this row
@@ -129,9 +156,7 @@ function DataTableWithChildRow(param){
                 button.addClass('fa-minus');
 
                 //Load Detail
-                param.childContent(row, $(row.child()).find(".child-content"), function(){
-                    $('div.slider', row.child()).slideDown();
-                });
+                param.childContent(row, $(row.child()).find(".child-content"), slideDown, slideUp);
             }
         });
         if(initCompleteNext)
