@@ -16,7 +16,7 @@ def index():
 
 @dashboard.route('/resolve/run/<int:run_id>/auto/', methods=['GET'])
 def resolve_autocase(run_id):
-    columns = ["case", "time", "error", "result"]
+    columns = ["case", "time", "result", "error", "linkage_result"]
     return render_template('resolve_auto.html',
                            column_names=columns,
                            column_datas=columns,
@@ -150,7 +150,7 @@ def submit_to_polarion(run_id=None):
 
         try:
             for record in AutoResult.query.filter(AutoResult.run_id == test_run.id):
-                if not record.result:
+                if not record.linkage_result:
                     raise ConflictError()
         except ConflictError:
             error_runs.append(test_run.as_dict())

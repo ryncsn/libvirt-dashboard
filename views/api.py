@@ -30,7 +30,7 @@ AutoResultParser.add_argument('failure', default=None)
 AutoResultParser.add_argument('source', default=None)
 AutoResultParser.add_argument('skip', default=None)
 AutoResultParser.add_argument('error', default=None)
-AutoResultParser.add_argument('result', default=None)
+AutoResultParser.add_argument('linkage_result', default=None)
 AutoResultParser.add_argument('comment', default=None)
 
 AutoResultUpdateParser = AutoResultParser.copy()

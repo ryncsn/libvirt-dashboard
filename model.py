@@ -62,9 +62,9 @@ class Run(db.Model):
         ret['date'] = self.date.isoformat()
         ret['polarion_id'] = self.polarion_id
         if detailed:
-            auto_results = dict(db.session.query(AutoResult.result, func.count(AutoResult.case))\
+            auto_results = dict(db.session.query(AutoResult.linkage_result, func.count(AutoResult.case))\
                                 .filter(AutoResult.run_id == self.id)\
-                                .group_by(AutoResult.result).all())
+                                .group_by(AutoResult.linkage_result).all())
             manual_results = dict(db.session.query(ManualResult.result, func.count(ManualResult.case))\
                                   .filter(ManualResult.run_id == self.id)\
                                   .group_by(ManualResult.result).all())
@@ -87,15 +87,25 @@ class AutoResult(db.Model):
     time = db.Column(db.Float(), nullable=False)
     skip = db.Column(db.String(65535), nullable=True)
     failure = db.Column(db.String(65535), nullable=True)
-    output = db.Column(db.String(65535), nullable=True)
-    source = db.Column(db.String(65535), nullable=True)
+    output = db.Column(db.Text(), nullable=True)
+    source = db.Column(db.Text(), nullable=True)
     comment = db.Column(db.String(65535), nullable=True)
 
     # If bugs is not None, manualcases means cases failed
     # If bugs is None, manualcases means cases passed
     # If error is not None, dashboard faild to look up bug/cases for this autocase
     error = db.Column(db.String(255), nullable=True)
-    result = db.Column(db.String(255), nullable=True)
+    linkage_result = db.Column(db.String(255), nullable=True)
+
+    @hybrid_property
+    def result(self):
+        if self.skip:
+            return 'skipped'
+        if self.failure:
+            return 'failed'
+        if self.output:
+            return 'passed'
+        return None
 
     @validates('result')
     def validate_result(self, key, result):
@@ -114,6 +124,7 @@ class AutoResult(db.Model):
         for c in self.__table__.columns:
             if c.name not in ['date', 'output']:
                 ret[c.name] = getattr(self, c.name)
+        ret['result'] = self.result
         if not detailed:
             ret['output'] = 'Not showing'
         else:
@@ -277,7 +288,7 @@ def gen_manual_case(result, caselink, session):
 
 def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=True):
     """
-    Take a AutoResult instance, rewrite it's error and result
+    Take a AutoResult instance, rewrite it's error and linkage_result
     with data in caselink.
     """
     # Failed -> look up in failures, if any bug matches, mark manualcase failed
@@ -287,7 +298,7 @@ def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=
     if gen_error:
         result.error = None
     if gen_result:
-        result.result = None
+        result.linkage_result = None
 
     def _set_error(err):
         if gen_error:
@@ -295,7 +306,7 @@ def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=
 
     def _set_result(res):
         if gen_result:
-            result.result = res
+            result.linkage_result = res
 
     try:
         this_autocase = CaseLink.AutoCase(result.case).refresh()
@@ -326,11 +337,11 @@ def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=
         else:
             _set_result('passed')
 
-    if not result.result:
+    if not result.linkage_result:
         return False, result.error
 
     else:
         if gen_manual:
             return gen_manual_case(result, this_autocase, session)
         else:
-            return True, result.result
+            return True, result.linkage_result

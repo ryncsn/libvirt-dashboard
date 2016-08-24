@@ -51,7 +51,7 @@
 
     function skip_case(case_name){
         return _ajax_call("PUT", case_name, {
-            result: "ignored"
+            linkage_result: "ignored"
         })
     }
 
@@ -166,6 +166,11 @@
                     column:"result",
                     render: prettier
                 },
+                {
+                    column:"linkage_result",
+                    render: prettier
+                },
+
             ],
             columns: [
                 {% for col in column_datas %}
@@ -176,7 +181,7 @@
                 {% endfor %}
             ],
             rowCallback: function(row, data, index){
-                if(!data.result){
+                if(!data.linkage_result){
                     $(row).addClass('error');
                 }
                 else{
@@ -190,7 +195,7 @@
             childContent: function(row, child, finish){
                 var d = row.data();
                 var head = error_panel.clone();
-                if(d.result){
+                if(d.linkage_result){
                     head.find('.detail-operatoins').remove();
                     head.prepend('<div class="alert alert-success" role="alert">Nothing to process</div>');
                 }
