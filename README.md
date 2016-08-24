@@ -8,3 +8,6 @@ Run Server:
 
 Test:
 ./test.py
+
+Upgrade db from older version:
+./app.py db upgrade
