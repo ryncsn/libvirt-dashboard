@@ -8,10 +8,10 @@
 <div class="container">
     <div class="panel panel-default">
         <div class="panel-heading test-run-panel">Test Runs
-            <a class="pull-right" href="/api/run/">
+            <a class="pull-right" href="/api/run/" title="JSON format">
                 API
             </a>
-            <a class="pull-right" href="/table/run/" style="padding-right: 10px;">
+            <a class="pull-right" href="/table/run/" style="padding-right: 10px;" title="View in more detailed table">
                 Table
             </a>
         </div>
@@ -37,10 +37,10 @@
                     <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="runDropDown">
-                    <li><a href="#" class='dashboard-resolve'>Resolve</a></li>
+                    <li><a href="#" class='dashboard-resolve' title='View Test Results and Resolve existing errors manually'>View and resolve</a></li>
                     <li role="separator" class="divider"></li>
-                    <li><a href="#" class='dashboard-table'>Table</a></li>
-                    <li><a href="#" class='dashboard-api'>API</a></li>
+                    <li><a href="#" class='dashboard-table' title='View in table'>Table</a></li>
+                    <li><a href="#" class='dashboard-api' title='View in JSON'>API</a></li>
                 </ul>
             </div>
             <span class="label dashboard-info-auto"></span>
@@ -52,19 +52,19 @@
                     <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="runDropDown">
-                    <li><a href="#" class='dashboard-resolve'>Resolve</a></li>
+                    <li><a href="#" class='dashboard-resolve' title='View Test Results and Resolve existing errors manually'>View and resolve</a></li>
                     <li role="separator" class="divider"></li>
-                    <li><a href="#" class='dashboard-table'>Table</a></li>
-                    <li><a href="#" class='dashboard-api'>API</a></li>
+                    <li><a href="#" class='dashboard-table' title='View in table'>Table</a></li>
+                    <li><a href="#" class='dashboard-api' title='View in JSON'>API</a></li>
                 </ul>
             </div>
             <span class="label dashboard-info-manual "></span>
         </div>
         <div class="btn-group col-md-4">
-        <a class="btn btn-success dashboard-submit">
+        <a class="btn btn-success dashboard-submit" title="Submit generated manual test results to polarion, test result will be blocked from being submitted until all auto test error and manual test result errors have been resolved.">
             Submit to Polaroin
         </a>
-        <a class="btn btn-danger dashboard-delete">
+        <a class="btn btn-danger dashboard-delete" title="Delete this test run. (UNRECOVERABLE)">
             Delete
         </a>
         </div>
