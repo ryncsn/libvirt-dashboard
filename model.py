@@ -1,5 +1,5 @@
 import re
-from utils import caselink as CaseLink
+import caselink as CaseLink
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.orm import validates
 from sqlalchemy import func

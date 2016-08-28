@@ -4,3 +4,4 @@ Flask-SQLAlchemy
 Flask-Migrate
 requests
 #pylarion
+git+https://github.com/ryncsn/caselink-python@master
