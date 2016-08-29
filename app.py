@@ -8,6 +8,10 @@ app.config.from_object('config.ActiveConfig')
 from model import db
 db.init_app(app)
 
+# Load utils
+from caselink import CASELINK_URL
+app.config.update({"CASELINK_URL": CASELINK_URL})
+
 # Load Views
 from views.api import restful_api
 from views.table import table
