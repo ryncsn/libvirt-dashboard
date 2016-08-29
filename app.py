@@ -12,9 +12,11 @@ db.init_app(app)
 from views.api import restful_api
 from views.table import table
 from views.dashboard import dashboard
+from views.statistics import dashboard_statistics
 app.register_blueprint(dashboard)
 app.register_blueprint(table, url_prefix="/table")
 app.register_blueprint(restful_api, url_prefix="/api")
+app.register_blueprint(dashboard_statistics, url_prefix="/statistics")
 
 # Load Manager and Migration
 from flask_migrate import Migrate, MigrateCommand
