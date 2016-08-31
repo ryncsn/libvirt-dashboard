@@ -1,5 +1,6 @@
 from flask import Blueprint, Markup, render_template, request, jsonify
 from model import db, AutoResult, ManualResult, refresh_result, Run
+from flask import current_app as app
 
 try:
     import utils.polarion as Polarion
@@ -126,6 +127,8 @@ def submit_to_polarion(run_id=None):
     if not PYLARION_INSTALLED:
         return jsonify({'message': 'Pylarion not installed, you need to\
                         install it manually or Pylarion support is disabled.'}), 200
+    if not app.config['POLARION_ENABLED']:
+        return jsonify({'message': 'Polarion not enabled, please contract the admin.'}), 200
     submitted_runs = []
     error_runs = []
     class ConflictError(Exception):

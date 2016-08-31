@@ -105,8 +105,11 @@
                     }).fail(function(err){
                         alert("Ajax failed with: " + JSON.stringify(err));
                     }).done(function(data){
-                        if(data.submitted.length == 1){
-                            alert('Success!')
+                        if(data.submitted){
+                            alert('Submitted test runs: ' + data.submitted.join("<br>"));
+                        }
+                        else if(data.message){
+                            alert(data.message);
                         }
                         else if(data.error.length !== 0){
                             alert('Not submitted, please check for errors for both auto results and manual result of this test run then try again.');

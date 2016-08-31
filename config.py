@@ -5,6 +5,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 class Config(object):
     DEBUG = False
     TESTING = False
+    POLARION_ENABLED = False
     SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/test.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
