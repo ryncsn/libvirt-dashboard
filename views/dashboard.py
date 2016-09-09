@@ -82,7 +82,7 @@ def refresh_auto(run_id, case=None):
         (success, message) = refresh_result(result_instance, db.session,
                                             gen_error = gen_error,
                                             gen_result = gen_result,
-                                            gen_manual = False)
+                                            gen_manual = True)
         db.session.add(result_instance)
         if not success:
             fail_message[result_instance.case] = message
