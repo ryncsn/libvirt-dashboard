@@ -61,9 +61,10 @@ class PolarionSession():
 
     def __exit__(self, exception_type, exception_value, traceback):
         if exception_type:
-            print exception_type
-            print exception_value
-            print traceback
+            LOGGER.info("Got exception:")
+            LOGGER.info(str(exception_type))
+            LOGGER.info(str(exception_value))
+            LOGGER.info(str(traceback))
             self.session.tx_rollback()
         else:
             try:
@@ -136,15 +137,6 @@ class TestRunRecord():
 
         self.records.append(record)
 
-    def fake_submit(self):
-        #print get_nearest_plan(self.version):
-        print self.test_run_id
-        query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
-        print query
-
-        for idx, record in enumerate(self.records):
-            record.fake_polarion_object()
-
     def _create_on_polarion(self):
         """
         Create a empty Test Run with test_run_id on Polarion
@@ -204,17 +196,6 @@ class Record():
         self.executed_by = executed_by
         self.result = result
         self.comment = comment
-
-    def fake_polarion_object(self):
-        print ("subterra:data-service:objects:/default/"
-               "%s${WorkItem}%s" %
-               (self.project, self.case))
-        print self.duration
-        print self.executed
-        print self.result
-        print self.comment
-        print ("subterra:data-service:objects:/default/"
-               "${User}%s" % self.executed_by)
 
     def gen_polarion_object(self, factory=None):
         """
