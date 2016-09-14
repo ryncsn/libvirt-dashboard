@@ -15,6 +15,11 @@ def index():
     return render_template('testrun_overview.html')
 
 
+@dashboard.route('/dashboard', methods=['GET'])
+def testrun_dashboard():
+    return render_template('testrun_dashboard.html')
+
+
 @dashboard.route('/resolve/run/<int:run_id>/auto/', methods=['GET'])
 def resolve_autocase(run_id):
     columns = ["case", "time", "result", "error", "linkage_result"]
