@@ -1,7 +1,7 @@
 import re
 import caselink as CaseLink
 from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, load_only
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
 from requests import HTTPError
@@ -62,18 +62,39 @@ class Run(db.Model):
         ret['date'] = self.date.isoformat()
         ret['polarion_id'] = self.polarion_id
         if detailed:
-            auto_results = dict(db.session.query(AutoResult.linkage_result, func.count(AutoResult.case))\
-                                .filter(AutoResult.run_id == self.id)\
-                                .group_by(AutoResult.linkage_result).all())
-            manual_results = dict(db.session.query(ManualResult.result, func.count(ManualResult.case))\
-                                  .filter(ManualResult.run_id == self.id)\
-                                  .group_by(ManualResult.result).all())
-            ret['auto_errors'] = auto_results.get(None, 0)
-            ret['auto_passed'] = auto_results.get('passed', 0)
-            ret['auto_failed'] = auto_results.get('failed', 0)
-            ret['manual_errors'] = manual_results.get('incomplete', 0)
-            ret['manual_passed'] = manual_results.get('passed', 0)
-            ret['manual_failed'] = manual_results.get('failed', 0)
+            ret['auto_passed'], ret['auto_failed'], ret['auto_skipped'] = 0, 0, 0
+            ret['manual_passed'] ,ret['manual_failed'] = 0, 0
+
+            ret['auto_error'], ret['auto_ignored'] = 0, 0
+            ret['manual_error'] = 0
+            for result in AutoResult.query.filter(AutoResult.run_id == self.id)\
+                          .options(load_only("output", "failure", "skip", "linkage_result"))\
+                          .all():
+                if result.result == 'passed':
+                    ret['auto_passed'] += 1
+                elif result.result == 'failed':
+                    ret['auto_failed'] += 1
+                elif result.result == 'skipped':
+                    ret['auto_skipped'] += 1
+
+                if result.linkage_result is None:
+                    ret['auto_error'] += 1
+                if result.linkage_result is 'ignored':
+                    ret['auto_ignored'] += 1
+
+            for result in ManualResult.query.filter(ManualResult.run_id == self.id)\
+                          .options(load_only("result"))\
+                          .all():
+                if result.result == 'failed':
+                    ret['manual_failed'] += 1
+                elif result.result == 'passed':
+                    ret['manual_passed'] += 1
+                elif result.result == 'imcomplete':
+                    ret['manual_error'] += 1
+
+
+
+
         return ret
 
 
@@ -107,9 +128,19 @@ class AutoResult(db.Model):
             return 'passed'
         return None
 
+    @validates('error')
+    def validate_linkage_result(self, key, result):
+        assert result in ['No Caselink', 'No Linkage', 'Unknown Issue', 'Caselink Failure', None, ]
+        return result
+
+    @validates('linkage_result')
+    def validate_linkage_result(self, key, result):
+        assert result in ['ignored', 'skipped', 'passed', 'failed', None, ]
+        return result
+
     @validates('result')
     def validate_result(self, key, result):
-        assert result in ['ignored', 'skipped', 'passed', 'failed', None, ]
+        assert result in ['skipped', 'passed', 'failed', None, ]
         return result
 
     def __repr__(self):

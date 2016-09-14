@@ -136,8 +136,8 @@
                 $(head).find(".dropdown-manual .dashboard-resolve").attr('href', '/resolve/run/' + d.id + '/manual/')
                 $(head).find(".dropdown-manual .dashboard-table").attr('href', '/table/run/' + d.id + '/manual/')
                 $(head).find(".dropdown-manual .dashboard-api").attr('href', '/api/run/' + d.id + '/manual/')
-                $(head).find(".dashboard-info-manual").text(d.manual_errors + ' errors to resolve, ' + d.manual_passed + ' passed, ' + d.manual_failed + ' failed')
-                if(d.manual_errors){
+                $(head).find(".dashboard-info-manual").text(d.manual_error + ' errors to resolve, ' + d.manual_passed + ' passed, ' + d.manual_failed + ' failed')
+                if(d.manual_error){
                     $(head).find(".dashboard-info-manual").addClass("label-danger")
                 }
                 else{
@@ -147,8 +147,8 @@
                 $(head).find(".dropdown-auto .dashboard-resolve").attr('href', '/resolve/run/' + d.id + '/auto/')
                 $(head).find(".dropdown-auto .dashboard-table").attr('href', '/table/run/' + d.id + '/auto/')
                 $(head).find(".dropdown-auto .dashboard-api").attr('href', '/api/run/' + d.id + '/auto/')
-                $(head).find(".dashboard-info-auto").text(d.auto_errors + ' errors to resolve, ' + d.auto_passed + ' passed, ' + d.auto_failed + ' failed')
-                if(d.auto_errors){
+                $(head).find(".dashboard-info-auto").text(d.auto_error + ' errors to resolve, ' + d.auto_passed + ' passed, ' + d.auto_failed + ' failed')
+                if(d.auto_error){
                     $(head).find(".dashboard-info-auto").addClass("label-danger")
                 }
                 else{
