@@ -54,6 +54,42 @@ class Run(db.Model):
         for key, value in run.iteritems():
             setattr(self, key, value)
 
+    def get_statistics(self):
+        ret = {
+            'auto_passed': 0,
+            'auto_failed': 0,
+            'auto_skipped': 0,
+            'auto_error': 0,
+            'manual_passed': 0,
+            'manual_failed': 0,
+            'manual_error': 0,
+        }
+        for result in AutoResult.query.filter(AutoResult.run_id == self.id)\
+                      .options(load_only("output", "failure", "skip", "linkage_result"))\
+                      .all():
+            if result.result == 'passed':
+                ret['auto_passed'] += 1
+            elif result.result == 'failed':
+                ret['auto_failed'] += 1
+            elif result.result == 'skipped':
+                ret['auto_skipped'] += 1
+
+            if result.linkage_result is None:
+                ret['auto_error'] += 1
+            if result.linkage_result is 'ignored':
+                ret['auto_ignored'] += 1
+
+        for result in ManualResult.query.filter(ManualResult.run_id == self.id)\
+                      .options(load_only("result"))\
+                      .all():
+            if result.result == 'failed':
+                ret['manual_failed'] += 1
+            elif result.result == 'passed':
+                ret['manual_passed'] += 1
+            elif result.result == 'imcomplete':
+                ret['manual_error'] += 1
+        return ret
+
     def as_dict(self, detailed=False):
         ret = {}
         for c in self.__table__.columns:
@@ -62,39 +98,7 @@ class Run(db.Model):
         ret['date'] = self.date.isoformat()
         ret['polarion_id'] = self.polarion_id
         if detailed:
-            ret['auto_passed'], ret['auto_failed'], ret['auto_skipped'] = 0, 0, 0
-            ret['manual_passed'] ,ret['manual_failed'] = 0, 0
-
-            ret['auto_error'], ret['auto_ignored'] = 0, 0
-            ret['manual_error'] = 0
-            for result in AutoResult.query.filter(AutoResult.run_id == self.id)\
-                          .options(load_only("output", "failure", "skip", "linkage_result"))\
-                          .all():
-                if result.result == 'passed':
-                    ret['auto_passed'] += 1
-                elif result.result == 'failed':
-                    ret['auto_failed'] += 1
-                elif result.result == 'skipped':
-                    ret['auto_skipped'] += 1
-
-                if result.linkage_result is None:
-                    ret['auto_error'] += 1
-                if result.linkage_result is 'ignored':
-                    ret['auto_ignored'] += 1
-
-            for result in ManualResult.query.filter(ManualResult.run_id == self.id)\
-                          .options(load_only("result"))\
-                          .all():
-                if result.result == 'failed':
-                    ret['manual_failed'] += 1
-                elif result.result == 'passed':
-                    ret['manual_passed'] += 1
-                elif result.result == 'imcomplete':
-                    ret['manual_error'] += 1
-
-
-
-
+            ret.update(self.get_statistics)
         return ret
 
 
