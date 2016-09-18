@@ -1,0 +1,16 @@
+div.d3 {
+    margin: auto;
+    position: relative;
+    width: 960px;
+}
+
+text {
+    font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
