@@ -98,7 +98,7 @@ class Run(db.Model):
         ret['date'] = self.date.isoformat()
         ret['polarion_id'] = self.polarion_id
         if detailed:
-            ret.update(self.get_statistics)
+            ret.update(self.get_statistics())
         return ret
 
 
