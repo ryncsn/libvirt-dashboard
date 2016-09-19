@@ -42,10 +42,7 @@ class Run(db.Model):
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
     manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
     submit_date = db.Column(db.DateTime(), unique=False, nullable=True)
-
-    @hybrid_property
-    def polarion_id(self):
-        return "Libvirt-Auto-Record-" + str(self.id)
+    polarion_id = db.Column(db.String(1024), unique=False, nullable=True)
 
     def __repr__(self):
         return '<TestRun %s>' % self.name

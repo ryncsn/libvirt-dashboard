@@ -181,6 +181,7 @@ def submit_to_polarion(run_id=None):
         #TODO issue a caselink backup
 
         test_run.submit_date = datetime.datetime.now()
+        test_run.polarion_id = polaroin_testrun.test_run_id
         db.session.add(test_run)
         db.session.commit()
         submitted_runs.append(test_run.as_dict())
