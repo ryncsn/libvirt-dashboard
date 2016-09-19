@@ -108,14 +108,14 @@
                     }).fail(function(err){
                         alert("Ajax failed with: " + JSON.stringify(err));
                     }).done(function(data){
-                        if(data.submitted){
+                        if(data.submitted && data.submitted.length > 0){
                             alert('Submitted test runs: ' + data.submitted.join("<br>"));
                         }
                         else if(data.message){
                             alert(data.message);
                         }
                         else if(data.error.length !== 0){
-                            alert('Not submitted, please check for errors for both auto results and manual result of this test run then try again.');
+                            alert('Not submitted, maybe it\'s submitted already, or please check for errors for both auto results and manual result of this test run then try again.');
                         }
                     });
                 });
