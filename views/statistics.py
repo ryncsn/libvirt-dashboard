@@ -7,6 +7,15 @@ from collections import Counter
 dashboard_statistics = Blueprint('dashboard_statistics', __name__)
 CHUNCK_SIZE = 300
 
+
+def parse_date(keyword):
+    try:
+        ret = datetime(*[int(num) for num in request.args.get(keyword).split('-')])
+    except (AttributeError, TypeError, ValueError):
+        ret = None
+    return ret
+
+
 @dashboard_statistics.route('/auto/', methods=['GET'])
 @dashboard_statistics.route('/run/<string:test_run>/auto/', methods=['GET'])
 def autocase_statistics(test_run=None):
@@ -17,19 +26,19 @@ def autocase_statistics(test_run=None):
             ret = None
         return ret
 
-    date_after = parse_date('date_after')
-    date_before = parse_date('date_before')
+    after = parse_date('after')
+    before = parse_date('before')
 
     query = AutoResult.query
 
-    if date_after or date_before or test_run:
-        query = query.options(joinedload('run'))
+    if after or before or test_run:
+        query = query.join(Run)
 
-    if date_before:
-        query = query.filter(Run.date < date_before)
+    if before:
+        query = query.filter(Run.date < before)
 
-    if date_after:
-        query = query.filter(Run.date > date_after)
+    if after:
+        query = query.filter(Run.date > after)
 
     if test_run:
         query = query.filter(Run.name == test_run)
@@ -81,19 +90,34 @@ def autocase_detail(case):
 @dashboard_statistics.route('/run/', methods=['GET'])
 @dashboard_statistics.route('/run/<string:name>', methods=['GET'])
 def testrun_statistics(name=None):
+    after = parse_date('after')
+    before = parse_date('before')
+
+    try:
+        limit = int(request.args.get('limit', None))
+    except Exception:
+        limit = None
+
+    query = Run.query
+
     if name:
-        runs = Run.query.filter(Run.name == name)\
-                .options(load_only('date', 'name')).yield_per(CHUNCK_SIZE)
-    else:
-        runs = Run.query\
-                .options(load_only('date', 'name')).yield_per(CHUNCK_SIZE)
+        query = query.filter(Run.name == name)
+
+    if before:
+        query = query.filter(Run.date < before)
+
+    if after:
+        query = query.filter(Run.date > after)
+
+    runs = query.options(load_only('date', 'name')).yield_per(CHUNCK_SIZE)
     ret = {}
 
     for run in runs:
+        ret.setdefault(run.name, [])
+        if limit is not None and len(ret[run.name]) >= limit:
+            continue
         statistics = {'date': run.date.isoformat()}
         statistics.update(run.get_statistics())
-        if run.name in ret.keys():
-            ret[run.name].append(statistics)
-        else:
-            ret[run.name] = [statistics]
+        ret[run.name].append(statistics)
+
     return jsonify(ret), 200

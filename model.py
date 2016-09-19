@@ -64,7 +64,7 @@ class Run(db.Model):
             'manual_failed': 0,
             'manual_error': 0,
         }
-        for result in AutoResult.query.filter(AutoResult.run_id == self.id)\
+        for result in self.auto_results\
                       .options(load_only("output", "failure", "skip", "linkage_result"))\
                       .all():
             if result.result == 'passed':
@@ -79,7 +79,7 @@ class Run(db.Model):
             if result.linkage_result is 'ignored':
                 ret['auto_ignored'] += 1
 
-        for result in ManualResult.query.filter(ManualResult.run_id == self.id)\
+        for result in self.manual_results\
                       .options(load_only("result"))\
                       .all():
             if result.result == 'failed':
