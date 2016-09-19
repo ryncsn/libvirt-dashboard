@@ -1,3 +1,4 @@
+import datetime
 from flask import Blueprint, Markup, render_template, request, jsonify
 from model import db, AutoResult, ManualResult, refresh_result, Run
 from flask import current_app as app

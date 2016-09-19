@@ -96,6 +96,8 @@ class Run(db.Model):
             if c.name != 'date':
                 ret[c.name] = getattr(self, c.name)
         ret['date'] = self.date.isoformat()
+        if self.submit_date:
+            ret['submit_date'] = self.submit_date.isoformat()
         ret['polarion_id'] = self.polarion_id
         if detailed:
             ret.update(self.get_statistics())

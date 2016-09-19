@@ -143,7 +143,7 @@ class TestRunRecord():
         """
         self._test_run = TestRun.create(
             self.project, self.test_run_id, self.template_name,
-            #plannedin=get_nearest_plan(self.version)
+            plannedin=get_nearest_plan(self.version), assignee='kasong'
         )
         self.session.commit()
 
