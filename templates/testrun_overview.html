@@ -62,7 +62,10 @@
         </div>
         <div class="btn-group col-md-4">
         <a class="btn btn-success dashboard-submit" title="Submit generated manual test results to polarion, test result will be blocked from being submitted until all auto test error and manual test result errors have been resolved.">
-            Submit to Polaroin
+            Submit to Polarion
+        </a>
+        <a class="btn btn-success dashboard-jump" title="Jump to the Polarin page.">
+            View on Polarion
         </a>
         <a class="btn btn-danger dashboard-delete" title="Delete this test run. (UNRECOVERABLE)">
             Delete
@@ -132,6 +135,14 @@
                         });
                     }
                 });
+
+                if(d.submit_date){
+                    $(head).find(".dashboard-submit").attr('disabled', true);
+                    $(head).find(".dashboard-jump").attr('href', 'https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/testrun?id=' + d.polarion_id);
+                }
+                else{
+                    $(head).find(".dashboard-jump").attr('disabled', true);
+                }
 
                 $(head).find(".dropdown-manual .dashboard-resolve").attr('href', '/resolve/run/' + d.id + '/manual/')
                 $(head).find(".dropdown-manual .dashboard-table").attr('href', '/table/run/' + d.id + '/manual/')
