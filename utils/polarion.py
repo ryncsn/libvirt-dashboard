@@ -61,10 +61,10 @@ class PolarionSession():
 
     def __exit__(self, exception_type, exception_value, traceback):
         if exception_type:
-            LOGGER.info("Got exception:")
-            LOGGER.info(str(exception_type))
-            LOGGER.info(str(exception_value))
-            LOGGER.info(str(traceback))
+            LOGGER.error("Got exception:")
+            LOGGER.error(str(exception_type))
+            LOGGER.error(str(exception_value))
+            LOGGER.error(str(traceback))
             self.session.tx_rollback()
         else:
             try:
@@ -87,7 +87,7 @@ class PolarionSession():
 
 class TestRunRecord():
     def __init__(self, project=None, name=None, description=None,
-                 type=None, build=None, version=None, arch=None, date=None):
+                 type=None, build=None, version=None, arch=None, date=None, tags=None):
 
         self.project = project
         self.name = name
@@ -97,6 +97,7 @@ class TestRunRecord():
         self.version = version
         self.arch = arch
         self.description = description
+        self.tags = tags
 
         self.records = []
 
@@ -147,6 +148,20 @@ class TestRunRecord():
         )
         self.session.commit()
 
+    def _set_tags(self, tags=None):
+        """
+        Hacky way to set tags.
+        """
+        if not self._test_run:
+            return None
+
+        # Make sure tags field exists.
+        self._test_run._set_custom_field("tags", "")
+
+        for cf in self._test_run._suds_object.customFields[0]:
+            if cf.key == "tags":
+                cf.value = tags
+
     def _update_info_on_polarion(self):
         """
         Update Test Run info on Polarion
@@ -157,32 +172,39 @@ class TestRunRecord():
         #  dynamicLiveDoc, automatedProcess]
         self._test_run.select_test_cases_by = 'staticQueryResult'
         self._test_run.query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
-        self.session.commit()
+        self._set_tags(self.tags)
 
     def submit(self, session=None):
+        """
+        Submit / Update a test run on polarion.
+        """
+        # TODO: update a test run cause duplicated Test records.
         self.session = session
         if not self.session:
             raise RuntimeError('Need to start a session.')
 
         try:
             self._test_run = TestRun(self.test_run_id, project_id=self.project)
+            LOGGER.info('Updating Test Run')
         except PylarionLibException as e:
             if "not found" in e.message:
                 self._create_on_polarion()
+                LOGGER.info('Created Test Run')
 
+        # Set meta data.
         self._update_info_on_polarion()
 
+        # Add test run records.
         self.client = self.session.test_management_client
         for idx, record in enumerate(self.records):
             self.client.service.addTestRecordToTestRun(self._test_run.uri,
                                                        record.gen_polarion_object(self.client.factory))
 
-        self.session.commit()
-
+        # Mark Finished
         self._test_run.status = 'finished'
-        LOGGER.info('Updating Test Run')
-        self._test_run.update()
 
+        # Submit
+        self._test_run.update()
         self.session.commit()
 
 
@@ -199,7 +221,7 @@ class Record():
 
     def gen_polarion_object(self, factory=None):
         """
-        Submit a test to polarion
+        Generate a Test Run Record object for Polarion.
         """
         self.factory = factory
         if not self.factory:
