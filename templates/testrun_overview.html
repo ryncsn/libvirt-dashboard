@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/testrun-overview.css') }}"></link>
 {% endblock %}
 {% block content %}
-{% set column_names = ['Test Run', 'Date', 'Polarion Submit Date'] %}
+{% set column_names = ['Test Run', 'Date', 'Polarion Submit Date', 'Auto', 'Linkage', 'Manual'] %}
 <div class="container">
     <div class="panel panel-default">
         <div class="panel-heading test-run-panel">Test Runs
@@ -90,8 +90,35 @@
                     "render": prettier
                 },
                 {% endfor %}
+                {
+                    "data":function(row){
+                        var total = row.auto_passed + row.auto_failed + row.auto_skipped;
+                        if (total == 0){
+                            return "N/a";
+                        }
+                        return row.auto_passed + " / " + (total);
+                    },
+                },
+                {
+                    "data":function(row){
+                        var total = row.auto_passed + row.auto_failed + row.auto_skipped;
+                        if (total == 0){
+                            return "N/a";
+                        }
+                        return (total - row.auto_error) + " / " + (total);
+                    },
+                },
+                {
+                    "data":function(row){
+                        if (row.manual_failed + row.manual_passed == 0){
+                            return "N/a";
+                        }
+                        return row.manual_passed + " / " + (row.manual_failed + row.manual_passed + row.manual_error);
+                    },
+                },
+
             ],
-            order: [[2, 'desc']]
+            order: [[2, 'desc']],
             rowCallback: function(row, data, index){
             },
             ajax: {
