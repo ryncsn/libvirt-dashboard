@@ -10,15 +10,17 @@ restful_api = Blueprint('restful_api', __name__)
 api = Api(restful_api)
 
 TestRunParser = reqparse.RequestParser(bundle_errors=True)
+TestRunParser.add_argument('name', required=True)
+TestRunParser.add_argument('component', required=True)
+TestRunParser.add_argument('build', required=None)
+TestRunParser.add_argument('product', required=None)
+TestRunParser.add_argument('version', required=None)
 TestRunParser.add_argument('arch', required=True)
 TestRunParser.add_argument('type', required=True)
-TestRunParser.add_argument('name', required=True)
-TestRunParser.add_argument('date', type=inputs.datetime_from_iso8601, required=True)
-TestRunParser.add_argument('build', required=None)
+TestRunParser.add_argument('framework', required=True)
 TestRunParser.add_argument('project', required=True)
-TestRunParser.add_argument('version', required=True)
-TestRunParser.add_argument('component', required=True)
-TestRunParser.add_argument('framework', required=None)
+TestRunParser.add_argument('date', type=inputs.datetime_from_iso8601, required=True)
+TestRunParser.add_argument('ci_url', required=True)
 TestRunParser.add_argument('description', default=None)
 
 
@@ -59,12 +61,7 @@ class TestRunList(Resource):
         except IntegrityError as e:
             db.session.rollback()
             if "UNIQUE constraint failed" in  e.message:
-                run = Run.query.filter(Run.name == args['name'],
-                                       Run.type == args['type'],
-                                       Run.build == args['build'],
-                                       Run.version == args['version'],
-                                       Run.arch == args['arch'],
-                                       Run.date == args['date']).one()
+                run = Run.query.filter(Run.ci_url == args['ci_url']).one()
                 return run.as_dict(), 400
             else:
                 raise e
