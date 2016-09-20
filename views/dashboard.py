@@ -194,13 +194,15 @@ def submit_to_polarion(run_id=None, regex=None):
                     if not record.linkage_result:
                         raise ConflictError()
                 except ConflictError:
-                    if forced:
+                    if forced and record.error not in ["Unknown Issue", "Caselink Failure"]:
                         record.linkage_result = 'ignored'
                         db.session.add(record)
                         continue
                     else:
                         error_runs.append(test_run.as_dict())
-                        error_runs[-1]['reason'] = 'Auto results contains error.'
+                        # TODO: list all errors
+                        error_runs[-1]['reason'] = (
+                            'Auto result %s contains error %s' % (record.case, record.error))
                         raise ConflictError()
 
             for record in ManualResult.query.filter(ManualResult.run_id == test_run.id):
@@ -211,7 +213,8 @@ def submit_to_polarion(run_id=None, regex=None):
                         continue
                     else:
                         error_runs.append(test_run.as_dict())
-                        error_runs[-1]['reason'] = 'Manual results contains error.'
+                        error_runs[-1]['reason'] = (
+                            'Manual result %s contains error %s' % (record.case, record.result))
                         raise ConflictError()
 
                 polaroin_testrun.add_record(
