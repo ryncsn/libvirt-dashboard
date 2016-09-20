@@ -27,19 +27,20 @@ logging.basicConfig(
 LOGGER = logging.getLogger(__name__)
 
 
-def get_nearest_plan(version):
+def get_nearest_plan(version, date=None):
     """
     Get next nearest next plan ID
     """
-    today = datetime.date.today()
-    LOGGER.info('Today is %s', today)
+    if not date:
+        date = datetime.date.today()
+    LOGGER.info('Using date %s', date)
 
     nearest_plan = None
     for plan in Plan.search(version):
         LOGGER.info('Found plan %s, due date %s', plan.name, plan.due_date)
         if not plan.due_date:
             continue
-        if today < plan.due_date:
+        if date < plan.due_date:
             if not nearest_plan or plan.due_date < nearest_plan.due_date:
                 nearest_plan = plan
 
@@ -92,7 +93,7 @@ class TestRunRecord():
         self.project = project
         self.name = name
         self.type = type
-        self.date = date
+        self.date = date # datetime
         self.build = build
         self.version = version
         self.arch = arch
@@ -144,7 +145,7 @@ class TestRunRecord():
         """
         self._test_run = TestRun.create(
             self.project, self.test_run_id, self.template_name,
-            plannedin=get_nearest_plan(self.version), assignee='kasong'
+            plannedin=get_nearest_plan(self.version, self.date.date()), assignee='kasong'
         )
         self.session.commit()
 
