@@ -152,7 +152,7 @@ class TestRunRecord():
         """
         Hacky way to set tags.
         """
-        if not self._test_run:
+        if not self._test_run or tags is None:
             return None
 
         # Make sure tags field exists.
