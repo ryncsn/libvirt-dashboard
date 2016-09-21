@@ -27,4 +27,4 @@ ActiveConfig = DevelopmentConfig
 try:
     from config_instance import *
 except ImportError:
-    print "Instance setting not found."
+    print("Instance setting not found.")
