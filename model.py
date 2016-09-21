@@ -136,7 +136,7 @@ class AutoResult(db.Model):
         return None
 
     @validates('error')
-    def validate_linkage_result(self, key, result):
+    def validate_error(self, key, result):
         assert result in ['No Caselink', 'No Linkage', 'Unknown Issue', 'Caselink Failure', None, ]
         return result
 

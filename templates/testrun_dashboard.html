@@ -10,8 +10,11 @@
 
 <div class="d3">
 <form>
-    <label><input type="radio" name="mode" value="grouped"> Grouped</label>
-    <label><input type="radio" name="mode" value="stacked" checked> Stacked</label>
+    <select name="test_run" id="test_run" value="">
+        <option value="">All</option>
+    </select>
+    <label><input type="radio" name="mode" value="grouped" checked> Grouped</label>
+    <label><input type="radio" name="mode" value="stacked"> Stacked</label>
 </form>
 </div>
 
@@ -21,6 +24,23 @@
 <script src="//d3js.org/d3.v4.min.js"></script>
 <script src="//d3js.org/d3-scale.v1.min.js"></script>
 <script src="//d3js.org/d3-axis.v1.min.js"></script>
-<script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='javascript/dashboard.js') }}"></script>
+<script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='javascript/test-run-stack-graph.js') }}"></script>
+<script type="text/javascript" charset="utf-8">
+    var graph = new TestRunStackGraph('.d3');
+    var transition = $('[name="mode"]').change(function(){
+        graph.change(this.value);
+    });
+    $.ajax("{{url_for('dashboard_statistics.testrun_statistics', limit=0)}}")
+        .done(function(data){
+            var selector = $('[name="test_run"]');
+            for (var key in data){
+                selector.append("<option value=\"" + key + "\">"+ key +"</option>")
+            }
+            selector.change(function(){
+                graph.updateData(this.value);
+            })
+        })
+
+</script>
 
 {% endblock %}
