@@ -32,17 +32,18 @@ class TestResultSubmitTest(DashboardTestCase):
     #TODO: Keep data
     def submit_test_run(self):
         post_data = {
-            "arch": "x86",
-            "build": "2.0.1",
+            "name": "libvirt-RHEL-7.3-runtest-x86_64-acceptance-general",
             "component": "libvirt",
-            "date": "2016-07-18T17:02:28.798848",
-            "description": "debuging",
+            "build": "2.0.1",
+            "product": "RHEL",
+            "version": "7.3",
+            "arch": "x86",
+            "type": "acceptance",
             "framework": "libvirt-autotest",
-            "name": "libvirt-RHEL-7.3-runtest-x86_64-function-migration",
-            "polarion_id": "Libvirt-Auto-Record-1",
             "project": "VIRTTP",
-            "type": "function",
-            "version": "7.3"
+            "date": "2016-07-18T17:02:28.798848",
+            "ci_url": "http://127.0.0.1:5000",
+            "description": "Unit test submission",
         }
 
         rv = self.app.post('/api/run/', data=post_data);
