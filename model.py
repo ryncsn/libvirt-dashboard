@@ -25,9 +25,10 @@ class Run(db.Model):
     __tablename__ = 'run'
     __table_args__ = (
         db.UniqueConstraint('name', 'type', 'build', 'version', 'arch', 'date',
-                         name='_test_run_id_uc'),
+                            name='_test_run_id_uc'),
         {'sqlite_autoincrement': True},
     )
+
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(255), unique=False, nullable=False)
     component = db.Column(db.String(255), unique=False, nullable=False)

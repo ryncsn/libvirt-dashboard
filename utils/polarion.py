@@ -87,17 +87,25 @@ class PolarionSession():
 
 
 class TestRunRecord():
-    def __init__(self, project=None, name=None, description=None,
-                 type=None, build=None, version=None, arch=None, date=None, tags=None):
+    def __init__(self, d_id=None, name=None, component=None, build=None, product=None,
+                 version=None, arch=None, type=None, framework=None, project=None,
+                 date=None, ci_url=None, description=None, tags=None):
 
-        self.project = project
+        self.dashboard_id = d_id
         self.name = name
-        self.type = type
-        self.date = date # datetime
+        self.component = component
         self.build = build
+        self.product = product
         self.version = version
         self.arch = arch
+        self.type = type
+        self.framework = framework
+        self.project = project
+        self.date = date # datetime
+
+        self.ci_url = ci_url
         self.description = description
+
         self.tags = tags
 
         self.records = []
@@ -105,24 +113,33 @@ class TestRunRecord():
         self.query = (('project.id:%s AND type:testcase ' % (self.project)
                        + 'AND (%s)'))
 
+        self._test_run = None
+
         # TODO: better test_run_id handling
-        self.test_run_id = '%s %s %s %s %s %s' % (
-            self.name, self.type, self.build, self.version, self.arch,
+        name_prefix = '%s-%s-%s-runtest-%s-' % (
+            self.component, self.product, self.version, self.arch)
+        if self.name.startswith(name_prefix):
+            pass
+
+        self.test_run_id = '%s %s %s %s' % (
+            self.name, self.framework, self.build,
             self.date.strftime('%Y-%m-%d %H-%M-%S')
         )
+
         # Replace unsupported characters
         self.test_run_id = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', self.test_run_id)
 
         # TODO: tempalte name
         self.template_name = "libvirt-autotest"
 
-    def add_record(self, case=None, result=None, duration=None, datetime=None, executed_by=None, comment=None):
+    def add_record(self, case=None, result=None, duration=None,
+                   record_datetime=None, executed_by=None, comment=None):
         """
         Update test run content according to the test cases.
         """
 
-        if result not in ['failed', 'passed']:
-            raise RuntimeError('Result can only be "failed" or "passed"')
+        if result not in ['failed', 'passed', 'blocked']:
+            raise RuntimeError('Result can only be "failed", "passed" of "blocked"')
 
         LOGGER.info('Creating Test Record for %s', case)
 
@@ -131,7 +148,7 @@ class TestRunRecord():
             #factory=self.client.factory,
             project=self.project,
             duration=duration,
-            executed=datetime,
+            executed=record_datetime,
             executed_by=executed_by,
             result=result,
             comment=comment,
@@ -167,7 +184,15 @@ class TestRunRecord():
         """
         Update Test Run info on Polarion
         """
-        self._test_run.description = self.description
+        if not self.ci_url.startswith("http"):
+            self.ci_url = "<Not available>"
+
+        self._test_run.description = """
+        Dashboard ID: %s <br>
+        CI URL: %s <br>
+        CI Description: <br> %s
+        """ % (self.dashboard_id, self.ci_url, self.description)
+
         self._test_run.group_id = self.build
         # [manualSelection, staticQueryResult, dynamicQueryResult, staticLiveDoc,
         #  dynamicLiveDoc, automatedProcess]

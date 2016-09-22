@@ -176,15 +176,20 @@ def submit_to_polarion(run_id=None, regex=None):
         if test_run.name.split('-')[-1] in known_postfix:
             tags = known_tags[known_postfix.index(test_run.name.split('-')[-1])]
 
-        polaroin_testrun = Polarion.TestRunRecord(
-            project=test_run.project,
+        polarion_testrun = Polarion.TestRunRecord(
+            d_id=test_run.id,
             name=test_run.name,
-            description="CI Job: " + str(test_run.description),
-            type=test_run.type,
-            date=test_run.date,
+            component=test_run.component,
             build=test_run.build,
+            product=test_run.product,
             version=test_run.version,
             arch=test_run.arch,
+            type=test_run.type,
+            framework=test_run.framework,
+            project=test_run.project,
+            date=test_run.date,
+            ci_url=test_run.ci_url,
+            description=test_run.description,
             tags=tags
         )
 
@@ -194,7 +199,7 @@ def submit_to_polarion(run_id=None, regex=None):
                     if not record.linkage_result:
                         raise ConflictError()
                 except ConflictError:
-                    if forced and record.error not in ["Unknown Issue", "Caselink Failure"]:
+                    if forced and record.error not in ["Caselink Failure"]:
                         record.linkage_result = 'ignored'
                         db.session.add(record)
                         continue
@@ -206,27 +211,26 @@ def submit_to_polarion(run_id=None, regex=None):
                         raise ConflictError()
 
             for record in ManualResult.query.filter(ManualResult.run_id == test_run.id):
-                if record.result not in ['passed', 'failed']:
+                polarion_result = record.result
+                if polarion_result not in ['passed', 'failed']:
                     if forced:
-                        db.session.delete(record)
-                        db.session.commit
-                        continue
+                        polarion_result = 'blocked'
                     else:
                         error_runs.append(test_run.as_dict())
                         error_runs[-1]['reason'] = (
                             'Manual result %s contains error %s' % (record.case, record.result))
                         raise ConflictError()
 
-                polaroin_testrun.add_record(
+                polarion_testrun.add_record(
                     case=record.case,
-                    result=record.result,
+                    result=polarion_result,
                     duration=record.time,
-                    datetime=test_run.date,  # Datetime
+                    record_datetime=test_run.date,  # Datetime
                     executed_by='CI',
                     comment=record.comment
                 )
 
-            if len(polaroin_testrun.records) < 1:
+            if len(polarion_testrun.records) < 1:
                 error_runs.append(test_run.as_dict())
                 error_runs[-1]['reason'] = 'Too few manual results.'
                 raise ConflictError()
@@ -235,12 +239,12 @@ def submit_to_polarion(run_id=None, regex=None):
             continue
 
         with Polarion.PolarionSession() as session:
-            polaroin_testrun.submit(session)
+            polarion_testrun.submit(session)
 
         #TODO issue a caselink backup
 
         test_run.submit_date = datetime.datetime.now()
-        test_run.polarion_id = polaroin_testrun.test_run_id
+        test_run.polarion_id = polarion_testrun.test_run_id
         db.session.add(test_run)
         db.session.commit()
         submitted_runs.append(test_run.as_dict())
