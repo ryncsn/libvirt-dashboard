@@ -2,6 +2,10 @@
     var $ = root.$,
         d3 = root.d3;
 
+    var layer_keys = ["auto_passed", "auto_failed", "auto_skipped", "auto_error"],
+        layer_colors = ["limegreen", "tomato", "darkorange", "lightgray"],
+        layer_color_gen = function(idx){ return layer_colors[idx];};
+
     var stack = d3.stack()
         .keys(["auto_passed", "auto_failed", "auto_skipped", "auto_error"])
         .order(d3.stackOrderNone)
@@ -78,10 +82,6 @@
                 yGroupMax = d3.max(layers, function(layer) { return d3.max(layer, function(d) { return d[0]; }); }),
                 yStackMax = d3.max(layers, function(layer) { return d3.max(layer, function(d) { return d[0] + d[1]; }); });
 
-            var color = d3.scaleLinear()
-                .domain([0, n - 1])
-                .range(["#aad", "#556"]);
-
             that.x.domain(d3.range(m));
 
             that.y.domain([0, yStackMax]);
@@ -96,7 +96,7 @@
 
             layer.enter().append("g")
                 .attr("class", "layer")
-                .style("fill", function(d, i) { return color(i); });
+                .style("fill", function(d, i) { return layer_color_gen(i); });
 
             layer = that.svg.selectAll(".layer");
 

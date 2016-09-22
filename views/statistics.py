@@ -121,3 +121,20 @@ def testrun_statistics(name=None):
         ret[run.name].append(statistics)
 
     return jsonify(ret), 200
+
+
+@dashboard_statistics.route('/run/last/', methods=['GET'])
+@dashboard_statistics.route('/run/last/<int:limit>', methods=['GET'])
+def testrun_lastest(limit=None):
+    query = Run.query.order_by(Run.date.desc())
+
+    if limit:
+        query = query.limit(limit)
+
+    runs = query.options(load_only('date', 'name', 'id')).yield_per(CHUNCK_SIZE)
+    ret = []
+
+    for run in runs:
+        ret.append(run.as_dict(detailed=True))
+
+    return jsonify(ret), 200
