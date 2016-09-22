@@ -87,7 +87,7 @@ class Run(db.Model):
                 ret['manual_failed'] += 1
             elif result.result == 'passed':
                 ret['manual_passed'] += 1
-            elif result.result == 'imcomplete':
+            elif result.result == 'incomplete':
                 ret['manual_error'] += 1
         return ret
 
