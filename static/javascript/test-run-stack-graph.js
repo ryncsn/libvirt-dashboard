@@ -17,9 +17,11 @@
         this.timeout = null;
         this.initGraph(dom_selector);
         this.updateData(testRun);
+        this.presentation = "stacked";
     };
 
-    TestRunStackGraph.prototype.change = function(value){
+    TestRunStackGraph.prototype.changePresentation = function(value){
+        this.presentation = value;
         if (this.timeout !== null){
             clearTimeout(this.timeout);
             this.timeout = null;
@@ -86,8 +88,9 @@
 
             xAxis.scale(x);
 
-            svg.selectAll("g.xAxis").call(xAxis);
+            svg.selectAll("g.xAxis").transition().call(xAxis);
 
+            //Update data for each layer
             var layer = that.svg.selectAll(".layer")
                 .data(layers);
 
@@ -100,23 +103,29 @@
             var rect = layer.selectAll("rect")
                 .data(function(d) { return d; });
 
-            rect.transition()
+            rect.exit()
+                .transition()
+                .attr("y", height)
+                .attr("height", 0)
+                .remove();
+
+            rect = rect.enter().append("rect")
+                //Set start point for new added rect
                 .attr("x", function(d, i) { return x(i); })
                 .attr("y", height)
                 .attr("width", x.bandwidth())
-                .attr("height", 0);
-
-            rect.enter().append("rect")
-                .attr("x", function(d, i) { return x(i); })
-                .attr("y", height)
-                .attr("width", x.bandwidth())
-                .attr("height", 0);
-
-            rect.exit().remove();
-
-            rect = layer.selectAll("rect");
+                .attr("height", 0)
+                //Merge new added(enter) and existing(update)
+                .merge(rect);
 
             rect.transition()
+                //Transform to zero
+                .attr("y", height)
+                .attr("x", function(d, i) { return x(i); })
+                .attr("width", x.bandwidth())
+                .attr("height", 0)
+                //Transform to the right positoin
+                .transition()
                 .delay(function(d, i) { return i * 10; })
                 .attr("y", function(d) { return y(d[0] + d[1]); })
                 .attr("height", function(d) {return y(d[0]) - y(d[0] + d[1]); });

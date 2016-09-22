@@ -28,7 +28,7 @@
 <script type="text/javascript" charset="utf-8">
     var graph = new TestRunStackGraph('.d3');
     var transition = $('[name="mode"]').change(function(){
-        graph.change(this.value);
+        graph.changePresentation(this.value);
     });
     $.ajax("{{url_for('dashboard_statistics.testrun_statistics', limit=0)}}")
         .done(function(data){
