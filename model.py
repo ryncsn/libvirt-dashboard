@@ -24,8 +24,7 @@ def get_or_create(session, model, **kwargs):
 class Run(db.Model):
     __tablename__ = 'run'
     __table_args__ = (
-        db.UniqueConstraint('name', 'type', 'build', 'version', 'arch', 'date',
-                            name='_test_run_id_uc'),
+        db.UniqueConstraint('name', 'date', name='_test_run_id_uc'),
         {'sqlite_autoincrement': True},
     )
 

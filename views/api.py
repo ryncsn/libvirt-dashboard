@@ -61,7 +61,9 @@ class TestRunList(Resource):
         except IntegrityError as e:
             db.session.rollback()
             if "UNIQUE constraint failed" in  e.message:
-                run = Run.query.filter(Run.ci_url == args['ci_url']).one()
+                run = Run.query.filter(Run.name == args['name'],
+                                       Run.date == args['date']
+                                      ).one()
                 return run.as_dict(), 400
             else:
                 raise e
