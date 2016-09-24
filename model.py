@@ -4,7 +4,7 @@ from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.orm import validates, load_only
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
-from requests import HTTPError
+from requests import HTTPError, ConnectionError
 
 
 db = SQLAlchemy()
@@ -349,8 +349,8 @@ def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=
 
     try:
         this_autocase = CaseLink.AutoCase(result.case).refresh()
-    except HTTPError as e:
-        if e.response.status_code == 404:
+    except (HTTPError, ConnectionError) as err:
+        if hasattr(err, 'status_code') and err.response.status_code == 404:
             _set_error('No Caselink')
         else:
             _set_error('Caselink Failure')
@@ -361,13 +361,13 @@ def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=
 
     elif result.failure:
         # Auto Case failed with message <result['failure']>
-        BugFound = False
+        bug_exists = False
         for failure in this_autocase.failures:
             if re.match(failure.failure_regex, result.failure) is not None:
-                BugFound = True
+                bug_exists = True
                 _set_result('failed')
 
-        if not BugFound:
+        if not bug_exists:
             _set_error('Unknown Issue')
 
     elif result.output:
