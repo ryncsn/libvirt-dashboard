@@ -2,26 +2,32 @@
     var $ = root.$,
         d3 = root.d3;
 
-    var layer_keys = ["auto_passed", "auto_failed", "auto_skipped", "auto_error"],
-        layer_colors = ["limegreen", "tomato", "darkorange", "lightgray"],
-        layer_color_gen = function(idx){ return layer_colors[idx];};
-
-    var stack = d3.stack()
-        .keys(["auto_passed", "auto_failed", "auto_skipped", "auto_error"])
-        .order(d3.stackOrderNone)
-        .offset(d3.stackOffsetNone);
-
     var margin = {top: 40, right: 10, bottom: 20, left: 10},
         width = 960 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
 
     var TestRunStackGraph = function(dom_selector, testRun){
+        this.layer_keys = ["auto_passed", "auto_failed", "auto_skipped", "auto_error"];
+        this.layer_colors = ["limegreen", "tomato", "darkorange", "lightgray"];
+        this.n = this.layer_keys.length;
+
+        this.stack = d3.stack()
+            .keys(this.layer_keys)
+            .order(d3.stackOrderNone)
+            .offset(d3.stackOffsetNone);
+
         this.transitionGrouped = function(){};
         this.transitionStacked = function(){};
         this.timeout = null;
         this.initGraph(dom_selector);
         this.updateData(testRun);
         this.presentation = "stacked";
+    };
+
+    TestRunStackGraph.prototype.changeKeys = function(keys){
+        this.layer_keys = ["auto_passed", "auto_failed", "auto_skipped", "auto_error"];
+        this.n = this.layer_keys.length;
+        this.stack.keys(this.layer_keys);
     };
 
     TestRunStackGraph.prototype.changePresentation = function(value){
@@ -76,9 +82,9 @@
                 results = results.concat(data[key]);
             }
 
-            var n = 4,// number of layers
+            var n = this.n,// number of layers
                 m = results.length, // number of samples per layer
-                layers = stack(results),
+                layers = that.stack(results),
                 yGroupMax = d3.max(layers, function(layer) { return d3.max(layer, function(d) { return d[0]; }); }),
                 yStackMax = d3.max(layers, function(layer) { return d3.max(layer, function(d) { return d[0] + d[1]; }); });
 
@@ -96,7 +102,7 @@
 
             layer.enter().append("g")
                 .attr("class", "layer")
-                .style("fill", function(d, i) { return layer_color_gen(i); });
+                .style("fill", function(d, i) { return that.layer_colors[i] | 'red'; });
 
             layer = that.svg.selectAll(".layer");
 
@@ -156,8 +162,6 @@
                     .attr("x", function(d, i) { return x(i); })
                     .attr("width", x.bandwidth());
             };
-
-            that.timeout = setTimeout(that.transitionGrouped, 2000);
         });
     };
 

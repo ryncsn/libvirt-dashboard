@@ -27,6 +27,7 @@
 <script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='javascript/test-run-stack-graph.js') }}"></script>
 <script type="text/javascript" charset="utf-8">
     var graph = new TestRunStackGraph('.d3');
+    graph.changeKeys(['auto_passed', 'auto_failed']);
     var transition = $('[name="mode"]').change(function(){
         graph.changePresentation(this.value);
     });
