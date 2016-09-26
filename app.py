@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Load Flask and config
-from flask import Flask
+from flask import Flask, Markup
 app = Flask(__name__)
 app.config.from_object('config.ActiveConfig')
 
@@ -35,11 +35,12 @@ def nl2br_simple(s):
     s = s.replace('\\n', ';')
     return Markup(s)
 
+
+@app.cli.command('initdb')
 def init_db():
     with app.app_context():
         db.create_all()
 
 # Start the server
 if __name__ == '__main__':
-    init_db()
     manager.run()
