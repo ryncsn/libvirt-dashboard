@@ -77,13 +77,25 @@
 
 <script type="text/javascript" charset="utf-8">
     var child_panel = $("#_proto_child").removeClass('hidden').detach()
-
     $(document).ready(function() {
         var table = $('#column_table').DataTableWithChildRow({
             pageLength: 100,
             dom: '<t><"row"<"col-md-3"f><"col-md-4"i><"col-md-5"p>>',
             columns: [
-                {% set column_datas = ['name', 'date', 'submit_date'] %}
+                {
+                    "data": function(row){
+                        console.log("appending")
+                        var html = row.name;
+                        row.tags.sort()
+                        for (var i = 0, len = row.tags.length; i < len; i++){
+                            var tag = row.tags[i];
+                            html += "<span class=\"label label-info\" style=\"margin-left: 10px;\">" + tag + "</span>";
+                        }
+                        console.log(html)
+                        return html;
+                    }
+                },
+                {% set column_datas = ['date', 'submit_date'] %}
                 {% for col in column_datas %}
                 {
                     "data":"{{ col }}",
