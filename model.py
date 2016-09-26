@@ -104,7 +104,7 @@ class Run(db.Model):
         tags = None
         properties = None
         with db.session.no_autoflush:
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 if key == 'tags':
                     tags = value
                 elif key == 'properties':
@@ -224,7 +224,7 @@ class AutoResult(db.Model):
         return '<TestResult %s-%s>' % (self.run_id, self.case)
 
     def __init__(self, **result):
-        for key, value in result.iteritems():
+        for key, value in result.items():
             setattr(self, key, value)
 
     def as_dict(self, detailed=False):
@@ -261,7 +261,7 @@ class ManualResult(db.Model):
         return '<ManualCaseResult %s-%s: %s>' % (self.run_id, self.case, self.result)
 
     def __init__(self, **result):
-        for key, value in result.iteritems():
+        for key, value in result.items():
             setattr(self, key, value)
 
     def as_dict(self, detailed=False):

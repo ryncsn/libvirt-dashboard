@@ -35,8 +35,10 @@ def nl2br_simple(s):
     s = s.replace('\\n', ';')
     return Markup(s)
 
-
 @app.cli.command('initdb')
+def init_db_cli():
+    init_db()
+
 def init_db():
     with app.app_context():
         db.create_all()
