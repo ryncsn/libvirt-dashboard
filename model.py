@@ -21,6 +21,28 @@ def get_or_create(session, model, **kwargs):
         return instance
 
 
+run_tags_table = db.Table('test_run_tags',
+                          db.Column('run_id', db.Integer, db.ForeignKey('run.id')),
+                          db.Column('tag_name', db.String(255), db.ForeignKey('tag.name'))
+                         )
+
+
+class Tag(db.Model):
+    __tablename__ = 'tag'
+    accept_characters = r"\w\-\._"
+
+    name = db.Column(db.String(255), nullable=False, primary_key=True)
+    runs = db.relationship('Run', secondary=run_tags_table, back_populates='tags', lazy='dynamic')
+    desc = db.Column(db.String(255), nullable=True)
+
+    def __repr__(self):
+        return '<Tag %s, Description:(%s)>' % (self.name, self.desc)
+
+    def __init__(self, name, desc=None):
+        setattr(self, 'name', name)
+        setattr(self, 'desc', desc)
+
+
 class Run(db.Model):
     __tablename__ = 'run'
     __table_args__ = (
@@ -43,6 +65,8 @@ class Run(db.Model):
     ci_url = db.Column(db.String(1024), unique=False, nullable=False)
     description = db.Column(db.Text(), unique=False, nullable=True)
 
+    tags = db.relationship('Tag', secondary=run_tags_table, back_populates='runs', lazy='dynamic')
+
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
     manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
     submit_date = db.Column(db.DateTime(), unique=False, nullable=True)
@@ -52,8 +76,25 @@ class Run(db.Model):
         return '<TestRun %s>' % self.name
 
     def __init__(self, **run):
-        for key, value in run.iteritems():
-            setattr(self, key, value)
+        self.update(**run)
+
+    def update(self, **kwargs):
+        """
+        Update column values. Create relationship after other values are processed
+        to prevent IntegrityError caused by auto commit.
+        """
+        tags = None
+        with db.session.no_autoflush:
+            for key, value in kwargs.iteritems():
+                if key == 'tags':
+                    tags = value
+                else:
+                    setattr(self, key, value)
+            if tags:
+                for tag in tags:
+                    tag_instance = get_or_create(db.session, Tag, name=tag)
+                    self.tags.append(tag_instance)
+
 
     def get_statistics(self):
         ret = {
@@ -97,6 +138,7 @@ class Run(db.Model):
             if c.name != 'date':
                 ret[c.name] = getattr(self, c.name)
         ret['date'] = self.date.isoformat()
+        ret['tags'] = [tag.name for tag in self.tags.all()]
         if self.submit_date:
             ret['submit_date'] = self.submit_date.isoformat()
         ret['polarion_id'] = self.polarion_id

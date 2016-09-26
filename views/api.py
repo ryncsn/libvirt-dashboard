@@ -1,6 +1,8 @@
 import datetime
+import re
 
-from model import db, AutoResult, ManualResult, Run, refresh_result
+from model import db, AutoResult, ManualResult, Run, Tag
+from model import get_or_create, refresh_result
 from flask import Blueprint, request
 from flask_restful import Resource, Api, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +24,7 @@ TestRunParser.add_argument('project', required=True)
 TestRunParser.add_argument('date', type=inputs.datetime_from_iso8601, required=True)
 TestRunParser.add_argument('ci_url', required=True)
 TestRunParser.add_argument('description', default=None)
+TestRunParser.add_argument('tags', type=str, action='append', default=[])
 
 
 AutoResultParser = reqparse.RequestParser(bundle_errors=True)
@@ -35,13 +38,16 @@ AutoResultParser.add_argument('error', default=None)
 AutoResultParser.add_argument('linkage_result', default=None)
 AutoResultParser.add_argument('comment', default=None)
 
+
 AutoResultUpdateParser = AutoResultParser.copy()
 AutoResultUpdateParser.replace_argument('output', required=False)
 AutoResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=False)
 AutoResultUpdateParser.replace_argument('case', required=False)
 
+
 ManualResultUpdateParser = reqparse.RequestParser(bundle_errors=True)
 ManualResultUpdateParser.add_argument('result', required=False)
+
 
 class TestRunList(Resource):
     def get(self):
@@ -53,10 +59,9 @@ class TestRunList(Resource):
 
     def post(self):
         args = TestRunParser.parse_args()
-        run = args
-        run = Run(**args)
-        db.session.add(run)
         try:
+            run = Run(**args)
+            db.session.add(run)
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()
@@ -88,7 +93,6 @@ class TestRunDetail(Resource):
         db.session.delete(res)
         db.session.commit()
         return res.as_dict()
-
 
     def put(self, run_id):
         args = TestRunParser.parse_args()
