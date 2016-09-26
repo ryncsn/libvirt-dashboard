@@ -25,6 +25,7 @@ TestRunParser.add_argument('date', type=inputs.datetime_from_iso8601, required=T
 TestRunParser.add_argument('ci_url', required=True)
 TestRunParser.add_argument('description', default=None)
 TestRunParser.add_argument('tags', type=str, action='append', default=[])
+TestRunParser.add_argument('properties', type=dict, default={})
 
 
 AutoResultParser = reqparse.RequestParser(bundle_errors=True)

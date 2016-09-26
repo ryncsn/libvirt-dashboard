@@ -27,6 +27,24 @@ run_tags_table = db.Table('test_run_tags',
                          )
 
 
+class Property(db.Model):
+    __tablename__ = 'property'
+
+    run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
+    run = db.relationship('Run', back_populates='properties')
+
+    name = db.Column(db.String(255), nullable=False, primary_key=True)
+    value = db.Column(db.String(1024), nullable=False)
+
+    def __repr__(self):
+        return '<Property of Run: %s, %s:%s>' % (self.run_id, self.name, self.desc)
+
+    def __init__(self, run_id=None, name=None, value=None):
+        self.run_id = run_id
+        self.name = name
+        self.value = value
+
+
 class Tag(db.Model):
     __tablename__ = 'tag'
     accept_characters = r"\w\-\._"
@@ -66,6 +84,7 @@ class Run(db.Model):
     description = db.Column(db.Text(), unique=False, nullable=True)
 
     tags = db.relationship('Tag', secondary=run_tags_table, back_populates='runs', lazy='dynamic')
+    properties = db.relationship('Property', back_populates='run', lazy='dynamic')
 
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
     manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
@@ -84,16 +103,23 @@ class Run(db.Model):
         to prevent IntegrityError caused by auto commit.
         """
         tags = None
+        properties = None
         with db.session.no_autoflush:
             for key, value in kwargs.iteritems():
                 if key == 'tags':
                     tags = value
+                elif key == 'properties':
+                    properties = value
                 else:
                     setattr(self, key, value)
             if tags:
                 for tag in tags:
                     tag_instance = get_or_create(db.session, Tag, name=tag)
                     self.tags.append(tag_instance)
+            if properties:
+                for name, value in properties.items():
+                    prop_instance = Property(name=name, value=value)
+                    self.properties.append(prop_instance)
 
 
     def get_statistics(self):
@@ -139,6 +165,10 @@ class Run(db.Model):
                 ret[c.name] = getattr(self, c.name)
         ret['date'] = self.date.isoformat()
         ret['tags'] = [tag.name for tag in self.tags.all()]
+        properties = {}
+        for prop in self.properties.all():
+            properties[prop.name] = prop.value
+        ret['properties'] = properties
         if self.submit_date:
             ret['submit_date'] = self.submit_date.isoformat()
         ret['polarion_id'] = self.polarion_id
