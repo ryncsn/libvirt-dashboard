@@ -1,6 +1,6 @@
 import re
 import caselink as CaseLink
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates, load_only
 from sqlalchemy import func
 from flask_sqlalchemy import SQLAlchemy
@@ -47,7 +47,6 @@ class Property(db.Model):
 
 class Tag(db.Model):
     __tablename__ = 'tag'
-    accept_characters = r"\w\-\._"
 
     name = db.Column(db.String(255), nullable=False, primary_key=True)
     runs = db.relationship('Run', secondary=run_tags_table, back_populates='tags', lazy='dynamic')
@@ -57,8 +56,8 @@ class Tag(db.Model):
         return '<Tag %s, Description:(%s)>' % (self.name, self.desc)
 
     def __init__(self, name, desc=None):
-        setattr(self, 'name', name)
-        setattr(self, 'desc', desc)
+        self.name = name
+        self.desc = desc
 
 
 class Run(db.Model):
@@ -120,7 +119,6 @@ class Run(db.Model):
                 for name, value in properties.items():
                     prop_instance = Property(name=name, value=value)
                     self.properties.append(prop_instance)
-
 
     def get_statistics(self):
         ret = {
@@ -322,9 +320,9 @@ def gen_manual_case(result, caselink, session):
             return (False, "No manual case for skipped auto case")
         for caselink_manualcase in caselink.manualcases:
             if not _update_manual(result, caselink_manualcase.id, session,
-                                  expected_results = [None, 'incomplete', 'failed'],
-                                  from_results = [None], to_result = 'incomplete',
-                                  comment = ('Skipped Auto case: "%s"\n' % result.case)):
+                                  expected_results=[None, 'incomplete', 'failed'],
+                                  from_results=[None], to_result='incomplete',
+                                  comment=('Skipped Auto case: "%s"\n' % result.case)):
                 #print "Skip for non incomplete case"
                 pass
         return (True, "Manual case updated.")
@@ -337,9 +335,9 @@ def gen_manual_case(result, caselink, session):
             if re.match(failure.failure_regex, result.failure) is not None:
                 for case in failure.manualcases:
                     if not _update_manual(result, case.id, session,
-                                          expected_results = [None, 'incomplete', 'failed'],
-                                          from_results = [None, 'incomplete'], to_result = 'failed',
-                                          comment = ('Failed auto case: "%s", BUG: "%s"\n' %
+                                          expected_results=[None, 'incomplete', 'failed'],
+                                          from_results=[None, 'incomplete'], to_result='failed',
+                                          comment=('Failed auto case: "%s", BUG: "%s"\n' %
                                                      (failure.bug.id, result.case))):
                         #print "Failed for non incomplete case"
                         pass
@@ -349,16 +347,16 @@ def gen_manual_case(result, caselink, session):
         if not caselink.manualcases or len(caselink.manualcases) == 0:
             return (False, "No manual case for passed auto case")
         for caselink_manualcase in caselink.manualcases:
-            ManualCasePassed=True
+            ManualCasePassed = True
             for related_autocase in caselink_manualcase.autocases:
                 related_result = AutoResult.query.get((result.run_id, related_autocase.id))
                 if not related_result and related_autocase != caselink:
                     # This auto case passed, but some related auto case are not submitted yet.
                     ManualCasePassed = False
                     if not _update_manual(result, caselink_manualcase.id, session,
-                                          expected_results = [None, 'incomplete', 'failed'],
-                                          from_results = [None], to_result = 'incomplete',
-                                          comment = ('Passed Auto case: "%s"\n' % result.case)):
+                                          expected_results=[None, 'incomplete', 'failed'],
+                                          from_results=[None], to_result='incomplete',
+                                          comment=('Passed Auto case: "%s"\n' % result.case)):
                         #print "Incomplete case makred passed"
                         pass
                     break
@@ -367,9 +365,9 @@ def gen_manual_case(result, caselink, session):
                     # This auto case passed, but some related auto case are skipped.
                     ManualCasePassed = False
                     if not _update_manual(result, caselink_manualcase.id, session,
-                                          expected_results = [None, 'incomplete', 'failed'],
-                                          from_results = [None], to_result = 'incomplete',
-                                          comment = ('Passed Auto case: "%s"\n' % result.case)):
+                                          expected_results=[None, 'incomplete', 'failed'],
+                                          from_results=[None], to_result='incomplete',
+                                          comment=('Passed Auto case: "%s"\n' % result.case)):
                         #print "Skipped case makred passed"
                         pass
                     break
@@ -378,9 +376,9 @@ def gen_manual_case(result, caselink, session):
                     # This auto case passed, but some related auto case are failed.
                     ManualCasePassed = False
                     if not _update_manual(result, caselink_manualcase.id, session,
-                                          expected_results = [None, 'failed'],
-                                          from_results = [None], to_result = 'incomplete',
-                                          comment = ('Passed Auto case: "%s"\n' % result.case)):
+                                          expected_results=[None, 'failed'],
+                                          from_results=[None], to_result='incomplete',
+                                          comment=('Passed Auto case: "%s"\n' % result.case)):
                         #print "Manual already failed, not properly marked"
                         pass
                     break
@@ -388,9 +386,9 @@ def gen_manual_case(result, caselink, session):
             if ManualCasePassed:
                 # This auto case passed, and all related auto case are passed.
                 if not _update_manual(result, caselink_manualcase.id, session,
-                                      expected_results = [None, 'incomplete'],
-                                      from_results = [None, 'incomplete'], to_result = 'passed',
-                                      comment = ('Passed Auto case: "%s"\n' % result.case)):
+                                      expected_results=[None, 'incomplete'],
+                                      from_results=[None, 'incomplete'], to_result='passed',
+                                      comment=('Passed Auto case: "%s"\n' % result.case)):
                     #print "Trying to pass already failed case"
                     pass
         return (True, "Manual Case updated.")
