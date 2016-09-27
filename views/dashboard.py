@@ -199,7 +199,8 @@ def submit_to_polarion(run_id=None, regex=None):
                     if not record.linkage_result:
                         raise ConflictError()
                 except ConflictError:
-                    if forced and record.error not in ["Caselink Failure"]:
+                    if forced and record.error not in [
+                            "Caselink Failure", "Unknown Issue", "No Caselink"]:
                         record.linkage_result = 'ignored'
                         db.session.add(record)
                         continue
@@ -236,6 +237,7 @@ def submit_to_polarion(run_id=None, regex=None):
                 raise ConflictError()
 
         except ConflictError:
+            db.session.rollback()
             continue
 
         with Polarion.PolarionSession() as session:
