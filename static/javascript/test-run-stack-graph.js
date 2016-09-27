@@ -23,7 +23,7 @@
 
         this.initGraph(dom_selector);
         var that = this;
-        this.updateData(testRun).then(function(){
+        this.ajaxData(testRun).then(function(){
             that.render();
         });
     };
@@ -130,6 +130,13 @@
     };
 
     TestRunStackGraph.prototype.updateData = function(testRun){
+        var that = this;
+        this.ajaxData(testRun).then(function(){
+            that.render();
+        });
+    };
+
+    TestRunStackGraph.prototype.ajaxData = function(testRun){
         var that = this;
         // TODO: hard coded url
         return $.get('/statistics/run/' + (testRun || ''), function(data){
