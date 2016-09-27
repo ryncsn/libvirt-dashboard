@@ -84,14 +84,12 @@
             columns: [
                 {
                     "data": function(row){
-                        console.log("appending")
                         var html = row.name;
                         row.tags.sort()
                         for (var i = 0, len = row.tags.length; i < len; i++){
                             var tag = row.tags[i];
                             html += "<span class=\"label label-info\" style=\"margin-left: 10px;\">" + tag + "</span>";
                         }
-                        console.log(html)
                         return html;
                     }
                 },
