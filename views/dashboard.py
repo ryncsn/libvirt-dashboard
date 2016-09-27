@@ -176,6 +176,22 @@ def submit_to_polarion(run_id=None, regex=None):
         if test_run.name.split('-')[-1] in known_postfix:
             tags = known_tags[known_postfix.index(test_run.name.split('-')[-1])]
 
+        test_description = "Dashboard ID: %s<br>" % (test_run.id)
+        test_description += "Tags: %s<br>" % " ".join(t.name for t in test_run.tags.all())
+
+        test_properties = {}
+        for test_property in test_run.properties:
+            name, value = test_property.name, test_property.value
+            test_property_group = test_properties.setdefault(name.split('-', 1)[0], {})
+            test_property_group[name.split('-', 1)[1]] = value
+
+        for group_name, group in test_properties.items():
+            if group_name in ["package"]:
+                test_description += "<table><tr><th>%s</th></tr>" % group_name.title()
+                for name, value in group.items():
+                    test_description += "<tr><td>%s</td><td>%s</td></tr>" % (name, value)
+                test_description += "</table>"
+
         polarion_testrun = Polarion.TestRunRecord(
             d_id=test_run.id,
             name=test_run.name,
@@ -189,7 +205,8 @@ def submit_to_polarion(run_id=None, regex=None):
             project=test_run.project,
             date=test_run.date,
             ci_url=test_run.ci_url,
-            description=test_run.description,
+            description=test_description,
+            title_tags=[tag.name for tag in test_run.tags.all()],
             tags=tags
         )
 

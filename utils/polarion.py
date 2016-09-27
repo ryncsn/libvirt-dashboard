@@ -18,6 +18,7 @@ from pylarion.work_item import TestCase
 from pylarion.test_run import TestRun
 from pylarion.plan import Plan
 from pylarion.exceptions import PylarionLibException
+from pylarion.text import Text
 
 
 COMMIT_SIZE = 100
@@ -89,7 +90,7 @@ class PolarionSession():
 class TestRunRecord():
     def __init__(self, d_id=None, name=None, component=None, build=None, product=None,
                  version=None, arch=None, type=None, framework=None, project=None,
-                 date=None, ci_url=None, description=None, tags=None):
+                 date=None, ci_url=None, description=None, title_tags=None, tags=None):
 
         self.dashboard_id = d_id
         self.name = name
@@ -106,6 +107,7 @@ class TestRunRecord():
         self.ci_url = ci_url
         self.description = description
 
+        self.title_tags = title_tags
         self.tags = tags
 
         self.records = []
@@ -125,6 +127,9 @@ class TestRunRecord():
             self.name, self.framework, self.build,
             self.date.strftime('%Y-%m-%d %H-%M-%S')
         )
+
+        if self.title_tags:
+            self.test_run_id += ' ' + ' '.join(self.title_tags)
 
         # Replace unsupported characters
         self.test_run_id = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', self.test_run_id)
@@ -166,6 +171,21 @@ class TestRunRecord():
         )
         self.session.commit()
 
+    def _set_jenkinsjobs(self, url=None):
+        """
+        Hacky way to set jenkinsjobs.
+        """
+        if not self._test_run or url is None:
+            return None
+
+        # Make sure jenkinsjobs field exists.
+        self._test_run._set_custom_field("jenkinsjobs", "")
+
+        for cf in self._test_run._suds_object.customFields[0]:
+            if cf.key == "jenkinsjobs":
+                cf.value = Text(url)._suds_object
+                cf.value.type = "text/plain"
+
     def _set_tags(self, tags=None):
         """
         Hacky way to set tags.
@@ -187,17 +207,13 @@ class TestRunRecord():
         if not self.ci_url.startswith("http"):
             self.ci_url = "<Not available>"
 
-        self._test_run.description = """
-        Dashboard ID: %s <br>
-        CI URL: %s <br>
-        CI Description: <br> %s
-        """ % (self.dashboard_id, self.ci_url, self.description)
-
+        self._test_run.description = self.description
         self._test_run.group_id = self.build
         # [manualSelection, staticQueryResult, dynamicQueryResult, staticLiveDoc,
         #  dynamicLiveDoc, automatedProcess]
         self._test_run.select_test_cases_by = 'staticQueryResult'
         self._test_run.query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
+        self._set_jenkinsjobs(self.ci_url)
         self._set_tags(self.tags)
 
     def submit(self, session=None):
