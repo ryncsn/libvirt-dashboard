@@ -3,6 +3,7 @@ import sys
 import os
 import app
 import unittest
+import datetime
 import tempfile
 import argparse
 
@@ -48,18 +49,19 @@ class EmptyDBTest(DashboardTestCase):
 
 
 class FixtureTest(DashboardTestCase):
-    def submit_test_run(self):
+    fixture_group_number = 4
+    def submit_test_run(self, number):
         post_data = {
-            "name": "libvirt-RHEL-7.3-runtest-x86_64-acceptance-general",
+            "name": "Dev-Test-Run-%s" % number,
             "component": "libvirt",
-            "build": "2.0.1",
+            "build": "Dev-build-%s" % number,
             "product": "RHEL",
             "version": "7.3",
             "arch": "x86",
             "type": "acceptance",
             "framework": "libvirt-autotest",
             "project": "VIRTTP",
-            "date": "2016-07-18T17:02:28.798848",
+            "date": datetime.datetime.now().isoformat(),
             "ci_url": "http://127.0.0.1:5000",
             "description": "Unit test submission",
         }
@@ -71,15 +73,15 @@ class FixtureTest(DashboardTestCase):
             assert post_data[key] == rv_data[key]
 
         assert "id" in rv_data
-        self.run_id = str(rv_data.get("id"))
+        self.last_run_id = str(rv_data.get("id"))
 
-    def submit_auto_success_result(self, name):
+    def submit_auto_success_result(self, name, *fmt):
         post_data = {
             "output": "OUTPUT CONTENT",
             "time": "1.345",
-            "case": name,
+            "case": name if not fmt else name % fmt,
         }
-        rv = self.app.post('/api/run/' + self.run_id + "/auto/", data=post_data);
+        rv = self.app.post('/api/run/' + self.last_run_id + "/auto/", data=post_data);
         rv_data = json.loads(rv.data)
         for key in ["time", "case"]:
             assert key in rv_data
@@ -93,40 +95,36 @@ class FixtureTest(DashboardTestCase):
             "case": name,
             "failure": failure
         }
-        rv = self.app.post('/api/run/' + self.run_id + "/auto/", data=post_data);
+        rv = self.app.post('/api/run/' + self.last_run_id + "/auto/", data=post_data);
         rv_data = json.loads(rv.data)
         for key in ["time", "case"]:
             assert key in rv_data
             assert str(post_data[key]) == str(rv_data[key])
 
     def test_submit_data(self):
-        self.submit_test_run()
-        for case in ["a.b.c.d",
-                     "a.b.c.4.e",
-                     "a.b.c.3.e",
-                     "a.b.c.2.e",
-                     "a.b.c.1.e",
-                     "a.b.c.4.f",
-                     "a.b.c.3.f",
-                     "a.b.c.2.f",
-                     "a.b.c.1.f",
-                     "1.3.4"]:
-            self.submit_auto_success_result(case)
+        fixture_generate_number = 10
+        for i in xrange(self.fixture_group_number):
+            self.submit_test_run(i)
+            for case in ["a.b.c.%s.e",
+                         "a.b.c.%s.f",
+                         "1.2.%s.4"]:
+                for j in xrange(10):
+                    self.submit_auto_success_result(case, j)
 
-        for failure, case in [
-            ("Failure 1", "1.1.1"),
-            ("Failure 2", "1.2.1"),
-            ("Failure 2", "1.2.2"),
-            ("Failure 2", "1.2.3"),
-            ("Failure 2", "1.2.4"),
-            ("Failure 3", "1.3.1"),
-            ("Failure 3", "1.3.2"),
-            ("Failure 3", "1.3.3"),
-            ("Failure UnKnown", "1.4.1")]:
-            self.submit_auto_failed_result(case, failure)
+            for failure, case in [
+                ("Failure 1", "1.1.1"),
+                ("Failure 2", "1.2.1"),
+                ("Failure 2", "1.2.2"),
+                ("Failure 2", "1.2.3"),
+                ("Failure 2", "1.2.4"),
+                ("Failure 3", "1.3.1"),
+                ("Failure 3", "1.3.2"),
+                ("Failure 3", "1.3.3"),
+                ("Failure UnKnown", "1.4.1")]:
+                self.submit_auto_failed_result(case, failure)
 
-    def runTest(self):
-        return self.test_submit_data()
+        def runTest(self):
+            return self.test_submit_data()
 
 
 def run():
@@ -137,7 +135,7 @@ def run():
 
     if args.fixture:
         DashboardTestCase.keep_data = True
-        test = FixtureTest()
+        test = FixtureTest("test_submit_data")
         test.debug()
     else:
         unittest.main()
