@@ -2,12 +2,28 @@
 import sys
 import os
 import app
+import math
+import random
 import unittest
 import datetime
 import tempfile
 import argparse
 
 from flask import json, jsonify
+
+class randFilledBoolList(list):
+    """Generate a List of random booleans, with a given True ratio, and length. """
+    def __init__(self, length=10, true_ratio=0.5):
+        """TODO: to be defined1. """
+        if 0 > true_ratio or 1 < true_ratio:
+            raise RuntimeError("true_ratio can only be a number between 1 - 0")
+        super(randFilledBoolList, self).__init__()
+        for i in range(int(math.floor(length * true_ratio))):
+            self.append(True)
+        for i in range(int(math.ceil(length * (1 - true_ratio)))):
+            self.append(False)
+        self = random.shuffle(self)
+
 
 class DashboardTestCase(unittest.TestCase):
     keep_data = False
@@ -49,12 +65,13 @@ class EmptyDBTest(DashboardTestCase):
 
 
 class FixtureTest(DashboardTestCase):
+    fixture_each_group_number = 8
     fixture_group_number = 4
-    def submit_test_run(self, number):
+    def submit_test_run(self, **kwargs):
         post_data = {
-            "name": "Dev-Test-Run-%s" % number,
+            "name": "Dev-Test-Run",
             "component": "libvirt",
-            "build": "Dev-build-%s" % number,
+            "build": "Dev-build",
             "product": "RHEL",
             "version": "7.3",
             "arch": "x86",
@@ -64,23 +81,40 @@ class FixtureTest(DashboardTestCase):
             "date": datetime.datetime.now().isoformat(),
             "ci_url": "http://127.0.0.1:5000",
             "description": "Unit test submission",
+            "tags": ["Test", "Fixture"]
         }
+
+        for key, value in kwargs.items():
+            post_data[key] = value
 
         rv = self.app.post('/api/run/', data=post_data);
         rv_data = json.loads(rv.data)
         for key in post_data:
             assert key in rv_data
-            assert post_data[key] == rv_data[key]
+            if isinstance(post_data[key], list) and isinstance(rv_data[key], list):
+                assert set(post_data[key]) == set(rv_data[key])
+            else:
+                assert post_data[key] == rv_data[key]
 
         assert "id" in rv_data
         self.last_run_id = str(rv_data.get("id"))
 
-    def submit_auto_success_result(self, name, *fmt):
+    def submit_case_result(self, name, output, result='passed'):
         post_data = {
-            "output": "OUTPUT CONTENT",
-            "time": "1.345",
-            "case": name if not fmt else name % fmt,
+            "time": "1.2345",
+            "case": name,
         }
+        post_data["output"] = output
+        if result == 'passed':
+            pass
+        elif result == 'failed':
+            post_data["output"] = output
+            post_data["failure"] = output
+        elif result == 'skipped':
+            post_data["output"] = output
+            post_data["skipped"] = output
+        else:
+            raise RuntimeError()
         rv = self.app.post('/api/run/' + self.last_run_id + "/auto/", data=post_data);
         rv_data = json.loads(rv.data)
         for key in ["time", "case"]:
@@ -88,43 +122,38 @@ class FixtureTest(DashboardTestCase):
             #TODO: Number / String
             assert str(post_data[key]) == str(rv_data[key])
 
-    def submit_auto_failed_result(self, name, failure):
-        post_data = {
-            "output": "OUTPUT CONTENT",
-            "time": "1.345",
-            "case": name,
-            "failure": failure
-        }
-        rv = self.app.post('/api/run/' + self.last_run_id + "/auto/", data=post_data);
-        rv_data = json.loads(rv.data)
-        for key in ["time", "case"]:
-            assert key in rv_data
-            assert str(post_data[key]) == str(rv_data[key])
+    def submit_a_set_of_test_run(self, run_number, case_prefix=None, **kwargs):
+        passed_cases_param = [("pass.%s.a.test", 15),
+                              ("pass.%s.b.test", 10),
+                              ("pass.%s.c.test", 10)]
+
+        failed_cases_param = [("fail.%s.rare.", 4, randFilledBoolList(run_number, 0.9)),
+                               ("fail.%s.sometime.", 3, randFilledBoolList(run_number, 0.6)),
+                               ("fail.%s.often.", 2, randFilledBoolList(run_number, 0.2)),
+                               ("fail.%s.always.", 1, randFilledBoolList(run_number, 0))]
+
+        for _run_number in range(run_number):
+            self.submit_test_run(**kwargs)
+
+            for case_name, case_number in passed_cases_param:
+                for _number in range(case_number):
+                    self.submit_case_result(case_name % _number, "Passed output", "passed")
+
+            for case_name, case_number, case_result_list in failed_cases_param:
+                this_case_result = case_result_list.pop()
+                for _number in range(case_number):
+                    if this_case_result:
+                        self.submit_case_result(case_name % _number, "Passed output", "passed")
+                    else:
+                        self.submit_case_result(case_name % _number, "Failed output", "failed")
 
     def test_submit_data(self):
-        fixture_generate_number = 10
-        for i in xrange(self.fixture_group_number):
-            self.submit_test_run(i)
-            for case in ["a.b.c.%s.e",
-                         "a.b.c.%s.f",
-                         "1.2.%s.4"]:
-                for j in xrange(10):
-                    self.submit_auto_success_result(case, j)
-
-            for failure, case in [
-                ("Failure 1", "1.1.1"),
-                ("Failure 2", "1.2.1"),
-                ("Failure 2", "1.2.2"),
-                ("Failure 2", "1.2.3"),
-                ("Failure 2", "1.2.4"),
-                ("Failure 3", "1.3.1"),
-                ("Failure 3", "1.3.2"),
-                ("Failure 3", "1.3.3"),
-                ("Failure UnKnown", "1.4.1")]:
-                self.submit_auto_failed_result(case, failure)
-
-        def runTest(self):
-            return self.test_submit_data()
+        for group_num in xrange(self.fixture_group_number):
+            tags = ["Test %s" % group_num, "Fixture"]
+            name = "Dev-Test-Run-%s" % group_num
+            build = "Dev-build-%s" % group_num
+            self.submit_a_set_of_test_run(self.fixture_each_group_number,
+                                          name=name, tags=tags, build=build)
 
 
 def run():
