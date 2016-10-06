@@ -52,12 +52,6 @@ class Tag(db.Model):
     name = db.Column(db.String(255), nullable=False, primary_key=True)
     desc = db.Column(db.String(255), nullable=True)
 
-    @validates('name')
-    def validate_name(self, key, name):
-        # Tag should contain no spaces.
-        assert not ' ' in name
-        return name
-
     def __repr__(self):
         return '<Tag %s, Description:(%s)>' % (self.name, self.desc)
 
