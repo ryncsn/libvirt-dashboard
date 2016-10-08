@@ -215,7 +215,7 @@ def submit_to_polarion(run_id=None, regex=None):
                     if not record.linkage_result:
                         raise ConflictError()
                 except ConflictError:
-                    if forced and record.error not in [
+                    if forced or record.error not in [
                             "Caselink Failure", "Unknown Issue", "No Caselink"]:
                         record.linkage_result = 'ignored'
                         db.session.add(record)
@@ -230,13 +230,7 @@ def submit_to_polarion(run_id=None, regex=None):
             for record in ManualResult.query.filter(ManualResult.run_id == test_run.id):
                 polarion_result = record.result
                 if polarion_result not in ['passed', 'failed']:
-                    if forced:
-                        polarion_result = 'blocked'
-                    else:
-                        error_runs.append(test_run.as_dict())
-                        error_runs[-1]['reason'] = (
-                            'Manual result %s contains error %s' % (record.case, record.result))
-                        raise ConflictError()
+                    polarion_result = 'blocked'
 
                 polarion_testrun.add_record(
                     case=record.case,
@@ -260,7 +254,6 @@ def submit_to_polarion(run_id=None, regex=None):
             polarion_testrun.submit(session)
 
         #TODO issue a caselink backup
-
         test_run.submit_date = datetime.datetime.now()
         test_run.polarion_id = polarion_testrun.test_run_id
         db.session.add(test_run)
