@@ -1,8 +1,9 @@
-import datetime
 import re
-from flask import Blueprint, Markup, render_template, request, jsonify
-from model import db, AutoResult, ManualResult, refresh_result, Run
+import datetime
+from sqlalchemy.exc import IntegrityError
+from flask import Blueprint, render_template, request, jsonify
 from flask import current_app as app
+from model import db, AutoResult, ManualResult, refresh_result, Run
 
 try:
     import utils.polarion as Polarion
@@ -11,6 +12,7 @@ except ImportError:
     PYLARION_INSTALLED = False
 
 dashboard = Blueprint('dashboard', __name__)
+
 
 @dashboard.route('/', methods=['GET'])
 def index():
