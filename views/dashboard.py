@@ -150,10 +150,6 @@ def submit_to_polarion(run_id=None, regex=None):
     else:
         test_runs = Run.query.filter(Run.submit_date == None)
 
-    # TODO: Remove it from here
-    known_postfix = ['virtual_networks', 'virtual_disk', 'hooks', 'misc', 'migration', 'guest_kernel_debugging', 'console', 'virtio_rng', 'storage', 'secret', 'graphical_framebuffers', 'libvirtd', 'mem', 'managed_save', 'block_job_commit_pull','attach_detach_media', 'remote_access', 'attach_detach_interface', 'block_copy_no_shallow', 'virsh_domain', 'svirt', 'attach_detach_disk', 'guest_agent', 'snapshot', 'block_copy_shal, low', 'network_filter', 'cpu', 'numa']
-    known_tags = ['Virtual networks','Virtual disks','hooks','','Migration','Guest kernel debugging','console and serial devices','Security','Storage','Virsh cmd - Confirmed','Graphical framebuffers','Libvirtd','Memory management','Managed save','Snapshot','Virtual disks','Remote access','Virtual networks','Snapshot','Virsh cmd - Confirmed','sVirt','Virtual disks','Guest agent','Snapshot','Snapshot','network filter','CPU Management','NUMA']
-
     for test_run in test_runs:
         if regex:
             if not re.match(regex, test_run.name):
@@ -172,12 +168,13 @@ def submit_to_polarion(run_id=None, regex=None):
                 db.session.add(result_instance)
             db.session.commit()
 
-        tags = None
-        if test_run.name.split('-')[-1] in known_postfix:
-            tags = known_tags[known_postfix.index(test_run.name.split('-')[-1])]
+        polarion_tags = None
+        for tag in test_run.tags.all():
+            if tag.name.startswith("polarion-"):
+                polarion_tags = tag.name.lstrip("polarion-")
 
         test_description = "Dashboard ID: %s<br>" % (test_run.id)
-        test_description += "Tags: %s<br>" % " ".join(t.name for t in test_run.tags.all())
+        test_description += "Tags: %s<br>" % " ".join('"%s"' % t.name for t in test_run.tags.all())
 
         test_properties = {}
         for test_property in test_run.properties:
@@ -207,7 +204,7 @@ def submit_to_polarion(run_id=None, regex=None):
             ci_url=test_run.ci_url,
             description=test_description,
             title_tags=[tag.name for tag in test_run.tags.all()],
-            tags=tags
+            polarion_tags=polarion_tags
         )
 
         try:

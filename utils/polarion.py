@@ -90,7 +90,7 @@ class PolarionSession():
 class TestRunRecord():
     def __init__(self, d_id=None, name=None, component=None, build=None, product=None,
                  version=None, arch=None, type=None, framework=None, project=None,
-                 date=None, ci_url=None, description=None, title_tags=None, tags=None):
+                 date=None, ci_url=None, description=None, title_tags=None, polarion_tags=None):
 
         self.dashboard_id = d_id
         self.name = name
@@ -108,7 +108,7 @@ class TestRunRecord():
         self.description = description
 
         self.title_tags = title_tags
-        self.tags = tags
+        self.polarion_tags = polarion_tags
 
         self.records = []
 
@@ -214,7 +214,7 @@ class TestRunRecord():
         self._test_run.select_test_cases_by = 'staticQueryResult'
         self._test_run.query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
         self._set_jenkinsjobs(self.ci_url)
-        self._set_tags(self.tags)
+        self._set_tags(self.polarion_tags)
 
     def submit(self, session=None):
         """
