@@ -17,9 +17,11 @@ from views.api import restful_api
 from views.table import table
 from views.dashboard import dashboard
 from views.statistics import dashboard_statistics
+from views.dt_api import dt_api
 app.register_blueprint(dashboard)
 app.register_blueprint(table, url_prefix="/table")
 app.register_blueprint(restful_api, url_prefix="/api")
+app.register_blueprint(dt_api, url_prefix="/dt")
 app.register_blueprint(dashboard_statistics, url_prefix="/statistics")
 
 # Load Manager and Migration

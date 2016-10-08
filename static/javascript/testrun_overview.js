@@ -6,6 +6,8 @@ $(document).ready(function() {
   var table = $('#column_table').DataTableWithChildRow({
     pageLength: 100,
     dom: '<t><"row"<"col-md-3"f><"col-md-4"i><"col-md-5"p>>',
+    processing: true,
+    serverSide: true,
     columns: [
       {
         "data": function(row){
@@ -57,11 +59,7 @@ $(document).ready(function() {
     order: [[2, 'desc']],
     rowCallback: function(row, data, index){
     },
-    ajax: {
-      url: window.templateTestRunListAPIUrl,
-      dataSrc: ''
-    },
-
+    ajax: window.templateDTAPIURL,
     childContent: function(row, child, finish){
       var d = row.data();
       // Open this row
