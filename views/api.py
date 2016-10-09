@@ -1,7 +1,7 @@
 import datetime
 import re
 
-from model import db, AutoResult, ManualResult, Run, Tag
+from model import db, AutoResult, ManualResult, Run, Tag, Property
 from model import get_or_create, refresh_result
 from flask import Blueprint, request
 from flask_restful import Resource, Api, reqparse, inputs
@@ -91,6 +91,10 @@ class TestRunDetail(Resource):
             db.session.delete(record)
         for record in ManualResult.query.filter(ManualResult.run_id == run_id):
             db.session.delete(record)
+        for record in Property.query.filter(Property.run_id == run_id):
+            db.session.delete(record)
+        res.tags = []
+        db.session.commit()
         db.session.delete(res)
         db.session.commit()
         return res.as_dict()
