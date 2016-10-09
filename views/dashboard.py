@@ -172,8 +172,8 @@ def submit_to_polarion(run_id=None, regex=None):
 
         polarion_tags = None
         for tag in test_run.tags.all():
-            if tag.name.startswith("polarion-"):
-                polarion_tags = tag.name.lstrip("polarion-")
+            if tag.name.startswith("polarion:"):
+                polarion_tags = tag.name.lstrip("polarion:").strip()
 
         test_description = "Dashboard ID: %s<br>" % (test_run.id)
         test_description += "Tags: %s<br>" % " ".join('"%s"' % t.name for t in test_run.tags.all())
