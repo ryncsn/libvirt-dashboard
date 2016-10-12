@@ -34,7 +34,7 @@ class Property(db.Model):
     run = db.relationship('Run', back_populates='properties')
 
     name = db.Column(db.String(255), nullable=False, primary_key=True)
-    value = db.Column(db.String(1024), nullable=False)
+    value = db.Column(db.String(65535), nullable=False)
 
     def __repr__(self):
         return '<Property of Run: %s, %s:%s>' % (self.run_id, self.name, self.desc)
@@ -79,7 +79,7 @@ class Run(db.Model):
     project = db.Column(db.String(255), unique=False, nullable=False)
     date = db.Column(db.DateTime(), unique=False, nullable=False)
 
-    ci_url = db.Column(db.String(1024), unique=False, nullable=False)
+    ci_url = db.Column(db.String(65535), unique=False, nullable=False)
     description = db.Column(db.Text(), unique=False, nullable=True)
 
     tags = db.relationship('Tag', secondary=run_tags_table, back_populates='runs', lazy='dynamic')
