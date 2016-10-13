@@ -38,7 +38,6 @@ class TestRunList(Resource):
         for run in filted:
             ret.append(run.as_dict(detailed=True))
 
-        count = db.session.query(func.count(Run.id)).first()
         return {
             'draw': draw,
             'recordsTotal': total,
