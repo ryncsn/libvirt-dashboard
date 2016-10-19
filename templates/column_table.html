@@ -12,23 +12,5 @@
 </table>
 {% endblock %}
 {% block footer %}
-<script type="text/javascript" charset="utf-8">
-    $(document).ready(function() {
-        $('#column_table').dataTable( {
-            pageLength: 50,
-            columns: [
-                {% for col in column_datas %}
-                {
-                    "data":"{{ col }}",
-                    "render": prettier
-                },
-                {% endfor %}
-            ],
-            ajax: {
-                url: '{{ajax}}',
-                dataSrc: ''
-            },
-        });
-    } );
-</script>
+<script src="{{ url_for('static', filename='src/column_table.js') }}" type="text/javascript" charset="utf-8"></script>
 {% endblock %}
