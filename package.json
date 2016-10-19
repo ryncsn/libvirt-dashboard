@@ -1,0 +1,21 @@
+{
+  "name": "libvirt-dashboard",
+  "version": "0.0.0",
+  "description": "This package contains frontend libraries and source files for libvirt-dashboard.",
+  "main": "",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryncsn/libvirt-dashboard.git"
+  },
+  "author": "Kairui Song",
+  "dependencies": {
+    "datatables.net": "^1.10.12",
+    "datatables.net-buttons": "^1.2.2",
+    "datatables.net-buttons-dt": "^1.2.2",
+    "datatables.net-dt": "^1.10.12",
+    "datatables.net-select": "^1.2.0",
+    "datatables.net-select-dt": "^1.2.0",
+    "jquery": "^3.1.1"
+  }
+}
