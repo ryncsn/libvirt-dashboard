@@ -1,5 +1,15 @@
+require('./lib/datatables-templates.js')
+var htmlify = require("./lib/htmlify.js")
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach()
 var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
+var columns = []
+var columnSrcs = window.templateColumns;
+for (var columnSrc of columnSrcs){
+  columns.push({
+    "render": htmlify,
+    "data": columnSrc
+  });
+}
 
 function _ajax_call(method, case_name, data){
   return $.ajax("/api/run/" + run_id + "/manual/" + case_name + "/", {
@@ -33,7 +43,7 @@ $(document).ready(function() {
     pageLength: 50,
     "iDisplayLength": 20,
     "bAutoWidth": false,
-    BaseTable: [DataTableWithChildRow, DataTableWithInlineButton],
+    BaseTable: [$.fn.DataTableWithChildRow, $.fn.DataTableWithInlineButton],
     buttons: [
       {
         text: 'Select All Shown',
@@ -136,17 +146,10 @@ $(document).ready(function() {
     selectorColumns: [
       {
         column:"result",
-        render: prettier
+        render: htmlify
       },
     ],
-    columns: [
-      {% for col in column_datas %}
-      {
-        "data":"{{ col }}",
-        "render": prettier
-      },
-      {% endfor %}
-    ],
+    columns: columns,
     rowCallback: function(row, data, index){
       if(data.result == 'incomplete'){
         $(row).addClass('error');
@@ -156,7 +159,7 @@ $(document).ready(function() {
       }
     },
     ajax: {
-      url: '{{ajax}}',
+      url: window.ajaxURL,
       dataSrc: ''
     },
 

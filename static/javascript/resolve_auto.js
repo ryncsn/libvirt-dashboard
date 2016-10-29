@@ -1,5 +1,18 @@
+require('./lib/datatables-templates.js')
+var htmlify = require("./lib/htmlify.js")
+var colorize = require("./lib/colorize.js")
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach()
 var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
+var columns = []
+var columnSrcs = window.templateColumns;
+for (var columnSrc of columnSrcs){
+  columns.push({
+    "render": htmlify,
+    "data": columnSrc
+  });
+}
+
+
 
 function _ajax_call(method, case_name, data){
   return $.ajax("/api/run/" + run_id + "/auto/" + case_name + "/" , {
@@ -39,7 +52,7 @@ function delete_case(case_name){
 
 $(document).ready(function() {
   var table = $('#column_table').DataSearchTable({
-    BaseTable: [DataTableWithChildRow, DataTableWithInlineButton],
+    BaseTable: [$.fn.DataTableWithChildRow, $.fn.DataTableWithInlineButton],
     pageLength: 50,
     "iDisplayLength": 20,
     "bAutoWidth": false,
@@ -123,26 +136,19 @@ $(document).ready(function() {
     selectorColumns: [
       {
         column:"error",
-        render: prettier
+        render: htmlify
       },
       {
         column:"result",
-        render: prettier
+        render: htmlify
       },
       {
         column:"linkage_result",
-        render: prettier
+        render: htmlify
       },
 
     ],
-    columns: [
-      {% for col in column_datas %}
-      {
-        "data":"{{ col }}",
-        "render": prettier
-      },
-      {% endfor %}
-    ],
+    columns: columns,
     rowCallback: function(row, data, index){
       if(!data.linkage_result){
         $(row).addClass('error');
@@ -152,7 +158,7 @@ $(document).ready(function() {
       }
     },
     ajax: {
-      url: '{{ajax}}',
+      url: window.ajaxURL,
       dataSrc: ''
     },
     childContent: function(row, child, finish){
@@ -192,9 +198,9 @@ $(document).ready(function() {
       $.get("/api/run/" + run_id + "/auto/" + d.case + "/")
         .done(function(data){
           $('code.detail-well', head)
-            .append("<p> Test Output: "+ colorize(prettier(data.output)) +"</p>")
-            .append("<p> Test Failure Message: " + colorize(prettier(data.failure)) +"</p>")
-            .append("<p> Test Skip Message : "+ colorize(prettier(data.skip)) +"</p>")
+            .append("<p> Test Output: "+ colorize(htmlify(data.output)) +"</p>")
+            .append("<p> Test Failure Message: " + colorize(htmlify(data.failure)) +"</p>")
+            .append("<p> Test Skip Message : "+ colorize(htmlify(data.skip)) +"</p>")
         })
         .fail(function(err){
           $('code.detail-well', head)

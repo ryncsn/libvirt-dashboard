@@ -1,9 +1,6 @@
 {#TODO use url_for for all links #}
 {% extends "index.html" %}
 {% block title %} Libvirt Dashboard - Generated Manuals {% endblock %}
-{% block extra_header %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/testrun-overview.css') }}"></link>
-{% endblock %}
 {% block content %}
 {% set column_names = ['Test Run', 'Date', 'Polarion Submit Date', 'Auto', 'Linkage', 'Manual'] %}
 <div class="container">
@@ -74,5 +71,8 @@
         </div>
     </div>
 </div>
-<script src="{{ url_for('static', filename='src/testrun_overview.js') }}" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" charset="utf-8">
+    window.templateTestRunListAPIUrl = '{{ url_for('restful_api.test_run_list')}}';
+</script>
+<script src="{{ url_for('static', filename='dist/testrun_overview.js') }}" type="text/javascript" charset="utf-8"></script>
 {% endblock %}

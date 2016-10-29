@@ -1,3 +1,5 @@
+require("../css/dashboard.css")
+var TestRunStackGraph = require("./lib/test-run-stack-graph.js")
 var graph = new TestRunStackGraph('.d3');
 function updateKeys(){
   var selected = [];
@@ -11,7 +13,7 @@ $('[name="showing"]').change(function(){
   updateKeys();
 });
 updateKeys();
-$.ajax("{{url_for('dashboard_statistics.testrun_statistics', limit=0)}}")
+$.ajax(window.templateStatisticURL)
   .done(function(data){
     var selector = $('[name="test_run"]');
     for (var key in data){

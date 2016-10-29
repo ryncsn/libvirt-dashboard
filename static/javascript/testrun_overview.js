@@ -1,3 +1,6 @@
+require("../css/testrun-overview.css")
+require('./lib/datatables-templates.js')
+var htmlify = require("./lib/htmlify.js")
 var child_panel = $("#_proto_child").removeClass('hidden').detach()
 $(document).ready(function() {
   var table = $('#column_table').DataTableWithChildRow({
@@ -15,13 +18,14 @@ $(document).ready(function() {
           return html;
         }
       },
-      {% set column_datas = ['date', 'submit_date'] %}
-      {% for col in column_datas %}
       {
-        "data":"{{ col }}",
-        "render": prettier
+        "data":"date",
+        "render": htmlify
       },
-      {% endfor %}
+      {
+        "data":"submit_date",
+        "render": htmlify
+      },
       {
         "data":function(row){
           var total = row.auto_passed + row.auto_failed + row.auto_skipped;
@@ -54,7 +58,7 @@ $(document).ready(function() {
     rowCallback: function(row, data, index){
     },
     ajax: {
-      url: '{{ url_for('restful_api.test_run_list')}}',
+      url: window.templateTestRunListAPIUrl,
       dataSrc: ''
     },
 

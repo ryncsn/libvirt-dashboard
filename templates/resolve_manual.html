@@ -28,5 +28,13 @@
         </div>
     </div>
 </div>
-<script src="{{ url_for('static', filename='src/resolve_manual.js') }}" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" charset="utf-8">
+    window.templateColumns = [
+        {% for col in column_datas %}
+        "{{ col }}",
+        {% endfor %}
+    ];
+    window.ajaxURL = "{{ajax}}";
+</script>
+<script src="{{ url_for('static', filename='dist/resolve_manual.js') }}" type="text/javascript" charset="utf-8"></script>
 {% endblock %}

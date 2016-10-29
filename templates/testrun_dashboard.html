@@ -22,10 +22,9 @@
 
 {% endblock %}
 {% block footer %}
-<script src="//d3js.org/d3.v4.min.js"></script>
-<script src="//d3js.org/d3-scale.v1.min.js"></script>
-<script src="//d3js.org/d3-axis.v1.min.js"></script>
-<script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='javascript/test-run-stack-graph.js') }}"></script>
-<script src="{{ url_for('static', filename='src/testrun_dashboard.js') }}" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript" charset="utf-8">
+    window.templateStatisticURL = {{url_for('dashboard_statistics.testrun_statistics', limit=0)}};
+</script>
+<script src="{{ url_for('static', filename='dist/testrun_dashboard.js') }}" type="text/javascript" charset="utf-8"></script>
 
 {% endblock %}

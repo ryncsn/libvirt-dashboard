@@ -1,3 +1,4 @@
+var d3 = require('d3')
 (function(root){
     var $ = root.$,
         d3 = root.d3;
