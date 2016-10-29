@@ -1,2 +1,5 @@
 TODO
+node_modules
 config_instance.py
+.virtenv
+
