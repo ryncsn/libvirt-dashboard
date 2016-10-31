@@ -50,6 +50,7 @@ module.exports = {
     ]
   },
   jshint: {
+    esversion: 6,
     camelcase: false,
     emitErrors: false,
     failOnHint: false,

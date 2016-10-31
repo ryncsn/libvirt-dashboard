@@ -1,9 +1,9 @@
-require('./lib/datatables-templates.js')
-var htmlify = require("./lib/htmlify.js")
-var colorize = require("./lib/colorize.js")
-var error_panel = $("#_proto_error_panel").removeClass('hidden').detach()
-var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
-var columns = []
+require('./lib/datatables-templates.js');
+var htmlify = require("./lib/htmlify.js");
+var colorize = require("./lib/colorize.js");
+var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
+var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
+var columns = [];
 var columnSrcs = window.templateColumns;
 for (var columnSrc of columnSrcs){
   columns.push({
@@ -11,8 +11,6 @@ for (var columnSrc of columnSrcs){
     "data": columnSrc
   });
 }
-
-
 
 function _ajax_call(method, case_name, data){
   return $.ajax("/api/run/" + run_id + "/auto/" + case_name + "/" , {
@@ -22,13 +20,13 @@ function _ajax_call(method, case_name, data){
     data: JSON.stringify(data),
   }).fail(function(err){
     alert("Ajax failed with: " + JSON.stringify(err));
-  })
+  });
 }
 
 function skip_case(case_name){
   return _ajax_call("PUT", case_name, {
     linkage_result: "ignored"
-  })
+  });
 }
 
 function refresh_case(case_name, error, result){
@@ -42,12 +40,12 @@ function refresh_case(case_name, error, result){
     method: 'GET',
   }).fail(function(err){
     alert("Ajax failed with: " + JSON.stringify(err));
-  })
+  });
 }
 
 function delete_case(case_name){
   return _ajax_call("DELETE", case_name, {
-  })
+  });
 }
 
 $(document).ready(function() {
@@ -63,7 +61,7 @@ $(document).ready(function() {
           var filterSet = table.$('tr', {filter:'applied'});
           filterSet.each(function(){
             table.row(this).select();
-          })
+          });
         }
       },
       'selectNone',
@@ -78,7 +76,7 @@ $(document).ready(function() {
                 row.data(data).draw();
               });
             });
-          })
+          });
         },
         className: 'btn-success',
         titleAttr: 'Refresh selected test results, Libvirt-Dashboard will lookup in Caselink, override test results\' "error" column.',
@@ -93,7 +91,7 @@ $(document).ready(function() {
               row.data(data);
               row.draw();
             });
-          })
+          });
         },
         className: 'btn-warning',
         titleAttr: 'Ignore selected test results, set test\'s result to ignored and no longer consider this case as a failure bloking polarion submition anymore.',
@@ -109,7 +107,7 @@ $(document).ready(function() {
                 row.data(data).draw();
               });
             });
-          })
+          });
         },
         className: 'btn-warning',
         titleAttr: 'Reset selected test results, Libvirt-Dashboard will lookup in Caselink, override test results\' "error" and "result" column.',
@@ -200,15 +198,15 @@ $(document).ready(function() {
           $('code.detail-well', head)
             .append("<p> Test Output: "+ colorize(htmlify(data.output)) +"</p>")
             .append("<p> Test Failure Message: " + colorize(htmlify(data.failure)) +"</p>")
-            .append("<p> Test Skip Message : "+ colorize(htmlify(data.skip)) +"</p>")
+            .append("<p> Test Skip Message : "+ colorize(htmlify(data.skip)) +"</p>");
         })
         .fail(function(err){
           $('code.detail-well', head)
-            .append("<p> <strong> Failed to Load Result detail! </strong> </p>")
+            .append("<p> <strong> Failed to Load Result detail! </strong> </p>");
         })
         .always(function(){
-          child.append(head)
-          finish()
+          child.append(head);
+          finish();
         });
     },
   });

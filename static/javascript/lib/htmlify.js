@@ -1,4 +1,4 @@
-!function(root, factory){
+(function(root, factory){
   if (typeof define === 'function' && define.amd) {
     define([], factory);
   }
@@ -9,7 +9,7 @@
   } else {
     factory();
   }
-}(this, function(){
+})(this, function(){
   function htmlify(data, emptyReplace){
     var entityMap = {
       "&": "&amp;",

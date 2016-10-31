@@ -1,2 +1,2 @@
-require('../../css/pace.css')
+require('../../css/pace.css');
 require('pace-progress');

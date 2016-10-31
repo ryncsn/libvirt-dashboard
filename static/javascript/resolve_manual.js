@@ -1,8 +1,8 @@
-require('./lib/datatables-templates.js')
-var htmlify = require("./lib/htmlify.js")
-var error_panel = $("#_proto_error_panel").removeClass('hidden').detach()
-var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1]
-var columns = []
+require('./lib/datatables-templates.js');
+var htmlify = require("./lib/htmlify.js");
+var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
+var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
+var columns = [];
 var columnSrcs = window.templateColumns;
 for (var columnSrc of columnSrcs){
   columns.push({
@@ -51,7 +51,7 @@ $(document).ready(function() {
           var filterSet = table.$('tr', {filter:'applied'});
           filterSet.each(function(){
             table.row(this).select();
-          })
+          });
         }
       },
       'selectNone',
@@ -65,7 +65,7 @@ $(document).ready(function() {
               row.data(data);
               row.draw();
             });
-          })
+          });
         },
         className: 'btn-warning',
         titleAttr: 'Mark selected manual test result as passed.'
@@ -80,7 +80,7 @@ $(document).ready(function() {
               row.data(data);
               row.draw();
             });
-          })
+          });
         },
         className: 'btn-warning',
         titleAttr: 'Mark selected manual test result as failed.'
@@ -131,7 +131,7 @@ $(document).ready(function() {
             alert("Ajax failed with: " + JSON.stringify(err));
           }).done(function(data){
             if(data.submitted.length == 1){
-              alert('Success!')
+              alert('Success!');
             }
             else if(data.error.length !== 0){
               alert('Not submitted, please check for errors for both auto results and manual result of this test run then try again.');
@@ -164,7 +164,7 @@ $(document).ready(function() {
     },
 
     childContent: function(row, child, finish){
-      var d = row.data()
+      var d = row.data();
       // Open this row
       var head = error_panel.clone();
       //Add button event

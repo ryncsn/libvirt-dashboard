@@ -1,4 +1,4 @@
-!function(root, factory){
+(function(root, factory){
   if (typeof define === 'function' && define.amd) {
     define(['jquery'], factory);
   }
@@ -9,11 +9,11 @@
   } else {
     factory(root.jQuery);
   }
-}(this, function($){
+})(this, function($){
   'use strict';
   function DataSearchTable(param){
     // Setup - First add a text input to each footer cell
-    var that = this
+    var that = this;
     this.find('tfoot th').each(function(){
       var title = that.find('thead th').eq($(this).index()).text();
       if(title.length > 0){
@@ -23,7 +23,7 @@
 
     var initCompleteNext = param.initComplete;
     param.initComplete = function(setting, json){
-      var selectorColumns = {}
+      var selectorColumns = {};
       if(param.selectorColumns){
         for (var i = 0, len = param.selectorColumns.length; i < len; i++) {
           if(typeof param.selectorColumns[i] === 'object')
@@ -40,42 +40,44 @@
         if (title in selectorColumns){
           var render = selectorColumns[title].render;
           if(!render)
-            render = function(d){return d;}
+            render = function(d){return d;};
           var selections = [];
           var select = $('<select><option value=""></option></select>')
             .appendTo($(column.footer()).empty())
             .on('change', function () {
               var val = $.fn.dataTable.util.escapeRegex($(this).val());
+              var reg;
               if(selectorColumns[title].strict){
-                var reg = val ? "^" + val + "$" : '.*';
+                reg = val ? "^" + val + "$" : '.*';
               }
               else{
-                var reg = val ? val : '';
+                reg = val ? val : '';
               }
               column
                 .search(reg , true, false )
                 .draw();
             });
             column.data().each(function(d, j){
+              var new_select;
               if($.isArray(d)){
-                if(d.length == 0){
-                  var new_select = render(d);
+                if(d.length === 0){
+                  new_select = render(d);
                   if(selections.indexOf(new_select) == -1){
                     selections.push(new_select);
                   }
                 }
                 for (var i = 0, len = d.length; i < len; i++) {
-                  var new_select = render(d[i]);
+                  new_select = render(d[i]);
                   if(selections.indexOf(new_select) == -1){
                     selections.push(new_select);
-                  };
+                  }
                 }
               }
               else{
-                var new_select = render(d);
+                new_select = render(d);
                 if(selections.indexOf(new_select) == -1){
                   selections.push(new_select);
-                };
+                }
               }
             });
             selections.sort();
@@ -97,11 +99,11 @@
       });
       if(initCompleteNext)
         initCompleteNext.apply(this, [setting, json]);
-    }
+    };
     var BaseTable = param.BaseTable || this.DataTable;
     if (BaseTable instanceof Array){
       var Base = param.BaseTable.shift();
-      if(param.BaseTable.length == 0)
+      if(param.BaseTable.length === 0)
         param.BaseTable = null;
       return Base.apply(this, [param]);
     }
@@ -113,9 +115,9 @@
     var BaseTable = param.BaseTable || this.DataTable;
     if (BaseTable instanceof Array){
       var Base = param.BaseTable.shift();
-      if(param.BaseTable.length == 0)
+      if(param.BaseTable.length === 0)
         param.BaseTable = null;
-      return Base.apply(this, [param])
+      return Base.apply(this, [param]);
     }
     return BaseTable.apply(this, [param]);
   }
@@ -125,23 +127,21 @@
     //Need fontawesome, bootstrap
     var that = this;
     //Insert a button column
-    this.find('thead tr').prepend("<th></th>")
-    this.find('tfoot tr').prepend("<th></th>")
+    this.find('thead tr').prepend("<th></th>");
+    this.find('tfoot tr').prepend("<th></th>");
 
-    param.columns.unshift(
-      {
-        "data": null,
-        "className": 'details-control',
-        "orderable": false,
-        "defaultContent": '<i class="fa fa-fw fa-plus" aria-hidden="true"></i>',
-        "width": '10',
-      }
-    );
+    param.columns.unshift({
+      "data": null,
+      "className": 'details-control',
+      "orderable": false,
+      "defaultContent": '<i class="fa fa-fw fa-plus" aria-hidden="true"></i>',
+      "width": '10',
+    });
 
     var initCompleteNext = param.initComplete;
     param.initComplete = function(setting, json){
       var table = this.api();
-      var tbody = this.find('tbody')
+      var tbody = this.find('tbody');
       this.on('click', 'tbody td.details-control', function(){
         var tr = $(this).closest('tr');
         var button = $(this).find('i');
@@ -174,13 +174,13 @@
       });
       if(initCompleteNext)
         initCompleteNext.apply(this, [setting, json]);
-    }
+    };
     var BaseTable = param.BaseTable || this.DataTable;
     if (BaseTable instanceof Array){
       var Base = param.BaseTable.shift();
-      if(param.BaseTable.length == 0)
+      if(param.BaseTable.length === 0)
         param.BaseTable = null;
-      return Base.apply(this, [param])
+      return Base.apply(this, [param]);
     }
     return BaseTable.apply(this, [param]);
   }
