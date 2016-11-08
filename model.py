@@ -2,7 +2,7 @@ import re
 import caselink as CaseLink
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates, load_only
-from sqlalchemy import func
+from sqlalchemy import func, ForeignKeyConstraint
 from flask_sqlalchemy import SQLAlchemy
 from requests import HTTPError, ConnectionError
 
@@ -13,25 +13,25 @@ db = SQLAlchemy()
 def get_or_create(session, model, **kwargs):
     instance = session.query(model).filter_by(**kwargs).first()
     if instance:
-        return instance
+        return instance, False
     else:
         instance = model(**kwargs)
         session.add(instance)
-        session.commit()
-        return instance
+        return instance, True
 
 
-run_tags_table = db.Table('test_run_tags',
-                          db.Column('run_id', db.Integer, db.ForeignKey('run.id')),
-                          db.Column('tag_name', db.String(255), db.ForeignKey('tag.name'))
-                         )
+run_tags_table = \
+        db.Table('test_run_tags',
+                 db.Column('run_id', db.Integer, db.ForeignKey('run.id')),
+                 db.Column('tag_name', db.String(255), db.ForeignKey('tag.name'))
+                )
 
 
 class Property(db.Model):
     __tablename__ = 'property'
 
     run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
-    run = db.relationship('Run', back_populates='properties')
+    run = db.relationship('Run', back_populates='properties', single_parent=True)
 
     name = db.Column(db.String(255), nullable=False, primary_key=True)
     value = db.Column(db.String(65535), nullable=False)
@@ -85,10 +85,12 @@ class Run(db.Model):
     tags = db.relationship('Tag', secondary=run_tags_table, back_populates='runs', lazy='dynamic')
     properties = db.relationship('Property', back_populates='run', lazy='dynamic')
 
-    auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
-    manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
     submit_date = db.Column(db.DateTime(), unique=False, nullable=True)
     polarion_id = db.Column(db.String(1024), unique=False, nullable=True)
+
+    auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
+    manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
+    linkage_results = db.relationship("LinkageResult", back_populates="run")
 
     def __repr__(self):
         return '<TestRun %s>' % self.name
@@ -98,12 +100,13 @@ class Run(db.Model):
 
     def update(self, **kwargs):
         """
-        Update column values. Create relationship after other values are processed
-        to prevent IntegrityError caused by auto commit.
+        Update test run's tags and properties.
         """
         tags = None
         properties = None
         with db.session.no_autoflush:
+            # Create relationship after other values are processed
+            # to prevent IntegrityError caused by auto commit.
             for key, value in kwargs.items():
                 if key == 'tags':
                     tags = value
@@ -113,7 +116,7 @@ class Run(db.Model):
                     setattr(self, key, value)
             if tags:
                 for tag in tags:
-                    tag_instance = get_or_create(db.session, Tag, name=tag)
+                    tag_instance, _ = get_or_create(db.session, Tag, name=tag)
                     self.tags.append(tag_instance)
             if properties:
                 for name, value in properties.items():
@@ -125,13 +128,13 @@ class Run(db.Model):
             'auto_passed': 0,
             'auto_failed': 0,
             'auto_skipped': 0,
-            'auto_error': 0,
+            # TODO: 'auto_error': 0,
             'manual_passed': 0,
             'manual_failed': 0,
             'manual_error': 0,
         }
         for result in self.auto_results\
-                      .options(load_only("output", "failure", "skip", "linkage_result"))\
+                      .options(load_only("output", "failure", "skip"))\
                       .all():
             if result.result == 'passed':
                 ret['auto_passed'] += 1
@@ -139,11 +142,6 @@ class Run(db.Model):
                 ret['auto_failed'] += 1
             elif result.result == 'skipped':
                 ret['auto_skipped'] += 1
-
-            if result.linkage_result is None:
-                ret['auto_error'] += 1
-            if result.linkage_result is 'ignored':
-                ret['auto_ignored'] += 1
 
         for result in self.manual_results\
                       .options(load_only("result"))\
@@ -179,46 +177,31 @@ class AutoResult(db.Model):
     __tablename__ = 'auto_result'
 
     run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
-    run = db.relationship('Run', back_populates='auto_results')
+    run = db.relationship('Run', back_populates='auto_results', single_parent=True)
 
-    case = db.Column(db.String(255), nullable=False, primary_key=True)
-    time = db.Column(db.Float(), nullable=False)
+    case = db.Column(db.String(65535), nullable=False, primary_key=True)
+    time = db.Column(db.Float(), default=0.0, nullable=False)
     skip = db.Column(db.String(65535), nullable=True)
     failure = db.Column(db.String(65535), nullable=True)
     output = db.Column(db.Text(), nullable=True)
     source = db.Column(db.Text(), nullable=True)
     comment = db.Column(db.String(65535), nullable=True)
 
-    # If bugs is not None, manualcases means cases failed
-    # If bugs is None, manualcases means cases passed
-    # If error is not None, dashboard faild to look up bug/cases for this autocase
-    error = db.Column(db.String(255), nullable=True)
-    linkage_result = db.Column(db.String(255), nullable=True)
+    linkage_results = db.relationship("LinkageResult", back_populates="auto_result", viewonly=True)
 
     @hybrid_property
     def result(self):
         if self.skip:
             return 'skipped'
-        if self.failure:
+        elif self.failure:
             return 'failed'
-        if self.output:
+        elif self.output:
             return 'passed'
+        elif all(text == "black-listed" for text in [self.skip, self.failure, self.output]):
+            return "black-listed"
+        elif all(text is None for text in [self.skip, self.failure, self.output]):
+            return "missing"
         return None
-
-    @validates('error')
-    def validate_error(self, key, result):
-        assert result in ['No Caselink', 'No Linkage', 'Unknown Issue', 'Caselink Failure', None, ]
-        return result
-
-    @validates('linkage_result')
-    def validate_linkage_result(self, key, result):
-        assert result in ['ignored', 'skipped', 'passed', 'failed', None, ]
-        return result
-
-    @validates('result')
-    def validate_result(self, key, result):
-        assert result in ['skipped', 'passed', 'failed', None, ]
-        return result
 
     def __repr__(self):
         return '<TestResult %s-%s>' % (self.run_id, self.case)
@@ -239,18 +222,76 @@ class AutoResult(db.Model):
             ret['output'] = self.output
         return ret
 
+    def gen_linkage_result(self, session=None):
+        """
+        Take a AutoResult instance, rewrite it's error and linkage_result
+        with data in caselink.
+        """
+        if not session:
+            session = db.session
+
+        try:
+            this_autocase = CaseLink.AutoCase(self.case).refresh()
+        except (HTTPError, ConnectionError) as err:
+            return
+
+        _linkage_result = self.result
+        _linkage_error = None
+
+        if _linkage_result == "black-listed":
+            _linkage_result = "ignored"
+            _linkage_error = "black-listed"
+
+        if _linkage_result == "failed":
+            # Auto Case failed with message <self['failure']>
+            _linkage_result = None
+            _linkage_error = 'UnknownIssue'
+
+            for failure in this_autocase.failures:
+                if re.match(failure.failure_regex, self.failure) is not None:
+                    _linkage_result = "failed"
+                    _linkage_error = 'KnownIssue'
+
+        elif _linkage_result == "missing":
+            _linkage_result = None
+            _linkage_error = "Missing"
+
+        manualcases = [case.id for case in this_autocase.manualcases]
+        for manualcase_id in manualcases:
+            manualcase, _ = get_or_create(session, ManualResult,
+                                          run_id=self.run_id, case=manualcase_id)
+            if _:
+                manualcase.gen_linkage_result(session)
+            linkage_result, _ = get_or_create(session, LinkageResult,
+                                              run_id=self.run_id,
+                                              manual_result_id=manualcase.case,
+                                              auto_result_id=self.case)
+            linkage_result.result = _linkage_result
+            linkage_result.error = _linkage_error
+
+            session.add(linkage_result)
+            session.commit()
+
+            manualcase.refresh_result()
+            manualcase.refresh_comment()
+            manualcase.refresh_duration()
+
 
 class ManualResult(db.Model):
+    """
+    Presents a workitem result on polarion.
+    """
     __tablename__ = 'manual_result'
 
     run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
-    run = db.relationship('Run', back_populates='manual_results')
+    run = db.relationship('Run', back_populates='manual_results', single_parent=True)
 
     case = db.Column(db.String(255), nullable=False, primary_key=True)
     time = db.Column(db.Float(), default=0.0, nullable=False)
     comment = db.Column(db.String(65535), nullable=True)
 
     result = db.Column(db.String(255), nullable=True)
+    linkage_results = db.relationship("LinkageResult", back_populates="manual_result", viewonly=True)
 
     @validates('result')
     def validate_result(self, key, result):
@@ -270,186 +311,122 @@ class ManualResult(db.Model):
             ret[c.name] = getattr(self, c.name)
         return ret
 
+    def gen_linkage_result(self, session=None):
+        session = session or db.session
+        this_workitem = CaseLink.ManualCase(self.case)
+        for this_autocase in this_workitem.autocases:
+            auto_result, _ = get_or_create(session, AutoResult,
+                                           run_id=self.run_id,
+                                           case=this_autocase.id)
+            if _:
+                linkage_result, _ = get_or_create(session, LinkageResult,
+                                                  run_id=self.run_id,
+                                                  manual_result_id=self.case,
+                                                  auto_result_id=this_autocase.id)
+                linkage_result.result = None
+                linkage_result.error = "Missing"
 
-def _update_manual(autocase, manualcase_id, session,
-                   expected_results=None, from_results=None, to_result=None, comment=''):
-    """
-    Update a ManualResult.
-    Change it's current result as needed and update its duration time.
+    def refresh_result(self, linkage_results=None):
+        """
+        For a manual case:
+            * If all linkage result is passed, or at least one's result is passed and
+              other's result is ignored, manual case will be marked passed.
+            * If all linkage result is skipped, or at lease one's result is skipped and
+              other's result is ignored or None, manual case will be marked ignored.
+            * If all linkage result is ignored, manual case makred ignored
+            * If any linkage result is failed, manual case marked failed
+            * Otherwise, manual case marked incomplete (blocked)
+        """
+        linkage_results = self.linkage_results
+        if any(r.result == "missing" for r in linkage_results):
+            self.result = "incomplete"
 
-    :param expected_results: Acceptable current result value, eg: ['incomplete', None],
-        if ManualResult in not in any of the given state, will return None and touch nothing.
+        elif any(r.result == "failed" for r in linkage_results):
+            self.result = "failed"
 
-    :param from_results: Acceptable current result value, eg: ['incomplete', None],
-        if ManualResult in not in any of the given state, will only accumulate it's duration time
-        otherwise, will change it's result to 'to_result'
+        elif all(r.result == "ignored" or r.result == "passed" for r in linkage_results):
+            if any(r.result == "passed" for r in linkage_results):
+                self.result = "passed"
 
-    :param to_result: New result value.
-    """
-    manualcase = get_or_create(session, ManualResult, run_id=autocase.run_id, case=manualcase_id)
-    if expected_results:
-        if not manualcase.result in expected_results:
-            #print "expected + " + str(expected_results)+ "get "+ str(manualcase.result)
-            return None
-    if to_result:
-        if not from_results or manualcase.result in from_results:
-            manualcase.result = to_result
+        elif all(r.result == "ignored" or r.result == "skipped" for r in linkage_results):
+            if any(result == "skipped" for result in linkage_results):
+                self.result = "skipped"
+
+        elif all(r.result == "ignored" for r in linkage_results):
+            self.result = "ignored"
+
         else:
-            #print "expected + " + str(from_results)+ "get "+str(manualcase.result)
-            pass
-    manualcase.time += float(autocase.time)
-    if not manualcase.comment:
-        manualcase.comment = comment
-    else:
-        manualcase.comment += "\n" + comment
-    return manualcase
+            self.result = "incomplete"
+
+    def refresh_comment(self, linkage_results=None):
+        comments = []
+        for result in self.linkage_results:
+            _result = result.result
+            _error = result.error or "No error"
+            if result.result:
+                comments.append("%s case with %s: \"%s\"" %
+                                (_result.title(), _error, result.auto_result_id))
+            else:
+                comments.append("Blocking case with Error %s: %s" % (_error, result.auto_result_id))
+            comments.sort()
+        self.comment = "\n".join(comments)
+
+    def refresh_duration(self, linkage_results=None):
+        self.time = 0
+        for result in self.linkage_results:
+            _auto_case = result.auto_result
+            self.time += float(_auto_case.time)
 
 
-def gen_manual_case(result, caselink, session):
+class LinkageResult(db.Model):
     """
-    Take a Autocase result instance, generate it's ralated manual cases.
-
-    Need to clean all manual cases for a test run first.
+    Presend a reason why a manual case is marked passed/failed/incomplete
     """
+    __tablename__ = 'linkage_results'
+    __table_args__ = (
+        ForeignKeyConstraint(["run_id", "manual_result_id"],
+                             [ManualResult.run_id, ManualResult.case]),
+        ForeignKeyConstraint(["run_id", "auto_result_id"],
+                             [AutoResult.run_id, AutoResult.case]),
+        {})
 
-    if not caselink:
-        return (False, "No caselink")
+    run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
+    manual_result_id = db.Column(db.String(255), primary_key=True, nullable=False)
+    auto_result_id = db.Column(db.String(65535), primary_key=True, nullable=False)
 
-    if result.result == 'skipped' or result.result == 'ignored':
-        if not caselink.manualcases or len(caselink.manualcases) == 0:
-            return (False, "No manual case for skipped auto case")
-        for caselink_manualcase in caselink.manualcases:
-            if not _update_manual(result, caselink_manualcase.id, session,
-                                  expected_results=[None, 'incomplete', 'failed'],
-                                  from_results=[None], to_result='incomplete',
-                                  comment=('Skipped Auto case: "%s"\n' % result.case)):
-                #print "Skip for non incomplete case"
-                pass
-        return (True, "Manual case updated.")
+    run = db.relationship('Run', back_populates='linkage_results', single_parent=True, viewonly=True)
+    manual_result = db.relationship('ManualResult', back_populates='linkage_results',
+                                    single_parent=True, viewonly=True)
+    auto_result = db.relationship('AutoResult', back_populates='linkage_results',
+                                  single_parent=True, viewonly=True)
 
-    elif result.result == 'failed':
-        # Auto Case failed with message <result['failure']>
-        if not caselink.failures or len(caselink.failures) == 0:
-            return (False, "No manual case for failed auto case")
-        for failure in caselink.failures:
-            if re.match(failure.failure_regex, result.failure) is not None:
-                for case in failure.manualcases:
-                    if not _update_manual(result, case.id, session,
-                                          expected_results=[None, 'incomplete', 'failed'],
-                                          from_results=[None, 'incomplete'], to_result='failed',
-                                          comment=('Failed auto case: "%s", BUG: "%s"\n' %
-                                                     (failure.bug.id, result.case))):
-                        #print "Failed for non incomplete case"
-                        pass
-        return (True, "Manual Case marked failed.")
+    error = db.Column(db.String(255), nullable=True)
+    result = db.Column(db.String(255), nullable=True)
 
-    elif result.result == 'passed':
-        if not caselink.manualcases or len(caselink.manualcases) == 0:
-            return (False, "No manual case for passed auto case")
-        for caselink_manualcase in caselink.manualcases:
-            ManualCasePassed = True
-            for related_autocase in caselink_manualcase.autocases:
-                related_result = AutoResult.query.get((result.run_id, related_autocase.id))
-                if not related_result and related_autocase != caselink:
-                    # This auto case passed, but some related auto case are not submitted yet.
-                    ManualCasePassed = False
-                    if not _update_manual(result, caselink_manualcase.id, session,
-                                          expected_results=[None, 'incomplete', 'failed'],
-                                          from_results=[None], to_result='incomplete',
-                                          comment=('Passed Auto case: "%s"\n' % result.case)):
-                        #print "Incomplete case makred passed"
-                        pass
-                    break
+    @validates('error')
+    def validate_error(self, key, error):
+        """
+        Validate if error is legal:
 
-                elif related_result.skip is not None:
-                    # This auto case passed, but some related auto case are skipped.
-                    ManualCasePassed = False
-                    if not _update_manual(result, caselink_manualcase.id, session,
-                                          expected_results=[None, 'incomplete', 'failed'],
-                                          from_results=[None], to_result='incomplete',
-                                          comment=('Passed Auto case: "%s"\n' % result.case)):
-                        #print "Skipped case makred passed"
-                        pass
-                    break
+        Valid errors:
+            'UnknownIssue': Auto case failed for unknown reason.
+            'Missing': Auto case not ran.
+            None: No error, result must be avaliable.
+        """
+        assert error in ['UnknownIssue', 'Missing', None, ]
+        return error
 
-                elif related_result.failure is not None:
-                    # This auto case passed, but some related auto case are failed.
-                    ManualCasePassed = False
-                    if not _update_manual(result, caselink_manualcase.id, session,
-                                          expected_results=[None, 'failed'],
-                                          from_results=[None], to_result='incomplete',
-                                          comment=('Passed Auto case: "%s"\n' % result.case)):
-                        #print "Manual already failed, not properly marked"
-                        pass
-                    break
+    @validates('result')
+    def validate_linkage_result(self, key, result):
+        """
+        Validate if result is legal:
+        """
+        assert result in ['skipped', 'passed', 'failed', 'ignored', None, ]
+        return result
 
-            if ManualCasePassed:
-                # This auto case passed, and all related auto case are passed.
-                if not _update_manual(result, caselink_manualcase.id, session,
-                                      expected_results=[None, 'incomplete'],
-                                      from_results=[None, 'incomplete'], to_result='passed',
-                                      comment=('Passed Auto case: "%s"\n' % result.case)):
-                    #print "Trying to pass already failed case"
-                    pass
-        return (True, "Manual Case updated.")
+    def __repr__(self):
+        return ' %s, Description:(%s)>' % (self.name, self.desc)
 
-
-def refresh_result(result, session, gen_manual=True, gen_error=True, gen_result=True):
-    """
-    Take a AutoResult instance, rewrite it's error and linkage_result
-    with data in caselink.
-    """
-    # Failed -> look up in failures, if any bug matches, mark manualcase failed
-    # Passed -> look up in linkages(manualcases), if all related autocase of a manualcase
-    #           passed, mark the manualcase passed
-    # Mark error when lookup failed
-    if gen_error:
-        result.error = None
-    if gen_result:
-        result.linkage_result = None
-
-    def _set_error(err):
-        if gen_error:
-            result.error = err
-
-    def _set_result(res):
-        if gen_result:
-            result.linkage_result = res
-
-    try:
-        this_autocase = CaseLink.AutoCase(result.case).refresh()
-    except (HTTPError, ConnectionError) as err:
-        if hasattr(err, 'status_code') and err.response.status_code == 404:
-            _set_error('No Caselink')
-        else:
-            _set_error('Caselink Failure')
-        return False, result.error
-
-    if result.skip:
-        _set_result('skipped')
-
-    elif result.failure:
-        # Auto Case failed with message <result['failure']>
-        bug_exists = False
-        for failure in this_autocase.failures:
-            if re.match(failure.failure_regex, result.failure) is not None:
-                bug_exists = True
-                _set_result('failed')
-
-        if not bug_exists:
-            _set_error('Unknown Issue')
-
-    elif result.output:
-        if not this_autocase.manualcases or len(this_autocase.manualcases) == 0:
-            _set_error('No Linkage')
-        else:
-            _set_result('passed')
-
-    if not result.linkage_result:
-        return False, result.error
-
-    else:
-        if gen_manual:
-            return gen_manual_case(result, this_autocase, session)
-        else:
-            return True, result.linkage_result
+    def __init__(self, **result):
+        for key, value in result.items():
+            setattr(self, key, value)

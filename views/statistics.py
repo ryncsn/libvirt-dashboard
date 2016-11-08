@@ -1,6 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, Markup, render_template, request, jsonify
-from model import db, Run, AutoResult, ManualResult, refresh_result, Run
+from model import db, Run, AutoResult, ManualResult, Run
 from sqlalchemy.orm import load_only, joinedload
 from collections import Counter
 

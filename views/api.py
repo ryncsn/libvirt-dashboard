@@ -2,7 +2,6 @@ import datetime
 import re
 
 from model import db, AutoResult, ManualResult, Run, Tag, Property
-from model import get_or_create, refresh_result
 from flask import Blueprint, request
 from flask_restful import Resource, Api, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
@@ -133,14 +132,16 @@ class AutoResultList(Resource):
 
         res = AutoResult.query.get((run_id, args['case']))
         if res:
-            return res.as_dict(), 400
+            if res.result != "missing":
+                return res.as_dict(), 400
+            else:
+                db.session.delete(res)
 
         result_instance = AutoResult(**result)
 
-        (success, message) = refresh_result(result_instance, db.session)
-
         try:
             db.session.add(result_instance)
+            result_instance.gen_linkage_result(session=db.session)
             db.session.commit()
         except Exception as e:
             db.session.rollback()

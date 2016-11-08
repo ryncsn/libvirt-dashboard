@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy.exc import IntegrityError
 from flask import Blueprint, render_template, request, jsonify
 from flask import current_app as app
-from model import db, AutoResult, ManualResult, refresh_result, Run
+from model import db, AutoResult, ManualResult, Run
 
 try:
     import utils.polarion as Polarion
@@ -49,10 +49,8 @@ def refresh_testrun(run_id):
             delete(synchronize_session=False)
 
     for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
-        (success, message) = refresh_result(result_instance, db.session)
+        result_instance.gen_linkage_result(result_instance, db.session)
         db.session.add(result_instance)
-        if not success:
-            ret[result_instance.case] = message
 
     try:
         db.session.commit()
@@ -68,56 +66,31 @@ def refresh_testrun(run_id):
 @dashboard.route('/trigger/run/<int:run_id>/auto/<string:case>/refresh', methods=['GET'])
 @dashboard.route('/trigger/run/<int:run_id>/auto/refresh', methods=['GET'])
 def refresh_auto(run_id, case=None):
-    gen_error = request.args.get('error', False)
-    gen_result = request.args.get('result', False)
-
-    if gen_error == 'true':
-        gen_error = True
-    else:
-        gen_error = False
-
-    if gen_result == 'true':
-        gen_result = True
-    else:
-        gen_result = False
-
-    fail_message = {}
+    gen_error = request.args.get('error', False) == 'true'
+    gen_result = request.args.get('result', False) == 'true'
     if case:
         query = AutoResult.query.filter(AutoResult.run_id == run_id, AutoResult.case == case)
     else:
         query = AutoResult.query.filter(AutoResult.run_id == run_id)
 
     for result_instance in query:
-        (success, message) = refresh_result(result_instance, db.session,
-                                            gen_error = gen_error,
-                                            gen_result = gen_result,
-                                            gen_manual = True)
-        db.session.add(result_instance)
-        if not success:
-            fail_message[result_instance.case] = message
+        result_instance.gen_linkage_result(db.session)
 
     try:
         db.session.commit()
     except IntegrityError as e:
         db.session.rollback()
         return jsonify({'message': 'db error'}), 500
-
-    if len(fail_message.keys()) == 0:
-        return jsonify({'message': 'success'}), 200
-    return jsonify(fail_message), 200
+    return jsonify({'message': 'success'}), 200
 
 
 @dashboard.route('/trigger/run/<int:run_id>/manual/refresh', methods=['GET'])
 def refresh_manual(run_id):
-    fail_message = {}
     ManualResult.query.filter(ManualResult.run_id == run_id).\
             delete(synchronize_session=False)
 
     for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
-        (success, message) = refresh_result(result_instance, db.session, gen_error=False, gen_result=False)
-        db.session.add(result_instance)
-        if not success:
-            fail_message[result_instance.case] = message
+        result_instance.gen_linkage_result(db.session)
 
     try:
         db.session.commit()
@@ -125,9 +98,7 @@ def refresh_manual(run_id):
         db.session.rollback()
         return jsonify({'message': 'db error'}), 500
 
-    if len(fail_message.keys()) == 0:
-        return jsonify({'message': 'success'}), 200
-    return jsonify(fail_message), 200
+    return jsonify({'message': 'success'}), 200
 
 
 @dashboard.route('/trigger/run/submit', methods=['GET'])
@@ -163,10 +134,7 @@ def submit_to_polarion(run_id=None, regex=None):
             db.session.commit()
 
             for result_instance in AutoResult.query.filter(AutoResult.run_id == test_run.id):
-                (success, message) = refresh_result(result_instance, db.session,
-                                                    gen_manual=True,
-                                                    gen_error=True,
-                                                    gen_result=True)
+                (success, message) = result_instance.gen_linkage_result(session = db.session)
                 db.session.add(result_instance)
             db.session.commit()
 
@@ -212,11 +180,11 @@ def submit_to_polarion(run_id=None, regex=None):
         try:
             for record in AutoResult.query.filter(AutoResult.run_id == test_run.id):
                 try:
-                    if not record.linkage_result:
+                    if not record.linkage_results:
                         raise ConflictError()
                 except ConflictError:
                     if forced or record.error not in [
-                            "Caselink Failure", "Unknown Issue", "No Caselink"]:
+                            "CaselinkFailure", "UnknownIssue", "NoCaselink"]:
                         record.linkage_result = 'ignored'
                         db.session.add(record)
                         continue
