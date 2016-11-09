@@ -123,16 +123,25 @@ class FixtureTest(DashboardTestCase):
             assert str(post_data[key]) == str(rv_data[key])
 
     def submit_a_set_of_test_run(self, run_number, case_prefix=None, **kwargs):
-        passed_cases_param = [("pass.%s.a.test", 15),
-                              ("pass.%s.b.test", 10),
-                              ("pass.%s.c.test", 10)]
+        """
+        run_number: how many test run to create
+        case_prefix: not used
+        kwargs: arg for test run (test suite)
+        """
+        passed_cases_param = [("a.pass.%s.test", 5), #(<case_name>, <number for each test run>)
+                              ("b.pass.%s.test", 3),
+                              ("c.pass.%s.test", 3),
+                              ("d.pass.%s.test", 3),
+                              ("e.pass.%s.test", 3),
+                              ("d.missing.%s.test", 3)]
 
-        failed_cases_param = [("fail.%s.rare.", 4, randFilledBoolList(run_number, 0.9)),
-                               ("fail.%s.sometime.", 3, randFilledBoolList(run_number, 0.6)),
-                               ("fail.%s.often.", 2, randFilledBoolList(run_number, 0.2)),
-                               ("fail.%s.always.", 1, randFilledBoolList(run_number, 0))]
+        failed_cases_param = [("b.fail.%s.rare", 1, randFilledBoolList(run_number, 0.9)),
+                               #(<case_name>, <number for each test run>,<pass rate>)
+                               ("c.fail.%s.sometime", 1, randFilledBoolList(run_number, 0.6)),
+                               ("d.fail.%s.often", 1, randFilledBoolList(run_number, 0.2)),
+                               ("e.fail.%s.always", 1, randFilledBoolList(run_number, 0))]
 
-        for _run_number in range(run_number):
+        for _ in range(run_number):
             self.submit_test_run(**kwargs)
 
             for case_name, case_number in passed_cases_param:
