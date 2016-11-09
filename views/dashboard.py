@@ -3,7 +3,7 @@ import datetime
 from sqlalchemy.exc import IntegrityError
 from flask import Blueprint, render_template, request, jsonify
 from flask import current_app as app
-from model import db, AutoResult, ManualResult, Run
+from model import db, AutoResult, ManualResult, LinkageResult, Run
 
 try:
     import utils.polarion as Polarion
@@ -178,25 +178,27 @@ def submit_to_polarion(run_id=None, regex=None):
         )
 
         try:
-            for record in AutoResult.query.filter(AutoResult.run_id == test_run.id):
+            for record in LinkageResult.query.filter(LinkageResult.run_id == test_run.id):
                 try:
-                    if not record.linkage_results:
+                    if not record.result:
                         raise ConflictError()
                 except ConflictError:
-                    if forced or record.error not in [
-                            "CaselinkFailure", "UnknownIssue", "NoCaselink"]:
-                        record.linkage_result = 'ignored'
+                    if forced or record.error not in ["UnknownIssue"]:
+                        record.result = 'ignored'
                         db.session.add(record)
                         continue
                     else:
                         error_runs.append(test_run.as_dict())
                         # TODO: list all errors
                         error_runs[-1]['reason'] = (
-                            'Auto result %s contains error %s' % (record.case, record.error))
+                            'Error %s with Manual %s, Auto %s' %
+                            (record.error, record.auto_result_id, record.manual_result_id))
                         raise ConflictError()
 
             for record in ManualResult.query.filter(ManualResult.run_id == test_run.id):
                 polarion_result = record.result
+                if polarion_result in ['ignored', 'skipped']:
+                    continue
                 if polarion_result not in ['passed', 'failed']:
                     polarion_result = 'blocked'
 
