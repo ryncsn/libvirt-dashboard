@@ -128,7 +128,6 @@ class AutoResultList(Resource):
         args = AutoResultParser.parse_args()
         result = args
         result['run_id'] = run_id
-        result['run'] = Run.query.get(run_id)
 
         res = AutoResult.query.get((run_id, args['case']))
         if res:
@@ -136,6 +135,7 @@ class AutoResultList(Resource):
                 return res.as_dict(), 400
             else:
                 db.session.delete(res)
+                db.session.commit()
 
         result_instance = AutoResult(**result)
 
@@ -172,7 +172,6 @@ class AutoResultDetail(Resource):
         args = AutoResultUpdateParser.parse_args()
         result = args
         result['run_id'] = run_id
-        result['run'] = Run.query.get(run_id)
 
         for key in request.json.keys():
             setattr(res, (key), result[(key)])
@@ -221,7 +220,6 @@ class ManualResultDetail(Resource):
         args = ManualResultUpdateParser.parse_args()
         result = args
         result['run_id'] = run_id
-        result['run'] = Run.query.get(run_id)
 
         for key in args.keys():
             setattr(res, (key), result[(key)])
