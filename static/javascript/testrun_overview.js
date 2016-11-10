@@ -30,7 +30,7 @@ $(document).ready(function() {
       },
       {
         "data":function(row){
-          var total = row.auto_passed + row.auto_failed + row.auto_skipped;
+          var total = row.auto_passed + row.auto_failed + row.auto_skipped + row.auto_ignored + row.auto_error;
           if (total === 0){
             return "N/a";
           }
@@ -39,22 +39,22 @@ $(document).ready(function() {
       },
       {
         "data":function(row){
-          var total = row.auto_passed + row.auto_failed + row.auto_skipped;
+          var total = row.auto_passed + row.auto_failed + row.auto_skipped + row.auto_ignored + row.auto_error;
           if (total === 0){
             return "N/a";
           }
-          return (total - row.auto_error) + " / " + (total);
+          return (total - row.auto_nolinkage) + " / " + total;
         },
       },
       {
         "data":function(row){
-          if (row.manual_failed + row.manual_passed === 0){
+          var total = row.manual_failed + row.manual_passed + row.manual_ignored + row.manual_skipped + row.manual_error;
+          if (total === 0){
             return "N/a";
           }
-          return row.manual_passed + " / " + (row.manual_failed + row.manual_passed + row.manual_error);
+          return row.manual_passed + " / " + total;
         },
       },
-
     ],
     order: [[2, 'desc']],
     rowCallback: function(row, data, index){
@@ -110,7 +110,7 @@ $(document).ready(function() {
       $(head).find(".dropdown-manual .dashboard-resolve").attr('href', '/resolve/run/' + d.id + '/manual/');
       $(head).find(".dropdown-manual .dashboard-table").attr('href', '/table/run/' + d.id + '/manual/');
       $(head).find(".dropdown-manual .dashboard-api").attr('href', '/api/run/' + d.id + '/manual/');
-      $(head).find(".dashboard-info-manual").text(d.manual_error + ' errors to resolve, ' + d.manual_passed + ' passed, ' + d.manual_failed + ' failed');
+      $(head).find(".dashboard-info-manual").text(d.manual_error + ' errors, ' + d.manual_passed + ' passed, ' + d.manual_failed + ' failed');
       if(d.manual_error){
         $(head).find(".dashboard-info-manual").addClass("label-danger");
       }
@@ -121,7 +121,7 @@ $(document).ready(function() {
       $(head).find(".dropdown-auto .dashboard-resolve").attr('href', '/resolve/run/' + d.id + '/auto/');
       $(head).find(".dropdown-auto .dashboard-table").attr('href', '/table/run/' + d.id + '/auto/');
       $(head).find(".dropdown-auto .dashboard-api").attr('href', '/api/run/' + d.id + '/auto/');
-      $(head).find(".dashboard-info-auto").text(d.auto_error + ' errors to resolve, ' + d.auto_passed + ' passed, ' + d.auto_failed + ' failed');
+      $(head).find(".dashboard-info-auto").text(d.auto_error + ' errors, ' + d.auto_passed + ' passed, ' + d.auto_failed + ' failed, ' + d.auto_missing + ' missing');
       if(d.auto_error){
         $(head).find(".dashboard-info-auto").addClass("label-danger");
       }

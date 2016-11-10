@@ -128,14 +128,18 @@ class Run(db.Model):
             'auto_passed': 0,
             'auto_failed': 0,
             'auto_skipped': 0,
-            'auto_no_linkage': 0,
-            # TODO: 'auto_error': 0,
+            'auto_ignored': 0,
+            'auto_missing': 0,
+            'auto_error': 0,
+            'auto_nolinkage': 0,
             'manual_passed': 0,
             'manual_failed': 0,
+            'manual_skipped': 0,
+            'manual_ignored': 0,
             'manual_error': 0,
         }
         for result in self.auto_results\
-                      .options(load_only("output", "failure", "skip"))\
+                      .options(load_only("result", "comment"))\
                       .all():
             if result.result == 'passed':
                 ret['auto_passed'] += 1
@@ -143,9 +147,15 @@ class Run(db.Model):
                 ret['auto_failed'] += 1
             elif result.result == 'skipped':
                 ret['auto_skipped'] += 1
+            elif result.result == 'missing':
+                ret['auto_missing'] += 1
+            elif result.result == 'ignored':
+                ret['auto_ignored'] += 1
+            else:
+                ret['auto_error'] += 1
 
-            if not result.linkage_results:
-                ret['auto_no_linkage'] += 1
+            if result.comment is None:
+                ret['auto_nolinkage'] += 1
 
         for result in self.manual_results\
                       .options(load_only("result"))\
@@ -154,7 +164,11 @@ class Run(db.Model):
                 ret['manual_failed'] += 1
             elif result.result == 'passed':
                 ret['manual_passed'] += 1
-            elif result.result == 'incomplete':
+            elif result.result == 'skipped':
+                ret['manual_skipped'] += 1
+            elif result.result == 'ignored':
+                ret['manual_ignored'] += 1
+            else:
                 ret['manual_error'] += 1
         return ret
 
@@ -227,18 +241,33 @@ class AutoResult(db.Model):
         self.comment = "\n".join(comments)
 
     def refresh_result(self):
-        if self.skip:
+        if all(text == "black-listed" for text in [self.skip, self.failure, self.output]):
+            self.result = "ignored"
+        elif self.skip:
             self.result = 'skipped'
         elif self.failure:
             self.result = 'failed'
+            if self._check_failure() == "UnknownIssue":
+                self.result = None
         elif self.output:
             self.result = 'passed'
-        elif all(text == "black-listed" for text in [self.skip, self.failure, self.output]):
-            self.result = "black-listed"
         elif all(text is None for text in [self.skip, self.failure, self.output]):
             self.result = "missing"
         else:
             self.result = None
+
+    def _check_failure(self, this_autocase=None):
+        if not this_autocase:
+            try:
+                this_autocase = CaseLink.AutoCase(self.case).refresh()
+            except (HTTPError, ConnectionError) as err:
+                return "UnknownIssue"
+
+        for failure in this_autocase.failures:
+            if re.match(failure.failure_regex, self.failure) is not None:
+                # TODO: return workitem
+                return None
+        return "UnknownIssue"
 
     def gen_linkage_result(self, session=None, gen_manual=True):
         """
@@ -262,13 +291,9 @@ class AutoResult(db.Model):
 
         if _linkage_result == "failed":
             # Auto Case failed with message <self['failure']>
-            _linkage_result = None
-            _linkage_error = 'UnknownIssue'
-
-            for failure in this_autocase.failures:
-                if re.match(failure.failure_regex, self.failure) is not None:
-                    _linkage_result = "failed"
-                    _linkage_error = 'KnownIssue'
+            _linkage_error = self._check_failure(this_autocase)
+            if _linkage_error:
+                _linkage_result = None
 
         elif _linkage_result == "missing":
             _linkage_result = None
