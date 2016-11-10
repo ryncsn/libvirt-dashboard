@@ -23,9 +23,9 @@ function _ajax_call(method, case_name, data){
   });
 }
 
-function skip_case(case_name){
+function set_case_result(case_name, result){
   return _ajax_call("PUT", case_name, {
-    linkage_result: "ignored"
+    result: result
   });
 }
 
@@ -66,28 +66,12 @@ $(document).ready(function() {
       },
       'selectNone',
       {
-        text: 'Refresh',
-        action: function ( e, dt, node, config ) {
-          table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            refresh_case(d.case, true, false).done(function(data){
-              _ajax_call("GET", d.case).done(function(data){
-                row.data(data).draw();
-              });
-            });
-          });
-        },
-        className: 'btn-success',
-        titleAttr: 'Refresh selected test results, Libvirt-Dashboard will lookup in Caselink, override test results\' "error" column.',
-      },
-      {
         text: 'Ignore',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
             var row = this;
             var d = this.data();
-            skip_case(d.case).done(function(data){
+            set_case_result(d.case, "ignored").done(function(data){
               row.data(data);
               row.draw();
             });
@@ -95,6 +79,36 @@ $(document).ready(function() {
         },
         className: 'btn-warning',
         titleAttr: 'Ignore selected test results, set test\'s result to ignored and no longer consider this case as a failure bloking polarion submition anymore.',
+      },
+      {
+        text: 'Pass',
+        action: function ( e, dt, node, config ) {
+          table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+            var row = this;
+            var d = this.data();
+            set_case_result(d.case, "passed").done(function(data){
+              row.data(data);
+              row.draw();
+            });
+          });
+        },
+        className: 'btn-warning',
+        titleAttr: 'Pass selected test results, set test\'s result to ignored and no longer consider this case as a failure bloking polarion submition anymore.',
+      },
+      {
+        text: 'Fail',
+        action: function ( e, dt, node, config ) {
+          table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
+            var row = this;
+            var d = this.data();
+            set_case_result(d.case, "failed").done(function(data){
+              row.data(data);
+              row.draw();
+            });
+          });
+        },
+        className: 'btn-warning',
+        titleAttr: 'Fail selected test results, set test\'s result to ignored and no longer consider this case as a failure bloking polarion submition anymore.',
       },
       {
         text: 'Reset',
@@ -148,7 +162,7 @@ $(document).ready(function() {
     ],
     columns: columns,
     rowCallback: function(row, data, index){
-      if(!data.linkage_result){
+      if(data.result != 'passed'){
         $(row).addClass('error');
       }
       else{

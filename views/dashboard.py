@@ -26,30 +26,27 @@ def testrun_dashboard():
 
 @dashboard.route('/resolve/run/<int:run_id>/auto/', methods=['GET'])
 def resolve_autocase(run_id):
-    columns = ["case", "time", "result", "error", "linkage_result"]
     return render_template('resolve_auto.html',
-                           column_names=columns,
-                           column_datas=columns,
                            ajax='/api/run/' + str(run_id) + '/auto/')
 
 
 @dashboard.route('/resolve/run/<int:run_id>/manual/', methods=['GET'])
 def resolve_manualcase(run_id):
-    columns = ["case", "time", "comment", "result"]
     return render_template('resolve_manual.html',
-                             column_names=columns,
-                             column_datas=columns,
                              ajax='/api/run/' + str(run_id) + '/manual/')
 
 
 @dashboard.route('/trigger/run/<int:run_id>/refresh', methods=['GET'])
 def refresh_testrun(run_id):
+    # TODO: remove missing, then regen.
     ret = {}
     ManualResult.query.filter(ManualResult.run_id == run_id).\
             delete(synchronize_session=False)
 
     for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
-        result_instance.gen_linkage_result(result_instance, db.session)
+        result_instance.refresh_result()
+        result_instance.gen_linkage_result(result_instance, db.session, gen_manual=False)
+        result_instance.refresh_comment()
         db.session.add(result_instance)
 
     try:
@@ -74,7 +71,9 @@ def refresh_auto(run_id, case=None):
         query = AutoResult.query.filter(AutoResult.run_id == run_id)
 
     for result_instance in query:
-        result_instance.gen_linkage_result(db.session)
+        result_instance.refresh_result()
+        result_instance.gen_linkage_result(db.session, gen_manual=False)
+        result_instance.refresh_comment()
 
     try:
         db.session.commit()
@@ -90,7 +89,8 @@ def refresh_manual(run_id):
             delete(synchronize_session=False)
 
     for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
-        result_instance.gen_linkage_result(db.session)
+        result_instance.gen_linkage_result(db.session, gen_manual=False)
+        result_instance.refresh_comment()
 
     try:
         db.session.commit()
@@ -106,15 +106,16 @@ def refresh_manual(run_id):
 @dashboard.route('/trigger/run/<int:run_id>/submit', methods=['GET'])
 def submit_to_polarion(run_id=None, regex=None):
     forced = (request.args.get('forced', False) == "true")
-    refresh = (request.args.get('refresh', False) == "true")
 
     if not PYLARION_INSTALLED:
         return jsonify({'message': 'Pylarion not installed, you need to\
                         install it manually or Pylarion support is disabled.'}), 200
     if not app.config['POLARION_ENABLED']:
         return jsonify({'message': 'Polarion not enabled, please contract the admin.'}), 200
+
     submitted_runs = []
     error_runs = []
+
     class ConflictError(Exception):
         pass
 
@@ -127,16 +128,6 @@ def submit_to_polarion(run_id=None, regex=None):
         if regex:
             if not re.match(regex, test_run.name):
                 continue
-
-        if refresh:
-            ManualResult.query.filter(ManualResult.run_id == test_run.id)\
-                    .delete(synchronize_session=False)
-            db.session.commit()
-
-            for result_instance in AutoResult.query.filter(AutoResult.run_id == test_run.id):
-                (success, message) = result_instance.gen_linkage_result(session = db.session)
-                db.session.add(result_instance)
-            db.session.commit()
 
         polarion_tags = None
         for tag in test_run.tags.all():
@@ -183,7 +174,7 @@ def submit_to_polarion(run_id=None, regex=None):
                     if not record.result:
                         raise ConflictError()
                 except ConflictError:
-                    if forced or record.error not in ["UnknownIssue"]:
+                    if forced and record.error not in ["UnknownIssue"]:
                         record.result = 'ignored'
                         db.session.add(record)
                         continue

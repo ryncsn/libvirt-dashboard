@@ -1,4 +1,6 @@
 {% extends "index.html" %}
+{% set column_names = ["case", "time", "result", "comment"]%}
+{% set column_datas = ["case", "time", "result", "comment"]%}
 {% block title %} Libvirt Dashboard - Autotest Results {% endblock %}
 {% block content %}
 <table class='table' id='column_table'>

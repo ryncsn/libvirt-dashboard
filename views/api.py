@@ -1,7 +1,7 @@
 import datetime
 import re
 
-from model import db, AutoResult, ManualResult, Run, Tag, Property
+from model import db, AutoResult, ManualResult, LinkageResult, Run, Tag, Property
 from flask import Blueprint, request
 from flask_restful import Resource, Api, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
@@ -35,14 +35,13 @@ AutoResultParser.add_argument('failure', default=None)
 AutoResultParser.add_argument('source', default=None)
 AutoResultParser.add_argument('skip', default=None)
 AutoResultParser.add_argument('error', default=None)
-AutoResultParser.add_argument('linkage_result', default=None)
-AutoResultParser.add_argument('comment', default=None)
+AutoResultParser.add_argument('result', default=None)
 
 
 AutoResultUpdateParser = AutoResultParser.copy()
 AutoResultUpdateParser.replace_argument('output', required=False)
-AutoResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=False)
 AutoResultUpdateParser.replace_argument('case', required=False)
+AutoResultUpdateParser.replace_argument('time', type=inputs.regex('^[0-9]+.[0-9]+$'), required=False)
 
 
 ManualResultUpdateParser = reqparse.RequestParser(bundle_errors=True)
@@ -92,6 +91,8 @@ class TestRunDetail(Resource):
             db.session.delete(record)
         for record in Property.query.filter(Property.run_id == run_id):
             db.session.delete(record)
+        for record in LinkageResult.query.filter(LinkageResult.run_id == run_id):
+            db.session.delete(record)
         res.tags = []
         db.session.commit()
         db.session.delete(res)
@@ -138,10 +139,12 @@ class AutoResultList(Resource):
                 db.session.commit()
 
         result_instance = AutoResult(**result)
+        db.session.add(result_instance)
 
         try:
-            db.session.add(result_instance)
+            result_instance.refresh_result()
             result_instance.gen_linkage_result(session=db.session)
+            result_instance.refresh_comment()
             db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -176,7 +179,9 @@ class AutoResultDetail(Resource):
         for key in request.json.keys():
             setattr(res, (key), result[(key)])
 
-        db.session.add(res)
+        res.gen_linkage_result(session=db.session, gen_manual=False)
+        res.refresh_comment()
+
         db.session.commit()
 
         return res.as_dict()

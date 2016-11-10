@@ -128,6 +128,7 @@ class Run(db.Model):
             'auto_passed': 0,
             'auto_failed': 0,
             'auto_skipped': 0,
+            'auto_no_linkage': 0,
             # TODO: 'auto_error': 0,
             'manual_passed': 0,
             'manual_failed': 0,
@@ -142,6 +143,9 @@ class Run(db.Model):
                 ret['auto_failed'] += 1
             elif result.result == 'skipped':
                 ret['auto_skipped'] += 1
+
+            if not result.linkage_results:
+                ret['auto_no_linkage'] += 1
 
         for result in self.manual_results\
                       .options(load_only("result"))\
@@ -186,22 +190,9 @@ class AutoResult(db.Model):
     output = db.Column(db.Text(), nullable=True)
     source = db.Column(db.Text(), nullable=True)
     comment = db.Column(db.String(65535), nullable=True)
+    result = db.Column(db.String(255), nullable=True)
 
     linkage_results = db.relationship("LinkageResult", back_populates="auto_result", viewonly=True, cascade="all, delete")
-
-    @hybrid_property
-    def result(self):
-        if self.skip:
-            return 'skipped'
-        elif self.failure:
-            return 'failed'
-        elif self.output:
-            return 'passed'
-        elif all(text == "black-listed" for text in [self.skip, self.failure, self.output]):
-            return "black-listed"
-        elif all(text is None for text in [self.skip, self.failure, self.output]):
-            return "missing"
-        return None
 
     def __repr__(self):
         return '<TestResult %s-%s>' % (self.run_id, self.case)
@@ -213,7 +204,7 @@ class AutoResult(db.Model):
     def as_dict(self, detailed=False):
         ret = {}
         for c in self.__table__.columns:
-            if c.name not in ['date', 'output']:
+            if c.name not in ['output']:
                 ret[c.name] = getattr(self, c.name)
         ret['result'] = self.result
         if not detailed:
@@ -222,7 +213,34 @@ class AutoResult(db.Model):
             ret['output'] = self.output
         return ret
 
-    def gen_linkage_result(self, session=None):
+    def refresh_comment(self):
+        comments = []
+        for result in self.linkage_results:
+            _result = result.result
+            _error = result.error or "No error"
+            if result.result:
+                comments.append("%s with %s: \"%s\"" %
+                                (_result.title(), _error, result.manual_result_id))
+            else:
+                comments.append("Blocking with Error %s: %s" % (_error, result.manual_result_id))
+        comments.sort()
+        self.comment = "\n".join(comments)
+
+    def refresh_result(self):
+        if self.skip:
+            self.result = 'skipped'
+        elif self.failure:
+            self.result = 'failed'
+        elif self.output:
+            self.result = 'passed'
+        elif all(text == "black-listed" for text in [self.skip, self.failure, self.output]):
+            self.result = "black-listed"
+        elif all(text is None for text in [self.skip, self.failure, self.output]):
+            self.result = "missing"
+        else:
+            self.result = None
+
+    def gen_linkage_result(self, session=None, gen_manual=True):
         """
         Take a AutoResult instance, rewrite it's error and linkage_result
         with data in caselink.
@@ -256,7 +274,13 @@ class AutoResult(db.Model):
             _linkage_result = None
             _linkage_error = "Missing"
 
-        manualcases = [case.id for case in this_autocase.manualcases]
+        elif _linkage_result == "ignored":
+            pass
+
+        if gen_manual:
+            manualcases = [case.id for case in this_autocase.manualcases]
+        else:
+            manualcases = [r.manual_result_id for r in self.linkage_results]
         for manualcase_id in manualcases:
             manualcase, _ = get_or_create(session, ManualResult,
                                           run_id=self.run_id, case=manualcase_id)
@@ -319,12 +343,14 @@ class ManualResult(db.Model):
                                            run_id=self.run_id,
                                            case=this_autocase.id)
             if _:
+                auto_result.refresh_result()
                 linkage_result, _ = get_or_create(session, LinkageResult,
                                                   run_id=self.run_id,
                                                   manual_result_id=self.case,
                                                   auto_result_id=this_autocase.id)
                 linkage_result.result = None
                 linkage_result.error = "Missing"
+                auto_result.refresh_comment()
 
     def refresh_result(self, linkage_results=None):
         """
@@ -368,7 +394,7 @@ class ManualResult(db.Model):
                                 (_result.title(), _error, result.auto_result_id))
             else:
                 comments.append("Blocking case with Error %s: %s" % (_error, result.auto_result_id))
-            comments.sort()
+        comments.sort()
         self.comment = "\n".join(comments)
 
     def refresh_duration(self, linkage_results=None):
@@ -430,3 +456,12 @@ class LinkageResult(db.Model):
     def __init__(self, **result):
         for key, value in result.items():
             setattr(self, key, value)
+
+    def as_dict(self):
+        return {
+            "run_id": self.run_id,
+            "auto_result": self.auto_result_id,
+            "manual_result": self.manual_result_id,
+            "error": self.error,
+            "result": self.result,
+        }
