@@ -90,7 +90,7 @@ class Run(db.Model):
 
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
     manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
-    linkage_results = db.relationship("LinkageResult", back_populates="run")
+    linkage_results = db.relationship("LinkageResult", back_populates="run", cascade="all, delete")
 
     def __repr__(self):
         return '<TestRun %s>' % self.name
@@ -187,7 +187,7 @@ class AutoResult(db.Model):
     source = db.Column(db.Text(), nullable=True)
     comment = db.Column(db.String(65535), nullable=True)
 
-    linkage_results = db.relationship("LinkageResult", back_populates="auto_result", viewonly=True)
+    linkage_results = db.relationship("LinkageResult", back_populates="auto_result", viewonly=True, cascade="all, delete")
 
     @hybrid_property
     def result(self):
@@ -291,7 +291,7 @@ class ManualResult(db.Model):
     comment = db.Column(db.String(65535), nullable=True)
 
     result = db.Column(db.String(255), nullable=True)
-    linkage_results = db.relationship("LinkageResult", back_populates="manual_result", viewonly=True)
+    linkage_results = db.relationship("LinkageResult", back_populates="manual_result", viewonly=True, cascade="all, delete")
 
     @validates('result')
     def validate_result(self, key, result):
