@@ -38,14 +38,20 @@ def resolve_manualcase(run_id):
 
 @dashboard.route('/trigger/run/<int:run_id>/refresh', methods=['GET'])
 def refresh_testrun(run_id):
-    # TODO: remove missing, then regen.
-    ret = {}
+    LinkageResult.query.filter(LinkageResult.run_id == run_id).\
+            delete(synchronize_session=False)
     ManualResult.query.filter(ManualResult.run_id == run_id).\
             delete(synchronize_session=False)
+    AutoResult.query.filter(
+        AutoResult.run_id == run_id,
+        AutoResult.output == None,
+        AutoResult.failure == None,
+        AutoResult.skip == None).\
+        delete(synchronize_session=False)
 
     for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
         result_instance.refresh_result()
-        result_instance.gen_linkage_result(result_instance, db.session, gen_manual=False)
+        result_instance.gen_linkage_result(session=db.session)
         result_instance.refresh_comment()
         db.session.add(result_instance)
 
@@ -55,9 +61,7 @@ def refresh_testrun(run_id):
         db.session.rollback()
         return jsonify({'message': 'db error'}), 500
 
-    if len(ret.keys()) == 0:
-        return jsonify({'message': 'success'}), 200
-    return jsonify(ret), 200
+    return jsonify({'message': 'done'}), 200
 
 
 @dashboard.route('/trigger/run/<int:run_id>/auto/<string:case>/refresh', methods=['GET'])
