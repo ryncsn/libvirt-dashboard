@@ -178,7 +178,7 @@ def submit_to_polarion(run_id=None, regex=None):
                     if not record.result:
                         raise ConflictError()
                 except ConflictError:
-                    if forced and record.error not in ["UnknownIssue"]:
+                    if forced and record.error in ["Missing", ]:
                         record.result = 'ignored'
                         db.session.add(record)
                         continue

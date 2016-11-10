@@ -145,6 +145,8 @@ class Run(db.Model):
                 ret['auto_passed'] += 1
             elif result.result == 'failed':
                 ret['auto_failed'] += 1
+                if "UnknownIssue" in result.comment:
+                    ret['auto_error'] += 1
             elif result.result == 'skipped':
                 ret['auto_skipped'] += 1
             elif result.result == 'missing':
@@ -247,14 +249,12 @@ class AutoResult(db.Model):
             self.result = 'skipped'
         elif self.failure:
             self.result = 'failed'
-            if self._check_failure() == "UnknownIssue":
-                self.result = None
         elif self.output:
             self.result = 'passed'
         elif all(text is None for text in [self.skip, self.failure, self.output]):
-            self.result = "missing"
+            self.result = 'missing'
         else:
-            self.result = None
+            self.result = 'invalid'
 
     def _check_failure(self, this_autocase=None):
         if not this_autocase:
@@ -262,7 +262,6 @@ class AutoResult(db.Model):
                 this_autocase = CaseLink.AutoCase(self.case).refresh()
             except (HTTPError, ConnectionError) as err:
                 return "UnknownIssue"
-
         for failure in this_autocase.failures:
             if re.match(failure.failure_regex, self.failure) is not None:
                 # TODO: return workitem
@@ -318,9 +317,6 @@ class AutoResult(db.Model):
             linkage_result.result = _linkage_result
             linkage_result.error = _linkage_error
 
-            session.add(linkage_result)
-            session.commit()
-
             manualcase.refresh_result()
             manualcase.refresh_comment()
             manualcase.refresh_duration()
@@ -344,7 +340,7 @@ class ManualResult(db.Model):
 
     @validates('result')
     def validate_result(self, key, result):
-        assert result in ['passed', 'failed', 'incomplete', ]
+        assert result in ['passed', 'failed', 'skipped', 'incomplete', ]
         return result
 
     def __repr__(self):
@@ -378,36 +374,31 @@ class ManualResult(db.Model):
                 auto_result.refresh_comment()
 
     def refresh_result(self, linkage_results=None):
-        """
-        For a manual case:
-            * If all linkage result is passed, or at least one's result is passed and
-              other's result is ignored, manual case will be marked passed.
-            * If all linkage result is skipped, or at lease one's result is skipped and
-              other's result is ignored or None, manual case will be marked ignored.
-            * If all linkage result is ignored, manual case makred ignored
-            * If any linkage result is failed, manual case marked failed
-            * Otherwise, manual case marked incomplete (blocked)
-        """
         linkage_results = self.linkage_results
-        if any(r.result == "missing" for r in linkage_results):
+        if any(r.result is None for r in linkage_results):
             self.result = "incomplete"
+            return
 
-        elif any(r.result == "failed" for r in linkage_results):
+        if any(r.result == "failed" for r in linkage_results):
             self.result = "failed"
+            return
 
         elif all(r.result == "ignored" or r.result == "passed" for r in linkage_results):
             if any(r.result == "passed" for r in linkage_results):
                 self.result = "passed"
+                return
+            else:
+                self.result = "skipped"
+                return
 
         elif all(r.result == "ignored" or r.result == "skipped" for r in linkage_results):
             if any(result == "skipped" for result in linkage_results):
                 self.result = "skipped"
-
-        elif all(r.result == "ignored" for r in linkage_results):
-            self.result = "ignored"
+                return
 
         else:
             self.result = "incomplete"
+            return
 
     def refresh_comment(self, linkage_results=None):
         comments = []
