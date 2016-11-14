@@ -86,7 +86,7 @@ class Run(db.Model):
     properties = db.relationship('Property', back_populates='run', lazy='dynamic')
 
     submit_date = db.Column(db.DateTime(), unique=False, nullable=True)
-    polarion_id = db.Column(db.String(1024), unique=False, nullable=True)
+    polarion_id = db.Column(db.String(65535), unique=False, nullable=True)
 
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
     manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
@@ -201,11 +201,11 @@ class AutoResult(db.Model):
 
     case = db.Column(db.String(65535), nullable=False, primary_key=True)
     time = db.Column(db.Float(), default=0.0, nullable=False)
-    skip = db.Column(db.String(65535), nullable=True)
-    failure = db.Column(db.String(65535), nullable=True)
+    skip = db.Column(db.Text(), nullable=True)
+    failure = db.Column(db.Text(), nullable=True)
     output = db.Column(db.Text(), nullable=True)
     source = db.Column(db.Text(), nullable=True)
-    comment = db.Column(db.String(65535), nullable=True)
+    comment = db.Column(db.Text(), nullable=True)
     result = db.Column(db.String(255), nullable=True)
 
     linkage_results = db.relationship("LinkageResult", back_populates="auto_result", viewonly=True, cascade="all, delete")
@@ -333,7 +333,7 @@ class ManualResult(db.Model):
 
     case = db.Column(db.String(255), nullable=False, primary_key=True)
     time = db.Column(db.Float(), default=0.0, nullable=False)
-    comment = db.Column(db.String(65535), nullable=True)
+    comment = db.Column(db.Text(), nullable=True)
 
     result = db.Column(db.String(255), nullable=True)
     linkage_results = db.relationship("LinkageResult", back_populates="manual_result", viewonly=True, cascade="all, delete")
