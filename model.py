@@ -243,10 +243,11 @@ class AutoResult(db.Model):
         self.comment = "\n".join(comments)
 
     def refresh_result(self):
-        if all(text == "black-listed" for text in [self.skip, self.failure, self.output]):
-            self.result = "ignored"
-        elif self.skip:
-            self.result = 'skipped'
+        if self.skip:
+            if "BLACKLISTED" in self.skip:
+                self.result = "ignored"
+            else:
+                self.result = 'skipped'
         elif self.failure:
             self.result = 'failed'
         elif self.output:
@@ -392,9 +393,8 @@ class ManualResult(db.Model):
                 return
 
         elif all(r.result == "ignored" or r.result == "skipped" for r in linkage_results):
-            if any(result == "skipped" for result in linkage_results):
-                self.result = "skipped"
-                return
+            self.result = "skipped"
+            return
 
         else:
             self.result = "incomplete"
