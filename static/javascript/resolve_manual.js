@@ -105,7 +105,7 @@ $(document).ready(function() {
       {
         text: 'Regenerate',
         action: function ( e, dt, node, config ) {
-          $.ajax("/trigger/run/" + run_id + "/manual/refresh", {
+          $.ajax("/trigger/run/" + run_id + "/refresh", {
             method: "GET",
           }).fail(function(err){
             alert("Ajax failed with: " + JSON.stringify(err));
