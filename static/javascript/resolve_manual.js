@@ -125,18 +125,27 @@ $(document).ready(function() {
       {
         text: 'Submit to Polarion',
         action: function ( e, dt, node, config ) {
-          $.ajax("/trigger/run/" + run_id + "/submit", {
-            method: "GET",
-          }).fail(function(err){
-            alert("Ajax failed with: " + JSON.stringify(err));
-          }).done(function(data){
-            if(data.submitted.length == 1){
-              alert('Success!');
-            }
-            else if(data.error.length !== 0){
-              alert('Not submitted, please check for errors for both auto results and manual result of this test run then try again.');
-            }
-          });
+          function issueSumbmit(run_id, forced){
+            $.ajax("/trigger/run/" + run_id + "/submit" + (forced ? "?forced=true" : ""), {
+              method: "GET",
+            }).fail(function(err){
+              alert("Ajax failed with: " + JSON.stringify(err));
+            }).done(function(data){
+              if (! data.submitted && ! data.error){
+                return alert("Ajax failure: " + JSON.stringify(data));
+              }
+              alert(
+                'Successfully submitted: ' + JSON.stringify(data.submitted) + '.' +
+                'Failed to submit: ' + JSON.stringify(data.error) + '.'
+              );
+              if (data.error.length !== 0){
+                if (confirm("Some Test run failed to submit, would you like to issue a forced submit?")){
+                  issueSumbmit(run_id, true);
+                }
+              }
+            });
+          }
+          issueSumbmit(run_id, false);
         },
         className: 'btn-success',
       },

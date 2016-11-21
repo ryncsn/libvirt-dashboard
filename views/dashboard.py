@@ -117,36 +117,25 @@ def submit_to_polarion(run_id=None, regex=None):
     if not app.config['POLARION_ENABLED']:
         return jsonify({'message': 'Polarion not enabled, please contract the admin.'}), 200
 
-    submitted_runs = []
-    error_runs = []
-
     class ConflictError(Exception):
         pass
 
-    if run_id:
-        test_runs = Run.query.filter(Run.submit_date == None, Run.id == run_id)
-    else:
-        test_runs = Run.query.filter(Run.submit_date == None)
+    def _get_testrun_shortname(test_run):
+        return str(test_run.name) + str(test_run.id)
 
-    for test_run in test_runs:
-        if regex:
-            if not re.match(regex, test_run.name):
-                continue
-
+    def _gen_polarion_testrun(test_run):
         polarion_tags = None
+        test_description = "Dashboard ID: %s<br>" % (test_run.id)
+        test_description += "Tags: %s<br>" % " ".join('"%s"' % t.name for t in test_run.tags.all())
+        test_properties = {}
+
         for tag in test_run.tags.all():
             if tag.name.startswith("polarion:"):
                 polarion_tags = tag.name.lstrip("polarion:").strip()
-
-        test_description = "Dashboard ID: %s<br>" % (test_run.id)
-        test_description += "Tags: %s<br>" % " ".join('"%s"' % t.name for t in test_run.tags.all())
-
-        test_properties = {}
         for test_property in test_run.properties:
             name, value = test_property.name, test_property.value
             test_property_group = test_properties.setdefault(name.split('-', 1)[0], {})
             test_property_group[name.split('-', 1)[1]] = value
-
         for group_name, group in test_properties.items():
             if group_name in ["package"]:
                 test_description += "<table><tr><th>%s</th></tr>" % group_name.title()
@@ -154,7 +143,7 @@ def submit_to_polarion(run_id=None, regex=None):
                     test_description += "<tr><td>%s</td><td>%s</td></tr>" % (name, value)
                 test_description += "</table>"
 
-        polarion_testrun = Polarion.TestRunRecord(
+        return Polarion.TestRunRecord(
             d_id=test_run.id,
             name=test_run.name,
             component=test_run.component,
@@ -172,23 +161,32 @@ def submit_to_polarion(run_id=None, regex=None):
             polarion_tags=polarion_tags
         )
 
+    submitted_runs, error_runs = [], []
+
+    if run_id:
+        test_runs = Run.query.filter(Run.submit_date == None, Run.id == run_id)
+    else:
+        test_runs = Run.query.filter(Run.submit_date == None)
+
+    for test_run in test_runs:
+        if regex:
+            if not re.match(regex, test_run.name):
+                continue
         try:
-            for record in LinkageResult.query.filter(LinkageResult.run_id == test_run.id):
-                try:
-                    if not record.result:
-                        raise ConflictError()
-                except ConflictError:
-                    if forced and record.error in ["Missing", ]:
-                        record.result = 'ignored'
-                        db.session.add(record)
-                        continue
-                    else:
-                        error_runs.append(test_run.as_dict())
-                        # TODO: list all errors
-                        error_runs[-1]['reason'] = (
-                            'Error %s with Manual %s, Auto %s' %
-                            (record.error, record.auto_result_id, record.manual_result_id))
-                        raise ConflictError()
+            polarion_testrun = _gen_polarion_testrun(test_run)
+            if not forced:
+                for record in LinkageResult.query.filter(LinkageResult.run_id == test_run.id):
+                    try:
+                        if not record.result:
+                            raise ConflictError()
+                    except ConflictError:
+                        if not record.error in ["Missing", ]:
+                            error_runs.append({'name': _get_testrun_shortname(test_run)})
+                            # TODO: list all errors
+                            error_runs[-1]['reason'] = (
+                                'Error %s with Manual %s, Auto %s' %
+                                (record.error, record.auto_result_id, record.manual_result_id))
+                            raise ConflictError()
 
             for record in ManualResult.query.filter(ManualResult.run_id == test_run.id):
                 polarion_result = record.result
@@ -207,12 +205,11 @@ def submit_to_polarion(run_id=None, regex=None):
                 )
 
             if len(polarion_testrun.records) < 1:
-                error_runs.append(test_run.as_dict())
-                error_runs[-1]['reason'] = 'Too few manual results.'
+                error_runs.append({'name': _get_testrun_shortname(test_run)})
+                error_runs[-1]['reason'] = 'No manual results.'
                 raise ConflictError()
 
         except ConflictError:
-            db.session.rollback()
             continue
 
         with Polarion.PolarionSession() as session:
@@ -223,6 +220,6 @@ def submit_to_polarion(run_id=None, regex=None):
         test_run.polarion_id = polarion_testrun.test_run_id
         db.session.add(test_run)
         db.session.commit()
-        submitted_runs.append(test_run.as_dict())
+        submitted_runs.append(_get_testrun_shortname(test_run))
 
     return jsonify( {'submitted': submitted_runs, 'error': error_runs, })
