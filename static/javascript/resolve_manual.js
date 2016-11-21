@@ -1,41 +1,16 @@
 require('./lib/datatables-templates.js');
+var dashboard = require("./lib/dashboard.js");
 var htmlify = require("./lib/htmlify.js");
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
 var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
 var columns = [];
 var columnSrcs = window.templateColumns;
+
 for (var columnSrc of columnSrcs){
   columns.push({
     "render": htmlify,
     "data": columnSrc
   });
-}
-
-function _ajax_call(method, case_name, data){
-  return $.ajax("/api/run/" + run_id + "/manual/" + case_name + "/", {
-    contentType: "application/json; charset=utf-8",
-    method: method,
-    dataType: "json",
-    data: JSON.stringify(data),
-  }).fail(function(err){
-    alert("Ajax failed with: " + JSON.stringify(err));
-  });
-}
-
-function mark_case_fail(case_name){
-  return _ajax_call("PUT", case_name, {
-    result: "failed"
-  });
-}
-
-function mark_case_pass(case_name){
-  return _ajax_call("PUT", case_name, {
-    result: "passed"
-  });
-}
-
-function delete_case(case_name){
-  return _ajax_call("DELETE", case_name);
 }
 
 $(document).ready(function() {
@@ -59,11 +34,11 @@ $(document).ready(function() {
         text: 'Mark Pass',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            mark_case_pass(d.case).done(function(data){
-              row.data(data);
-              row.draw();
+            var row = this, d = this.data();
+            dashboard.markManualCase(run_id, d.case, "passed").done(function(data){
+              row
+                .data(data)
+                .draw();
             });
           });
         },
@@ -74,11 +49,11 @@ $(document).ready(function() {
         text: 'Makr Fail',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            mark_case_fail(d.case).done(function(data){
-              row.data(data);
-              row.draw();
+            var row = this, d = this.data();
+            dashboard.markManualCase(run_id, d.case, "failed").done(function(data){
+              row
+                .data(data)
+                .draw();
             });
           });
         },
@@ -89,9 +64,8 @@ $(document).ready(function() {
         text: 'Delete',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            delete_case(d.case).done(function(data){
+            var row = this, d = this.data();
+            dashboard.deleteManualCase(run_id, d.case).done(function(data){
               table
                 .row(row)
                 .remove()
@@ -179,19 +153,19 @@ $(document).ready(function() {
       //Add button event
       $(head).find("button").on('click', function(event){
         if($(event.target).hasClass('btn-mark-fail')){
-          mark_case_fail(d.case).done(function(data){
+          dashboard.markManualCase(run_id, d.case, "failed").done(function(data){
             row.data(data);
             row.draw();
           });
         }
         else if($(event.target).hasClass('btn-mark-pass')){
-          mark_case_pass(d.case).done(function(data){
+          dashboard.markManualCase(run_id, d.case, "passed").done(function(data){
             row.data(data);
             row.draw();
           });
         }
         else if($(event.target).hasClass('btn-delete')){
-          delete_case(d.case). done(function(data){
+          dashboard.deleteManualCase(run_id, d.case).done(function(data){
             table
               .row(tr)
               .remove()
