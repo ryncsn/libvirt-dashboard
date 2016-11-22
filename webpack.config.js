@@ -68,5 +68,10 @@ module.exports = {
       "window.jQuery": "jquery"
     }),
     new webpack.optimize.CommonsChunkPlugin("vendor", "vendor.bundle.js"),
-  ]
+  ],
+  resolve: {
+    alias: {
+      'vue$': 'vue/dist/vue.js'
+    }
+  }
 };
