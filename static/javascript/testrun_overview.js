@@ -1,9 +1,12 @@
 require("../css/testrun-overview.css");
 require('./lib/datatables-templates.js');
+
 var htmlify = require("./lib/htmlify.js");
-var child_panel = $("#_proto_child").removeClass('hidden').detach();
-var dashboard = require("./lib/dashboard.js");
+var Cookies = require('js-cookie');
 var Vue = require("vue");
+
+var dashboard = require("./lib/dashboard.js");
+var child_panel = $("#_proto_child").removeClass('hidden').detach();
 
 var applyTags = function(tags){};
 
@@ -21,11 +24,13 @@ var vm = new Vue({
     $.get("/api/tag").done(function(data){
       that.availTags = data;
     });
+    this.checkedTags = JSON.parse(Cookies.get('checkedTags') || "[]");
   },
   watch: {
     checkedTags: function(newTag){
       try {
         applyTags(this.checkedTags);
+        Cookies.set('checkedTags', JSON.stringify(this.checkedTags));
       } catch (e) {
         console.log(e);
       }
@@ -39,6 +44,16 @@ $(document).ready(function() {
     dom: '<t><"row"<"col-md-3"f><"col-md-4"i><"col-md-5"p>>',
     processing: true,
     serverSide: true,
+    "aoSearchCols": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      { "sSearch": JSON.stringify(vm.checkedTags) },
+    ],
     columns: [
       {
         "data": function(row){
