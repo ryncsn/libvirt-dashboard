@@ -31,23 +31,23 @@ class TestRunList(Resource):
             #TODO
             pass
 
-        count = filtered.count()
-        filtered = filtered.order_by(Run.date.desc())
-
-        ret = []
-
         try:
             tags = json.loads(tags)
         except ValueError:
             return {
                 'draw': draw,
                 'recordsTotal': total,
-                'recordsFiltered': count,
-                'data': ret,
+                'recordsFiltered': 0,
+                'data': [],
             }
 
         if tags:
             filtered = filtered.filter(Run.tags.any(Tag.name.in_(tags)))
+
+        filtered = filtered.order_by(Run.date.desc())
+
+        count = filtered.count()
+        ret = []
 
         if start is not None:
             filtered = filtered.offset(start)

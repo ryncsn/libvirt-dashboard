@@ -175,7 +175,8 @@ $(document).ready(function() {
   var tagsColumn = table.column(function(idx, data, node){return $(node).text() == ("Tags");});
 
   applyTags = function(tags){
-    tagsColumn.search(JSON.stringify(tags)).draw();
+    tagsColumn.search(JSON.stringify(tags));
+    table.draw();
   };
 });
 
