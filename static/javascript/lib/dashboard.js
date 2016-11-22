@@ -7,28 +7,75 @@
     factory((root.commonJsStrict = {}), root.$);
   }
 }(this, function (exports, $) {
-  var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
-
-  function _manualCaseAPI(method, caseName, data){
-    return $.ajax("/api/run/" + run_id + "/manual/" + (caseName ? caseName + "/" : ""), {
+  function _API(method, url, data){
+    return $.ajax(url, {
       contentType: "application/json; charset=utf-8",
       method: method,
       dataType: "json",
-      data: JSON.stringify(data),
+      data: JSON.stringify(data || {}),
     }).fail(function(err){
       alert("Ajax failed with: " + JSON.stringify(err));
     });
   }
 
-  exports.markManualCase = function(run, caseName, status){
-    run = run || run_id;
-    return _manualCaseAPI("PUT", caseName, {
-      result: status
+  function _Trigger(method, url, data){
+    return $.ajax(url, {
+      contentType: "application/json; charset=utf-8",
+      method: method,
+      dataType: "json",
+      data: JSON.stringify(data || {}),
+    }).fail(function(err){
+      alert("Ajax failed with: " + JSON.stringify(err));
+    }).done(function(data){
+      let text = "";
+      if(data.message){
+        text += "Message: " + data.message + "\n";
+      }
+      if(data.error){
+        text += "Error: " + data.error + "\n";
+      }
+      alert(text);
     });
+  }
+
+  function _manualCaseAPI(method, run, caseName, data){
+    return _API(method, "/api/run/" + run + "/manual/" + (caseName ? caseName + "/" : ""), data);
+  }
+
+  function _autoCaseAPI(method, run, caseName, data){
+    return _API(method, "/api/run/" + run + "/auto/" + (caseName ? caseName + "/" : ""), data);
+  }
+
+  function _testRunAPI(method, run, data){
+    return _API(method, "/api/run/" + run + "/", data);
+  }
+
+  exports.autoCaseAPI = _autoCaseAPI;
+  exports.manualCaseAPI = _manualCaseAPI;
+
+  exports.refreshAutoCase = function(run, caseName){
+    return _Trigger("GET", "/trigger/run/" + run + "/auto/" + caseName + "/refresh");
   };
 
-  exports.deleteManualCase = function(run, caseName){
-    run = run || run_id;
-    return _manualCaseAPI("DELETE", caseName);
+  exports.regenerateManual = function(run){
+    return _Trigger("GET", "/trigger/run/" + run + "/refresh" );
   };
+
+  exports.submitTestRun = function(run, forced){
+    return _Trigger("GET", "/trigger/run/" + run + "/submit" + (forced ? "?forced=true" : ""))
+      .done(function(data){
+        if (data.submitted && data.not_submitted){
+          alert(
+            'Successfully submitted: ' + JSON.stringify(data.submitted) + '.' +
+            'Failed to submit: ' + JSON.stringify(data.not_submitted) + '.'
+          );
+          if (data.error.length !== 0){
+            if (confirm("Some Test run failed to submit, would you like to issue a forced submit?")){
+              exports.submitTestRun(run, true);
+            }
+          }
+        }
+      });
+  };
+
 }));

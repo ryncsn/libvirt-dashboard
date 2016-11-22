@@ -2,6 +2,7 @@ require("../css/testrun-overview.css");
 require('./lib/datatables-templates.js');
 var htmlify = require("./lib/htmlify.js");
 var child_panel = $("#_proto_child").removeClass('hidden').detach();
+var dashboard = require("./lib/dashboard.js");
 $(document).ready(function() {
   var table = $('#column_table').DataTableWithChildRow({
     pageLength: 100,
@@ -66,21 +67,7 @@ $(document).ready(function() {
       var head = child_panel.clone();
       //Add button event
       $(head).find(".dashboard-submit").click(function(){
-        $.ajax("/trigger/run/" + d.id + "/submit", {
-          method: "GET",
-        }).fail(function(err){
-          alert("Ajax failed with: " + JSON.stringify(err));
-        }).done(function(data){
-          if(data.submitted && data.submitted.length > 0){
-            alert('Submitted test runs: ' + data.submitted.join("<br>"));
-          }
-          else if(data.message){
-            alert(data.message);
-          }
-          else if(data.error.length !== 0){
-            alert('Not submitted, maybe it\'s submitted already, or please check for errors for both auto results and manual result of this test run then try again.');
-          }
-        });
+        dashboard.submitTestRun(d.id);
       });
       $(head).find(".dashboard-delete").click(function(){
         var r = confirm("Delete this test run and all related autotest/manual results?");

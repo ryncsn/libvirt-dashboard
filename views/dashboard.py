@@ -222,4 +222,4 @@ def submit_to_polarion(run_id=None, regex=None):
         db.session.commit()
         submitted_runs.append(_get_testrun_shortname(test_run))
 
-    return jsonify( {'submitted': submitted_runs, 'error': error_runs, })
+    return jsonify( {'submitted': submitted_runs, 'not_submitted': error_runs, })

@@ -3,48 +3,14 @@ var htmlify = require("./lib/htmlify.js");
 var colorize = require("./lib/colorize.js");
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
 var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
+var dashboard = require("./lib/dashboard.js");
 var columns = [];
 var columnSrcs = window.templateColumns;
+
 for (var columnSrc of columnSrcs){
   columns.push({
     "render": htmlify,
     "data": columnSrc
-  });
-}
-
-function _ajax_call(method, case_name, data){
-  return $.ajax("/api/run/" + run_id + "/auto/" + case_name + "/" , {
-    contentType: "application/json; charset=utf-8",
-    method: method,
-    dataType: "json",
-    data: JSON.stringify(data),
-  }).fail(function(err){
-    alert("Ajax failed with: " + JSON.stringify(err));
-  });
-}
-
-function set_case_result(case_name, result){
-  return _ajax_call("PUT", case_name, {
-    result: result
-  });
-}
-
-function refresh_case(case_name, error, result){
-  if(error){
-    error = 'true';
-  }
-  if(result){
-    result = 'true';
-  }
-  return $.ajax("/trigger/run/" + run_id + "/auto/" + case_name + "/refresh?error=" + error + "&result=" + result , {
-    method: 'GET',
-  }).fail(function(err){
-    alert("Ajax failed with: " + JSON.stringify(err));
-  });
-}
-
-function delete_case(case_name){
-  return _ajax_call("DELETE", case_name, {
   });
 }
 
@@ -69,9 +35,8 @@ $(document).ready(function() {
         text: 'Ignore',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            set_case_result(d.case, "ignored").done(function(data){
+            var row = this, d = this.data();
+            dashboard.autoCaseAPI("PUT", run_id, d.case, {result: "ignored"}).done(function(data){
               row.data(data);
               row.draw();
             });
@@ -84,9 +49,8 @@ $(document).ready(function() {
         text: 'Pass',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            set_case_result(d.case, "passed").done(function(data){
+            var row = this, d = this.data();
+            dashboard.autoCaseAPI("PUT", run_id, d.case, {result: "passed"}).done(function(data){
               row.data(data);
               row.draw();
             });
@@ -99,9 +63,8 @@ $(document).ready(function() {
         text: 'Fail',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            set_case_result(d.case, "failed").done(function(data){
+            var row = this, d = this.data();
+            dashboard.autoCaseAPI("PUT", run_id, d.case, {result: "failed"}).done(function(data){
               row.data(data);
               row.draw();
             });
@@ -111,13 +74,12 @@ $(document).ready(function() {
         titleAttr: 'Fail selected test results, set test\'s result to ignored and no longer consider this case as a failure bloking polarion submition anymore.',
       },
       {
-        text: 'Reset',
+        text: 'Refresh',
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
-            var row = this;
-            var d = this.data();
-            refresh_case(d.case, true, true).done(function(data){
-              _ajax_call("GET", d.case).done(function(data){
+            var row = this, d = this.data();
+            dashboard.refreshAutoCase(run_id, d.case).done(function(data){
+              dashboard.autoCaseAPI("GET", run_id, d.case).done(function(data){
                 row.data(data).draw();
               });
             });
@@ -132,7 +94,7 @@ $(document).ready(function() {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
             var row = this;
             var d = this.data();
-            delete_case(d.case).done(function(data){
+            dashboard.autoCaseAPI("DELETE", run_id, d.case).done(function(data){
               table
                 .row(idx)
                 .remove()
@@ -184,20 +146,20 @@ $(document).ready(function() {
       //Add button event
       $(head).find("button").on('click', function(event){
         if($(event.target).hasClass('btn-ignore')){
-          skip_case(d.case).done(function(data){
+          dashboard.autoCaseAPI("PUT", run_id, d.case, {result: "skipped"}).done(function(data){
             row.data(data);
             row.draw();
           });
         }
         else if($(event.target).hasClass('btn-refresh')){
-          refresh_case(d.case).done(function(data){
-            _ajax_call("GET", d.case).done(function(data){
+          dashboard.refreshAutoCase(d.case).done(function(data){
+            dashboard.autoCaseAPI("GET", run_id, d.case).done(function(data){
               row.data(data).draw();
             });
           });
         }
         else if($(event.target).hasClass('btn-delete')){
-          delete_case(d.case).done(function(data){
+          dashboard.autoCaseAPI("DELETE", run_id, d.case).done(function(data){
             table
               .row(tr)
               .remove()

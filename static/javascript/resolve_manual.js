@@ -35,7 +35,7 @@ $(document).ready(function() {
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
             var row = this, d = this.data();
-            dashboard.markManualCase(run_id, d.case, "passed").done(function(data){
+            dashboard.manualCaseAPI("PUT", run_id, d.case, {result: "passed"}).done(function(data){
               row
                 .data(data)
                 .draw();
@@ -50,7 +50,7 @@ $(document).ready(function() {
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
             var row = this, d = this.data();
-            dashboard.markManualCase(run_id, d.case, "failed").done(function(data){
+            dashboard.manualCaseAPI("PUT", run_id, d.case, {result: "failed"}).done(function(data){
               row
                 .data(data)
                 .draw();
@@ -65,7 +65,7 @@ $(document).ready(function() {
         action: function ( e, dt, node, config ) {
           table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
             var row = this, d = this.data();
-            dashboard.deleteManualCase(run_id, d.case).done(function(data){
+            dashboard.manualCaseAPI("DELETE", run_id, d.case).done(function(data){
               table
                 .row(row)
                 .remove()
@@ -79,19 +79,10 @@ $(document).ready(function() {
       {
         text: 'Regenerate',
         action: function ( e, dt, node, config ) {
-          $.ajax("/trigger/run/" + run_id + "/refresh", {
-            method: "GET",
-          }).fail(function(err){
-            alert("Ajax failed with: " + JSON.stringify(err));
-          }).done(function(data){
-            if(data.message == 'success'){
+          dashboard.regenerateManual(run_id)
+            .done(function(data){
               window.location.reload(false);
-            }
-            else{
-              alert("Failed with: " + JSON.stringify(data));
-              window.location.reload(false);
-            }
-          });
+            });
         },
         className: 'btn-info',
         titleAttr: 'Regenerate all Manual test result according to auto test results and linkage on Caselink. (slow, page will be refreshed after finished)'
@@ -99,31 +90,10 @@ $(document).ready(function() {
       {
         text: 'Submit to Polarion',
         action: function ( e, dt, node, config ) {
-          function issueSumbmit(run_id, forced){
-            $.ajax("/trigger/run/" + run_id + "/submit" + (forced ? "?forced=true" : ""), {
-              method: "GET",
-            }).fail(function(err){
-              alert("Ajax failed with: " + JSON.stringify(err));
-            }).done(function(data){
-              if (! data.submitted && ! data.error){
-                return alert("Ajax failure: " + JSON.stringify(data));
-              }
-              alert(
-                'Successfully submitted: ' + JSON.stringify(data.submitted) + '.' +
-                'Failed to submit: ' + JSON.stringify(data.error) + '.'
-              );
-              if (data.error.length !== 0){
-                if (confirm("Some Test run failed to submit, would you like to issue a forced submit?")){
-                  issueSumbmit(run_id, true);
-                }
-              }
-            });
-          }
-          issueSumbmit(run_id, false);
+          dashboard.submitTestRun(run_id, false);
         },
         className: 'btn-success',
       },
-
     ],
     select: true,
     selectorColumns: [
@@ -153,19 +123,19 @@ $(document).ready(function() {
       //Add button event
       $(head).find("button").on('click', function(event){
         if($(event.target).hasClass('btn-mark-fail')){
-          dashboard.markManualCase(run_id, d.case, "failed").done(function(data){
+          dashboard.manualCaseAPI("PUT", run_id, d.case, {result: "failed"}).done(function(data){
             row.data(data);
             row.draw();
           });
         }
         else if($(event.target).hasClass('btn-mark-pass')){
-          dashboard.markManualCase(run_id, d.case, "passed").done(function(data){
+          dashboard.manualCaseAPI("PUT", run_id, d.case, {result: "passed"}).done(function(data){
             row.data(data);
             row.draw();
           });
         }
         else if($(event.target).hasClass('btn-delete')){
-          dashboard.deleteManualCase(run_id, d.case).done(function(data){
+          dashboard.manualCaseAPI("DELETE", run_id, d.case).done(function(data){
             table
               .row(tr)
               .remove()
