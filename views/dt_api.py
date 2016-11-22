@@ -22,6 +22,21 @@ class TestRunList(Resource):
         #TODO: need something to decode a dt query properly.
         tags = request.args.get('columns[7][search][value]', '[]')
 
+        cols = {
+            '0': Run.date,
+            '1': Run.id,
+            '2': Run.date,
+            '3': Run.submit_date,
+        }
+        order_col = request.args.get('order[0][column]', 'Run')
+        order_dir = request.args.get('order[0][dir]', 'asc')
+        order_col = cols.get(order_col, Run.date)
+
+        if order_dir == 'asc':
+            order = order_col.asc()
+        else:
+            order = order_col.desc()
+
         total = Run.query.count()
 
         filtered = Run.query
@@ -44,7 +59,7 @@ class TestRunList(Resource):
         if tags:
             filtered = filtered.filter(Run.tags.any(Tag.name.in_(tags)))
 
-        filtered = filtered.order_by(Run.date.desc())
+        filtered = filtered.order_by(order)
 
         count = filtered.count()
         ret = []
