@@ -3,6 +3,36 @@ require('./lib/datatables-templates.js');
 var htmlify = require("./lib/htmlify.js");
 var child_panel = $("#_proto_child").removeClass('hidden').detach();
 var dashboard = require("./lib/dashboard.js");
+var Vue = require("vue");
+
+var applyTags = function(tags){};
+
+var vm = new Vue({
+  el: "#testrun-overview",
+  data: {
+    availTags: [],
+    checkedTags: [],
+  },
+  methods: {
+  },
+  delimiters: ['${', '}'],
+  created: function(){
+    let that = this;
+    $.get("/api/tag").done(function(data){
+      that.availTags = data;
+    });
+  },
+  watch: {
+    checkedTags: function(newTag){
+      try {
+        applyTags(this.checkedTags);
+      } catch (e) {
+        console.log(e);
+      }
+    },
+  }
+});
+
 $(document).ready(function() {
   var table = $('#column_table').DataTableWithChildRow({
     pageLength: 100,
@@ -56,6 +86,13 @@ $(document).ready(function() {
           return row.manual_passed + " / " + total;
         },
       },
+      {
+        "data":function(row){
+          return row.tags.join(", ");
+        },
+        visible: false
+      },
+
     ],
     order: [[2, 'desc']],
     rowCallback: function(row, data, index){
@@ -119,5 +156,11 @@ $(document).ready(function() {
       finish();
     }
   });
+
+  var tagsColumn = table.column(function(idx, data, node){return $(node).text() == ("Tags");});
+
+  applyTags = function(tags){
+    tagsColumn.search(JSON.stringify(tags)).draw();
+  };
 });
 

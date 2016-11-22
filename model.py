@@ -59,6 +59,12 @@ class Tag(db.Model):
         self.name = name
         self.desc = desc
 
+    def as_dict(self, detailed=False):
+        ret = {}
+        for c in self.__table__.columns:
+            if c.name != 'date':
+                ret[c.name] = getattr(self, c.name)
+        return ret
 
 class Run(db.Model):
     __tablename__ = 'run'

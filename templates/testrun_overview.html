@@ -2,8 +2,8 @@
 {% extends "index.html" %}
 {% block title %} Libvirt Dashboard - Generated Manuals {% endblock %}
 {% block content %}
-{% set column_names = ['Test Run', 'Date', 'Polarion Submit Date', 'Auto', 'Linkage', 'Manual'] %}
-<div class="container">
+{% set column_names = ['Test Run', 'Date', 'Polarion Submit Date', 'Auto', 'Linkage', 'Manual', 'Tags'] %}
+<div id="testrun-overview" class="container">
     <div class="panel panel-default">
         <div class="panel-heading test-run-panel">Test Runs
             <a class="pull-right" href="/api/run/" title="JSON format">
@@ -12,6 +12,14 @@
             <a class="pull-right" href="/table/run/" style="padding-right: 10px;" title="View in more detailed table">
                 Table
             </a>
+        </div>
+        <div id="datatable-selector" class="panel-body">
+            <div v-for="item in availTags" class="checkbox checkbox-inline">
+                <input type="checkbox" v-bind:id="item.name" v-bind:value="item.name" v-bind:title="item.desc || item.name" v-model="checkedTags">
+                <label v-bind:for="item.name">
+                    ${ item.name }
+                </label>
+            </div>
         </div>
         <table class='table' id='column_table'>
             <thead>
@@ -59,15 +67,15 @@
             <span class="label dashboard-info-manual "></span>
         </div>
         <div class="btn-group col-md-4">
-        <a class="btn btn-success dashboard-submit" title="Submit generated manual test results to polarion, test result will be blocked from being submitted until all auto test error and manual test result errors have been resolved.">
-            Submit to Polarion
-        </a>
-        <a class="btn btn-success dashboard-jump" title="Jump to the Polarin page.">
-            View on Polarion
-        </a>
-        <a class="btn btn-danger dashboard-delete" title="Delete this test run. (UNRECOVERABLE)">
-            Delete
-        </a>
+            <a class="btn btn-success dashboard-submit" title="Submit generated manual test results to polarion, test result will be blocked from being submitted until all auto test error and manual test result errors have been resolved.">
+                Submit to Polarion
+            </a>
+            <a class="btn btn-success dashboard-jump" title="Jump to the Polarin page.">
+                View on Polarion
+            </a>
+            <a class="btn btn-danger dashboard-delete" title="Delete this test run. (UNRECOVERABLE)">
+                Delete
+            </a>
         </div>
     </div>
 </div>

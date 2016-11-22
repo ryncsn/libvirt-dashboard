@@ -50,8 +50,13 @@
     return _API(method, "/api/run/" + run + "/", data);
   }
 
+  function _tagAPI(method, run, tagName, data){
+    return _API(method, "/api/run/" + run + "/manual/" + (caseName ? caseName + "/" : ""), data);
+  }
+
   exports.autoCaseAPI = _autoCaseAPI;
   exports.manualCaseAPI = _manualCaseAPI;
+  exports.tagAPI = _tagAPI;
 
   exports.refreshAutoCase = function(run, caseName){
     return _Trigger("GET", "/trigger/run/" + run + "/auto/" + caseName + "/refresh");

@@ -244,6 +244,15 @@ class ErrorList(Resource):
         return ret
 
 
+class TagList(Resource):
+    def get(self):
+        tags = Tag.query.all()
+        ret = []
+        for tag in tags:
+            ret.append(tag.as_dict())
+        return ret
+
+
 api.add_resource(TestRunList, '/run/', endpoint='test_run_list')
 api.add_resource(TestRunDetail, '/run/<int:run_id>/', endpoint='test_run_detail')
 api.add_resource(AutoResultList, '/run/<int:run_id>/auto/', endpoint='auto_result_list')
@@ -251,3 +260,4 @@ api.add_resource(AutoResultDetail, '/run/<int:run_id>/auto/<string:case_name>/',
 api.add_resource(ManualResultList, '/run/<int:run_id>/manual/', endpoint='manual_result_list')
 api.add_resource(ManualResultDetail, '/run/<int:run_id>/manual/<string:case_name>/', endpoint='manual_result_detail')
 api.add_resource(ErrorList, '/error/', endpoint='error_list')
+api.add_resource(TagList, '/tag/', endpoint='tag_list')
