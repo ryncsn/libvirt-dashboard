@@ -9,14 +9,20 @@ var dashboard = require("./lib/dashboard.js");
 var child_panel = $("#_proto_child").removeClass('hidden').detach();
 
 var applyTags = function(tags){};
+var applyCase = function(auto, manual){};
 
 var vm = new Vue({
   el: "#testrun-overview",
   data: {
     availTags: [],
     checkedTags: [],
+    containAuto: '',
+    containManual: '',
   },
   methods: {
+    updateCaseSearch: function(){
+      applyCase(this.containAuto, this.containManual);
+    }
   },
   delimiters: ['${', '}'],
   created: function(){
@@ -173,9 +179,16 @@ $(document).ready(function() {
   });
 
   var tagsColumn = table.column(function(idx, data, node){return $(node).text() == ("Tags");});
+  var autoColumn = table.column(function(idx, data, node){return $(node).text() == ("Auto");});
+  var manualColumn = table.column(function(idx, data, node){return $(node).text() == ("Manual");});
 
   applyTags = function(tags){
     tagsColumn.search(JSON.stringify(tags));
+    table.draw();
+  };
+  applyCase = function(auto, manual){
+    autoColumn.search(auto);
+    manualColumn.search(manual);
     table.draw();
   };
 });

@@ -6,7 +6,7 @@ import json
 from sqlalchemy import func
 from flask_restful import Resource, Api
 from flask import Blueprint, request
-from model import db, Run, Tag
+from model import db, Run, Tag, AutoResult, ManualResult
 
 dt_api = Blueprint('dt_api', __name__)
 
@@ -21,7 +21,8 @@ class TestRunList(Resource):
         search_regex = request.args.get('search[regex]')
         #TODO: need something to decode a dt query properly.
         tags = request.args.get('columns[7][search][value]', '[]')
-
+        auto_case = request.args.get('columns[4][search][value]', '[]')
+        manual_case = request.args.get('columns[6][search][value]', '[]')
         cols = {
             '0': Run.date,
             '1': Run.id,
@@ -58,6 +59,12 @@ class TestRunList(Resource):
 
         if tags:
             filtered = filtered.filter(Run.tags.any(Tag.name.in_(tags)))
+
+        if auto_case:
+            filtered = filtered.filter(Run.auto_results.any(AutoResult.case == auto_case))
+
+        if manual_case:
+            filtered = filtered.filter(Run.manual_results.any(ManualResult.case == manual_case))
 
         filtered = filtered.order_by(order)
 

@@ -14,12 +14,31 @@
             </a>
         </div>
         <div id="datatable-selector" class="panel-body">
-            <div v-for="item in availTags" class="checkbox checkbox-inline">
-                <input type="checkbox" v-bind:id="item.name" v-bind:value="item.name" v-bind:title="item.desc || item.name" v-model="checkedTags">
-                <label v-bind:for="item.name">
-                    ${ item.name }
-                </label>
+            <div class="input-group">
+                <div v-for="item in availTags" class="checkbox checkbox-inline">
+                    <input type="checkbox" v-bind:id="item.name" v-bind:value="item.name" v-bind:title="item.desc || item.name" v-model="checkedTags">
+                    <label v-bind:for="item.name">
+                        ${ item.name }
+                    </label>
+                </div>
             </div>
+            <br />
+            <div class="input-group">
+                <span class="input-group-addon">Contains Auto Test case:</span>
+                <input type="text" class="form-control" placeholder="Case ID" v-model="containAuto">
+                <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" v-on:click="updateCaseSearch">Search</button>
+                </span>
+            </div>
+            <br />
+            <div class="input-group">
+                <span class="input-group-addon">Contains Manual Test case:</span>
+                <input type="text" class="form-control" placeholder="Case ID" v-model="containManual">
+                <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" v-on:click="updateCaseSearch">Search</button>
+                </span>
+            </div>
+            <br />
         </div>
         <table class='table' id='column_table'>
             <thead>
