@@ -42,8 +42,8 @@ Create a .wsgi file (eg. /var/www/libvirt-dashboard/libvirt-dashboard.wsgi):
 Create virtual host file:
 
     <VirtualHost libvirt-dashboard.domain.com:80>
-        WSGIDaemonProcess libvirt-dashboard user=nobody group=nobody threads=5
-        WSGIScriptAlias / /var/www/libvirt-dashboard/libvirt-dashboard.wsgi
+        WSGIDaemonProcess libvirt-dashboard user=nobody group=nobody threads=5 python-path=/var/www/libvirt-dashboard
+        WSGIScriptAlias / /var/www/libvirt-dashboard/wsgi.py
 
         <Directory /var/www/libvirt-dashboard>
             WSGIProcessGroup libvirt-dashboard
