@@ -18,6 +18,7 @@ var vm = new Vue({
     checkedTags: [],
     containAuto: '',
     containManual: '',
+    showSearchPanel: false,
   },
   methods: {
     updateCaseSearch: function(){

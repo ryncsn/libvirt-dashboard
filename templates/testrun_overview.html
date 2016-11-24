@@ -12,8 +12,11 @@
             <a class="pull-right" href="/table/run/" style="padding-right: 10px;" title="View in more detailed table">
                 Table
             </a>
+            <a class="pull-right" href="#" style="padding-right: 10px;" v-on:click="showSearchPanel = !showSearchPanel">
+                Advanced Search
+            </a>
         </div>
-        <div id="datatable-selector" class="panel-body">
+        <div v-show="showSearchPanel" id="datatable-selector" class="panel-body">
             <div class="input-group">
                 <div v-for="item in availTags" class="checkbox checkbox-inline">
                     <input type="checkbox" v-bind:id="item.name" v-bind:value="item.name" v-bind:title="item.desc || item.name" v-model="checkedTags">
@@ -38,7 +41,6 @@
                     <button class="btn btn-default" type="button" v-on:click="updateCaseSearch">Search</button>
                 </span>
             </div>
-            <br />
         </div>
         <table class='table' id='column_table'>
             <thead>
