@@ -45,8 +45,11 @@ def get_nearest_plan(version, date=None):
             if not nearest_plan or plan.due_date < nearest_plan.due_date:
                 nearest_plan = plan
 
-    LOGGER.info('Next nearest plan is %s', nearest_plan.name)
-    return nearest_plan.plan_id
+    if nearest_plan:
+        LOGGER.info('Next nearest plan is %s', nearest_plan.name)
+        return nearest_plan.plan_id
+    else:
+        return None
 
 
 class PolarionSession():
