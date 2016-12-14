@@ -144,7 +144,7 @@ def submit_to_polarion(run_id=None, regex=None):
                 test_description += "</table>"
 
         return Polarion.TestRunRecord(
-            d_id=test_run.id,
+            dashboard_id=test_run.id,
             name=test_run.name,
             component=test_run.component,
             build=test_run.build,

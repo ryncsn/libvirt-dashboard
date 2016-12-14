@@ -3,14 +3,9 @@ More specified ORM for Polaroin
 Wrapper for Pylaroin
 """
 import logging
-import sys
 import datetime
-import time
-import os
 import re
 import ssl
-
-from collections import OrderedDict
 
 from pylarion.base_polarion import BasePolarion
 from pylarion.document import Document
@@ -20,12 +15,17 @@ from pylarion.plan import Plan
 from pylarion.exceptions import PylarionLibException
 from pylarion.text import Text
 
-
-COMMIT_SIZE = 100
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s|%(message)s',
     level=logging.INFO)
+
 LOGGER = logging.getLogger(__name__)
+
+COMMIT_CHUNK_SIZE = 100
+
+
+class PolarionException(Exception):
+    pass
 
 
 def get_nearest_plan(version, date=None):
@@ -49,16 +49,13 @@ def get_nearest_plan(version, date=None):
         LOGGER.info('Next nearest plan is %s', nearest_plan.name)
         return nearest_plan.plan_id
     else:
-        return None
+        raise PolarionException("Unable to find a planned in.")
 
 
-class PolarionSession():
+class PolarionSession(object):
     """
     Manage session, allow tx_commit during session
     """
-    def __init__(self):
-        pass
-
     def __enter__(self):
         self.session = BasePolarion.session
         self.session.tx_begin()
@@ -66,65 +63,45 @@ class PolarionSession():
 
     def __exit__(self, exception_type, exception_value, traceback):
         if exception_type:
-            LOGGER.error("Got exception:")
-            LOGGER.error(str(exception_type))
-            LOGGER.error(str(exception_value))
-            LOGGER.error(str(traceback))
+            LOGGER.error("Got exception: %s \n %s \n %s",
+                         exception_type, exception_value, traceback)
             self.session.tx_rollback()
         else:
             try:
-                self.session.tx_commit()
+                if self.session.tx_in():
+                    self.session.tx_commit()
                 self.session.tx_release()
             except ssl.SSLError as detail:
-                logging.warning(detail)
+                LOGGER.error(detail)
 
     def commit(self):
         if self.session.tx_in():
             try:
                 self.session.tx_commit()
             except ssl.SSLError as detail:
-                logging.warning(detail)
+                LOGGER.error(detail)
         self.session.tx_begin()
 
     def __getattr__(self, attr):
         return getattr(self.session, attr)
 
 
-class TestRunRecord():
-    def __init__(self, d_id=None, name=None, component=None, build=None, product=None,
-                 version=None, arch=None, type=None, framework=None, project=None,
-                 date=None, ci_url=None, description=None, title_tags=None, polarion_tags=None):
+# pylint: disable=no-member
+class TestRunRecord(object):
+    # TODO: dashboard_id not used
+    __props__ = ("dashboard_id", "name", "component", "build",
+                 "product", "version", "arch", "type",
+                 "framework", "project", "date", "ci_url",
+                 "title_tags", "polarion_tags", "description")
 
-        self.dashboard_id = d_id
-        self.name = name
-        self.component = component
-        self.build = build
-        self.product = product
-        self.version = version
-        self.arch = arch
-        self.type = type
-        self.framework = framework
-        self.project = project
-        self.date = date # datetime
-
-        self.ci_url = ci_url
-        self.description = description
-
-        self.title_tags = title_tags
-        self.polarion_tags = polarion_tags
-
-        self.records = []
-
-        self.query = (('project.id:%s AND type:testcase ' % (self.project)
-                       + 'AND (%s)'))
+    def __init__(self, **kwargs):
+        for prop in self.__props__:
+            setattr(self, prop, kwargs.pop(prop))
 
         self._test_run = None
-
-        # TODO: better test_run_id handling
-        name_prefix = '%s-%s-%s-runtest-%s-' % (
-            self.component, self.product, self.version, self.arch)
-        if self.name.startswith(name_prefix):
-            pass
+        self.records = []
+        self.query = (('project.id:%s AND type:testcase ' % (self.project)
+                       + 'AND (%s)'))
 
         self.test_run_id = '%s %s %s %s' % (
             self.name, self.framework, self.build,
@@ -132,7 +109,7 @@ class TestRunRecord():
         )
 
         if self.title_tags:
-            self.test_run_id += ' ' + ' '.join(self.title_tags)
+            self.test_run_id += ' %s' % (' '.join(self.title_tags))
 
         # Replace unsupported characters
         self.test_run_id = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', self.test_run_id)
@@ -147,9 +124,9 @@ class TestRunRecord():
         """
 
         if result not in ['failed', 'passed', 'blocked']:
-            raise RuntimeError('Result can only be "failed", "passed" of "blocked"')
+            raise PolarionException('Result can only be "failed", "passed" of "blocked"')
 
-        LOGGER.info('Creating Test Record for %s', case)
+        LOGGER.debug('Creating Test Record for %s', case)
 
         record = Record(
             case=case,
@@ -172,7 +149,6 @@ class TestRunRecord():
             self.project, self.test_run_id, self.template_name,
             plannedin=get_nearest_plan(self.version, self.date.date()), assignee='kasong'
         )
-        self.session.commit()
 
     def _set_jenkinsjobs(self, url=None):
         """
@@ -189,7 +165,7 @@ class TestRunRecord():
                 cf.value = Text(url)._suds_object
                 cf.value.type = "text/plain"
 
-    def _set_tags(self, tags=None):
+    def _set_tags(self, tags):
         """
         Hacky way to set tags.
         """
@@ -207,75 +183,68 @@ class TestRunRecord():
         """
         Update Test Run info on Polarion
         """
-        if not self.ci_url.startswith("http"):
-            self.ci_url = "<Not available>"
-
         self._test_run.description = self.description
         self._test_run.group_id = self.build
         # [manualSelection, staticQueryResult, dynamicQueryResult, staticLiveDoc,
         #  dynamicLiveDoc, automatedProcess]
         self._test_run.select_test_cases_by = 'staticQueryResult'
-        self._test_run.query = self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
+        self._test_run.query = self.query % " OR ".join(
+            ["id:%s" % rec.case for rec in self.records])
         self._set_jenkinsjobs(self.ci_url)
         self._set_tags(self.polarion_tags)
 
-    def submit(self, session=None):
+    def submit(self, session):
         """
         Submit / Update a test run on polarion.
         """
-        # TODO: update a test run cause duplicated Test records.
-        self.session = session
-        if not self.session:
-            raise RuntimeError('Need to start a session.')
-
         try:
             self._test_run = TestRun(self.test_run_id, project_id=self.project)
             LOGGER.info('Updating Test Run')
-        except PylarionLibException as e:
-            if "not found" in e.message:
+        except PylarionLibException as error:
+            if "not found" in error.message:
                 self._create_on_polarion()
-                LOGGER.info('Created Test Run')
+                LOGGER.info('Empty Test Run Created')
 
         # Set meta data.
         self._update_info_on_polarion()
+        LOGGER.info('Test Run Metadata Updated')
 
         # Add test run records.
-        self.client = self.session.test_management_client
+        client = session.test_management_client
         for idx, record in enumerate(self.records):
-            self.client.service.addTestRecordToTestRun(self._test_run.uri,
-                                                       record.gen_polarion_object(self.client.factory))
+            client.service.addTestRecordToTestRun(self._test_run.uri,
+                                                  record.gen_polarion_object(client.factory))
+        LOGGER.info('Test Run Records Added')
 
         # Mark Finished
         self._test_run.status = 'finished'
+        LOGGER.info('Test Run Marked As finished')
 
         # Submit
         self._test_run.update()
-        self.session.commit()
+        session.commit()
+        LOGGER.info('Submit Done')
 
 
-class Record():
-    def __init__(self, case=None, project=None, duration=None, executed=None,
-                 executed_by=None, result=None, comment=None):
-        self.case = case
-        self.project = project
-        self.duration = duration
-        self.executed = executed
-        self.executed_by = executed_by
-        self.result = result
-        self.comment = comment
+class Record(object):
+    __props__ = ("case", "project", "duration", "executed",
+                 "executed_by", "result", "comment")
 
-    def gen_polarion_object(self, factory=None):
+    def __init__(self, **kwargs):
+        for prop in self.__props__:
+            setattr(self, prop, kwargs.pop(prop))
+
+        self._polarion_object = None
+
+    def gen_polarion_object(self, factory):
         """
         Generate a Test Run Record object for Polarion.
         """
-        self.factory = factory
-        if not self.factory:
-            raise RuntimeError()
 
         if hasattr(self, '_polarion_object'):
             return self._polarion_object
 
-        suds_object = self.factory.create('tns3:TestRecord')
+        suds_object = factory.create('tns3:TestRecord')
 
         suds_object.testCaseURI = ("subterra:data-service:objects:/default/"
                                    "%s${WorkItem}%s" %
@@ -283,12 +252,12 @@ class Record():
         suds_object.duration = self.duration
         suds_object.executed = self.executed
 
-        result_obj = self.factory.create('tns4:EnumOptionId')
+        result_obj = factory.create('tns4:EnumOptionId')
         result_obj.id = self.result
         suds_object.result = result_obj
 
         if self.comment is not None:
-            comment_obj = self.factory.create('tns2:Text')
+            comment_obj = factory.create('tns2:Text')
             comment_obj.type = "text/html"
             comment_obj.content = '<pre>%s</pre>' % self.comment
             comment_obj.contentLossy = False
