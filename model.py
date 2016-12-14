@@ -180,6 +180,23 @@ class Run(db.Model):
                 ret['manual_error'] += 1
         return ret
 
+    def blocking_errors(self, exclude=['Missing'], ignore_resulted=True):
+        ret = []
+        if len(self.linkage_results) == 0:
+            return ["No Linkage result avaliable"]
+        if exclude == "ALL":
+            return []
+        for linkage_result in self.linkage_results:
+            if ignore_resulted and linkage_result.result:
+                continue
+            if linkage_result.error and linkage_result.error not in exclude:
+                ret.append("Auto case %s is blocking %s with error %s" %
+                           (linkage_result.auto_result_id, linkage_result.manual_result_id, linkage_result.error))
+        return ret
+
+    def short_unique_name(self):
+        return "%s %s" % (self.name, self.id)
+
     def as_dict(self, detailed=False):
         ret = {}
         for c in self.__table__.columns:

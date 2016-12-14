@@ -6,6 +6,7 @@ import logging
 import datetime
 import re
 import ssl
+import threading
 
 from pylarion.base_polarion import BasePolarion
 from pylarion.document import Document
@@ -14,6 +15,11 @@ from pylarion.test_run import TestRun
 from pylarion.plan import Plan
 from pylarion.exceptions import PylarionLibException
 from pylarion.text import Text
+
+from httplib import HTTPException
+from suds import WebFault
+from ssl import SSLError
+from pylarion.exceptions import PylarionLibException
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s|%(message)s',
@@ -56,23 +62,35 @@ class PolarionSession(object):
     """
     Manage session, allow tx_commit during session
     """
+    lock = threading.RLock()
     def __enter__(self):
+        self.lock.acquire()
         self.session = BasePolarion.session
-        self.session.tx_begin()
+        self.session._reauth()
+        if not self.session.tx_in():
+            self.session.tx_begin()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if exception_type:
-            LOGGER.error("Got exception: %s \n %s \n %s",
-                         exception_type, exception_value, traceback)
-            self.session.tx_rollback()
-        else:
-            try:
-                if self.session.tx_in():
-                    self.session.tx_commit()
-                self.session.tx_release()
-            except ssl.SSLError as detail:
-                LOGGER.error(detail)
+        try:
+            if exception_type:
+                LOGGER.error("Got exception: %s \n %s \n %s",
+                             exception_type, exception_value, traceback)
+                self.session.tx_rollback()
+            else:
+                try:
+                    if self.session.tx_in():
+                        self.session.tx_commit()
+                    self.session.tx_release()
+                    self.session._logout()
+                except ssl.SSLError as detail:
+                    LOGGER.error(detail)
+        finally:
+            self.lock.release()
+
+    def reauth(self):
+        self.session._reauth()
+        self.commit()
 
     def commit(self):
         if self.session.tx_in():
@@ -197,6 +215,30 @@ class TestRunRecord(object):
         """
         Submit / Update a test run on polarion.
         """
+        def _retry_wrapper(func, times=10):
+            for retry in reversed(range(times)):
+                try:
+                    func()
+                except (WebFault, SSLError) as error:
+                    if "timed out" in error.message and retry:
+                        LOGGER.info("Request timeout, retry left %s", retry)
+                        session.commit()
+                        continue
+                    elif "Not authorized" in error.message and retry:
+                        LOGGER.info("Auth expired, retry left %s", retry)
+                        session.reauth()
+                        continue
+                    else:
+                        return error
+                except HTTPException as error:
+                    if retry:
+                        LOGGER.info("HTTP error %s, retry lift %s", error, retry)
+                        session.reauth()
+                        continue
+                    else:
+                        return error
+            return None
+
         try:
             self._test_run = TestRun(self.test_run_id, project_id=self.project)
             LOGGER.info('Updating Test Run')
@@ -204,25 +246,27 @@ class TestRunRecord(object):
             if "not found" in error.message:
                 self._create_on_polarion()
                 LOGGER.info('Empty Test Run Created')
+        else:
+            LOGGER.info('Test Run Founded')
 
         # Set meta data.
         self._update_info_on_polarion()
+        session.commit()
         LOGGER.info('Test Run Metadata Updated')
 
         # Add test run records.
         client = session.test_management_client
         for idx, record in enumerate(self.records):
-            client.service.addTestRecordToTestRun(self._test_run.uri,
-                                                  record.gen_polarion_object(client.factory))
+            LOGGER.info('Uploading Record %s', idx)
+            error = _retry_wrapper(lambda: client.service.addTestRecordToTestRun(self._test_run.uri,
+                                                                                 record.gen_polarion_object(client.factory)))
+            if error:
+                raise PolarionException("Failed during creating test record %s" % error)
+
         LOGGER.info('Test Run Records Added')
-
-        # Mark Finished
         self._test_run.status = 'finished'
-        LOGGER.info('Test Run Marked As finished')
-
-        # Submit
-        self._test_run.update()
-        session.commit()
+        if not _retry_wrapper(lambda: self._test_run.update(), 30):
+            raise PolarionException("Failed saving test record %s" % error)
         LOGGER.info('Submit Done')
 
 
@@ -241,7 +285,7 @@ class Record(object):
         Generate a Test Run Record object for Polarion.
         """
 
-        if hasattr(self, '_polarion_object'):
+        if self._polarion_object is not None:
             return self._polarion_object
 
         suds_object = factory.create('tns3:TestRecord')
