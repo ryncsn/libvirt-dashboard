@@ -256,7 +256,7 @@ class TestRunRecord(object):
         self._set_jenkinsjobs(self.ci_url)
         self._set_tags(self.polarion_tags)
 
-    def submit(self, session):
+    def submit(self, session, resubmit=False):
         """
         Submit / Update a test run on polarion.
         """
@@ -283,6 +283,10 @@ class TestRunRecord(object):
         if error:
             LOGGER.info('Failed looking up test run')
             raise PolarionException("Failed looking up test run %s" % error)
+
+        if resubmit:
+            if self._test_run:
+                raise PolarionException("Old test run not deleted, you have to delete it manually")
 
         if not self._test_run:
             error = session.retry_request(_create_test_run)

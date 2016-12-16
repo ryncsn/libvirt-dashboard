@@ -122,10 +122,7 @@ def submit_to_polarion(run_id=None, regex=None):
         return jsonify({'message': 'Polarion not enabled, please contract the admin.'}), 200
 
     def _get_testruns_to_submit():
-        if run_id:
-            test_runs = Run.query.filter(Run.submit_date == None, Run.id == run_id)
-        else:
-            test_runs = Run.query.filter(Run.submit_date == None)
+        test_runs = Run.query.filter(Run.id == run_id) if run_id else Run.query.filter()
         for test_run in test_runs:
             if regex:
                 if not re.match(regex, test_run.name):
@@ -176,13 +173,10 @@ def submit_to_polarion(run_id=None, regex=None):
     submitted_runs, error_runs = [], []
 
     for test_run in _get_testruns_to_submit():
-        if forced:
-            errors = test_run.blocking_errors(exclude="ALL")
-        else:
-            errors = test_run.blocking_errors()
+        errors = test_run.blocking_errors(exclude="ALL") if forced else test_run.blocking_errors()
+        re_submit = bool(test_run.submit_date)
         if errors:
-            error_runs.append({'name': test_run.short_unique_name(),
-                               'reason': errors})
+            error_runs.append({'name': test_run.short_unique_name(), 'reason': errors})
         else:
             try:
                 polarion_testrun = _gen_polarion_testrun(test_run)
@@ -203,7 +197,7 @@ def submit_to_polarion(run_id=None, regex=None):
                     )
 
                 with Polarion.PolarionSession() as session:
-                    polarion_testrun.submit(session)
+                    polarion_testrun.submit(session, resubmit=re_submit)
 
                 #TODO issue a caselink backup
                 test_run.submit_date = datetime.datetime.now()
@@ -213,7 +207,6 @@ def submit_to_polarion(run_id=None, regex=None):
                 submitted_runs.append(test_run.short_unique_name())
 
             except (PolarionException, PylarionLibException, SSLError, WebFault) as error:
-                error_runs.append({'name': test_run.short_unique_name(),
-                                   'reason': error.message})
+                error_runs.append({'name': test_run.short_unique_name(), 'reason': error.message})
 
     return jsonify( {'submitted': submitted_runs, 'not_submitted': error_runs, })
