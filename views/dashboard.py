@@ -5,13 +5,12 @@ from flask import Blueprint, render_template, request, jsonify
 from flask import current_app as app
 from model import db, AutoResult, ManualResult, LinkageResult, Run
 
-from suds import WebFault
-from ssl import SSLError
-from utils.polarion import PolarionException
-from pylarion.exceptions import PylarionLibException
-
 try:
     import utils.polarion as Polarion
+    from suds import WebFault
+    from ssl import SSLError
+    from utils.polarion import PolarionException
+    from pylarion.exceptions import PylarionLibException
     PYLARION_INSTALLED = True
 except ImportError:
     PYLARION_INSTALLED = False
