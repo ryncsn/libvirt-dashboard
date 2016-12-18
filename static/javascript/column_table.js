@@ -1,4 +1,4 @@
-require('./lib/datatables-templates.js');
+var dtMixins = require('datatables-mixins');
 var htmlify = require('./lib/htmlify.js');
 var columns = [];
 var columnSrcs = window.templateColumns;

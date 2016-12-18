@@ -20,9 +20,9 @@ class TestRunList(Resource):
         search_value = request.args.get('search[value]')
         search_regex = request.args.get('search[regex]')
         #TODO: need something to decode a dt query properly.
-        tags = request.args.get('columns[7][search][value]', '[]')
-        auto_case = request.args.get('columns[4][search][value]', '[]')
-        manual_case = request.args.get('columns[6][search][value]', '[]')
+        tags = request.args.get('columns[6][search][value]', '[]')
+        auto_case = request.args.get('columns[3][search][value]', '[]')
+        manual_case = request.args.get('columns[5][search][value]', '[]')
         cols = {
             '0': Run.date,
             '1': Run.id,

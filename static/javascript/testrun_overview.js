@@ -57,7 +57,6 @@ $(document).ready(function() {
       null,
       null,
       null,
-      null,
       { "sSearch": JSON.stringify(vm.checkedTags) },
     ],
     columns: [
@@ -113,9 +112,8 @@ $(document).ready(function() {
         },
         visible: false
       },
-
     ],
-    order: [[2, 'desc']],
+    order: [[1, 'desc']],
     rowCallback: function(row, data, index){
     },
     ajax: window.templateDTAPIURL,
