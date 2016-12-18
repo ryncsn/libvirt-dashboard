@@ -1,6 +1,5 @@
 require("../css/testrun-overview.css");
-require('./lib/datatables-templates.js');
-
+var dtMixins = require('datatables-mixins');
 var htmlify = require("./lib/htmlify.js");
 var Cookies = require('js-cookie');
 var Vue = require("vue");

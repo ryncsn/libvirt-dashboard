@@ -1,4 +1,4 @@
-require('./lib/datatables-templates.js');
+var dtMixins = require('datatables-mixins');
 var htmlify = require("./lib/htmlify.js");
 var colorize = require("./lib/colorize.js");
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
@@ -16,7 +16,7 @@ for (var columnSrc of columnSrcs){
 
 $(document).ready(function() {
   var table = $('#column_table').DataSearchTable({
-    BaseTable: [$.fn.DataTableWithChildRow, $.fn.DataTableWithInlineButton],
+    BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton],
     pageLength: 50,
     "iDisplayLength": 20,
     "bAutoWidth": false,

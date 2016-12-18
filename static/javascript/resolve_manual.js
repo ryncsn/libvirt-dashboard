@@ -1,4 +1,4 @@
-require('./lib/datatables-templates.js');
+var dtMixins = require('datatables-mixins');
 var dashboard = require("./lib/dashboard.js");
 var htmlify = require("./lib/htmlify.js");
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
@@ -18,7 +18,7 @@ $(document).ready(function() {
     pageLength: 50,
     "iDisplayLength": 20,
     "bAutoWidth": false,
-    BaseTable: [$.fn.DataTableWithChildRow, $.fn.DataTableWithInlineButton],
+    BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton],
     buttons: [
       {
         text: 'Select All Shown',
