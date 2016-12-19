@@ -1,4 +1,4 @@
-var webpack = require('webpack')
+var webpack = require('webpack');
 module.exports = {
   context: __dirname + "/static/javascript",
   entry: {
@@ -7,7 +7,7 @@ module.exports = {
     // The script that will load before any page content loaded.
     head: './pack/pace.js',
     // Initial Script for all page.
-    init: ['./pack/style.js'],
+    init: ['./pack/style.js', './lib/sharedParameters.js'],
     // Page specified entry.
     column_table: './column_table.js',
     resolve_auto: './resolve_auto.js',
