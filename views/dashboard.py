@@ -184,47 +184,36 @@ def submit_to_polarion(run_id=None, regex=None):
             error_runs.append({'name': test_run.short_unique_name(),
                                'reason': errors})
         else:
-            for retry in reversed(xrange(20)):
-                try:
-                    polarion_testrun = _gen_polarion_testrun(test_run)
-                    for record in test_run.manual_results:
-                        polarion_result = record.result
-                        if polarion_result in ['ignored', 'skipped']:
-                            continue
-                        if polarion_result not in ['passed', 'failed']:
-                            polarion_result = 'blocked'
-
-                        polarion_testrun.add_record(
-                            case=record.case,
-                            result=polarion_result,
-                            duration=record.time,
-                            record_datetime=test_run.date,  # Datetime
-                            executed_by='CI',
-                            comment=record.comment
-                        )
-
-                    with Polarion.PolarionSession() as session:
-                        polarion_testrun.submit(session)
-
-                    #TODO issue a caselink backup
-                    test_run.submit_date = datetime.datetime.now()
-                    test_run.polarion_id = polarion_testrun.test_run_id
-                    db.session.add(test_run)
-                    db.session.commit()
-                    submitted_runs.append(test_run.short_unique_name())
-                    break
-                except PolarionException as error:
-                    error_runs.append({'name': test_run.short_unique_name(),
-                                       'reason': error.message})
-                    break
-                except PylarionLibException as error:
-                    error_runs.append({'name': test_run.short_unique_name(),
-                                       'reason': error.message})
-                    break
-                except (SSLError, WebFault) as error:
-                    if any([err in error.message for err in ["timed out", "Not authorized"]]) and retry:
+            try:
+                polarion_testrun = _gen_polarion_testrun(test_run)
+                for record in test_run.manual_results:
+                    polarion_result = record.result
+                    if polarion_result in ['ignored', 'skipped']:
                         continue
-                    else:
-                        error_runs.append({'name': test_run.short_unique_name(),
-                                           'reason': error.message})
+                    if polarion_result not in ['passed', 'failed']:
+                        polarion_result = 'blocked'
+
+                    polarion_testrun.add_record(
+                        case=record.case,
+                        result=polarion_result,
+                        duration=record.time,
+                        record_datetime=test_run.date,  # Datetime
+                        executed_by='CI',
+                        comment=record.comment
+                    )
+
+                with Polarion.PolarionSession() as session:
+                    polarion_testrun.submit(session)
+
+                #TODO issue a caselink backup
+                test_run.submit_date = datetime.datetime.now()
+                test_run.polarion_id = polarion_testrun.test_run_id
+                db.session.add(test_run)
+                db.session.commit()
+                submitted_runs.append(test_run.short_unique_name())
+
+            except (PolarionException, PylarionLibException, SSLError, WebFault) as error:
+                error_runs.append({'name': test_run.short_unique_name(),
+                                   'reason': error.message})
+
     return jsonify( {'submitted': submitted_runs, 'not_submitted': error_runs, })

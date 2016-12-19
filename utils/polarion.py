@@ -2,11 +2,13 @@
 More specified ORM for Polaroin
 Wrapper for Pylaroin
 """
+import time
 import logging
 import datetime
 import re
 import ssl
 import threading
+import traceback
 
 from pylarion.base_polarion import BasePolarion
 from pylarion.document import Document
@@ -71,38 +73,70 @@ class PolarionSession(object):
             self.session.tx_begin()
         return self
 
-    def __exit__(self, exception_type, exception_value, traceback):
+    def __exit__(self, exception_type, exception_value, tb):
         try:
             if exception_type:
-                LOGGER.error("Got exception: %s \n %s \n %s",
-                             exception_type, exception_value, traceback)
+                LOGGER.error("Got exception: %s \n %s",
+                             exception_type, exception_value)
+                traceback.print_tb(tb)
                 self.session.tx_rollback()
             else:
-                try:
-                    if self.session.tx_in():
-                        self.session.tx_commit()
-                    self.session.tx_release()
-                    self.session._logout()
-                except ssl.SSLError as detail:
-                    LOGGER.error(detail)
+                if self.session.tx_in():
+                    self.session.tx_commit()
+                self.session.tx_release()
+                self.session._logout()
         finally:
             self.lock.release()
 
     def reauth(self):
-        self.session._reauth()
-        self.commit()
+        self.session._logout()
+        self.session._login()
+
+    def rollback(self):
+        if self.session.tx_in():
+            self.session.tx_rollback()
 
     def commit(self):
         if self.session.tx_in():
-            try:
-                self.session.tx_commit()
-            except ssl.SSLError as detail:
-                LOGGER.error(detail)
-        self.session.tx_begin()
+            self.session.tx_commit()
+
+    def begin(self):
+        if not self.session.tx_in():
+            self.session.tx_begin()
 
     def __getattr__(self, attr):
         return getattr(self.session, attr)
 
+    def retry_request(self, func, times=50, read_only=False):
+        for retry in reversed(range(times)):
+            try:
+                if not read_only:
+                    self.begin()
+                func()
+                if not read_only:
+                    self.commit()
+                return
+            except (WebFault, SSLError) as error:
+                time.sleep(10)
+                if "timed out" in error.message and retry:
+                    LOGGER.info("Request timeout, retry left %s", retry)
+                elif "Not authorized" in error.message and retry:
+                    LOGGER.info("Auth expired, retry left %s", retry)
+                    self.reauth()
+                else:
+                    return error
+                self.rollback()
+                continue
+            except HTTPException as error:
+                time.sleep(10)
+                if retry:
+                    LOGGER.info("HTTP error %s, retry lift %s", error, retry)
+                    self.reauth()
+                    self.rollback()
+                    continue
+                else:
+                    return error
+        return None
 
 # pylint: disable=no-member
 class TestRunRecord(object):
@@ -134,6 +168,7 @@ class TestRunRecord(object):
 
         # TODO: tempalte name
         self.template_name = "libvirt-autotest"
+        self._nearest_plan = None
 
     def add_record(self, case=None, result=None, duration=None,
                    record_datetime=None, executed_by=None, comment=None):
@@ -159,13 +194,28 @@ class TestRunRecord(object):
 
         self.records.append(record)
 
+    @property
+    def nearest_plan(self):
+        if not self._nearest_plan:
+            LOGGER.info("Getting nearest plan")
+            self._nearest_plan = get_nearest_plan(self.version, self.date.date())
+            LOGGER.info("Nearest plan %s", self._nearest_plan)
+        return self._nearest_plan
+
+    def exist_on_polarion(self):
+        pass
+
     def _create_on_polarion(self):
         """
         Create a empty Test Run with test_run_id on Polarion
         """
         self._test_run = TestRun.create(
             self.project, self.test_run_id, self.template_name,
-            plannedin=get_nearest_plan(self.version, self.date.date()), assignee='kasong'
+            plannedin=self.nearest_plan,
+            assignee='kasong', description=self.description,
+            group_id=self.build,
+            select_test_cases_by = 'staticQueryResult',
+            query=self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
         )
 
     def _set_jenkinsjobs(self, url=None):
@@ -201,13 +251,8 @@ class TestRunRecord(object):
         """
         Update Test Run info on Polarion
         """
-        self._test_run.description = self.description
-        self._test_run.group_id = self.build
         # [manualSelection, staticQueryResult, dynamicQueryResult, staticLiveDoc,
         #  dynamicLiveDoc, automatedProcess]
-        self._test_run.select_test_cases_by = 'staticQueryResult'
-        self._test_run.query = self.query % " OR ".join(
-            ["id:%s" % rec.case for rec in self.records])
         self._set_jenkinsjobs(self.ci_url)
         self._set_tags(self.polarion_tags)
 
@@ -215,58 +260,62 @@ class TestRunRecord(object):
         """
         Submit / Update a test run on polarion.
         """
-        def _retry_wrapper(func, times=10):
-            for retry in reversed(range(times)):
-                try:
-                    func()
-                except (WebFault, SSLError) as error:
-                    if "timed out" in error.message and retry:
-                        LOGGER.info("Request timeout, retry left %s", retry)
-                        session.commit()
-                        continue
-                    elif "Not authorized" in error.message and retry:
-                        LOGGER.info("Auth expired, retry left %s", retry)
-                        session.reauth()
-                        continue
-                    else:
-                        return error
-                except HTTPException as error:
-                    if retry:
-                        LOGGER.info("HTTP error %s, retry lift %s", error, retry)
-                        session.reauth()
-                        continue
-                    else:
-                        return error
-            return None
+        def _find_test_run():
+            try:
+                self._test_run = TestRun(self.test_run_id, project_id=self.project)
+            except PylarionLibException as error:
+                if "not found" in error.message:
+                    self._test_run = None
+                else:
+                    raise error
+            else:
+                LOGGER.info('Test Run Founded')
 
-        try:
-            self._test_run = TestRun(self.test_run_id, project_id=self.project)
-            LOGGER.info('Updating Test Run')
-        except PylarionLibException as error:
-            if "not found" in error.message:
-                self._create_on_polarion()
+        def _create_test_run():
+            self._create_on_polarion()
+            LOGGER.info('Empty Test Run Created')
+            self._update_info_on_polarion()
+            LOGGER.info('Test Run Metadata Updated')
+            session.commit()
+            LOGGER.info('Test Run Saved')
+
+        error = session.retry_request(_find_test_run, read_only=True)
+        if error:
+            LOGGER.info('Failed looking up test run')
+            raise PolarionException("Failed looking up test run %s" % error)
+
+        if not self._test_run:
+            error = session.retry_request(_create_test_run)
+            if error:
+                LOGGER.info('Empty Test Run Create Failed')
+                raise PolarionException("Failed creating test run %s" % error)
+            else:
                 LOGGER.info('Empty Test Run Created')
         else:
-            LOGGER.info('Test Run Founded')
+            LOGGER.info('Test Run already exists')
 
-        # Set meta data.
-        self._update_info_on_polarion()
-        session.commit()
-        LOGGER.info('Test Run Metadata Updated')
+        def _add_record():
+            # Add test run records.
+            client = session.test_management_client
+            for idx, record in enumerate(self.records):
+                LOGGER.info('Uploading Record %s', idx)
+                client.service.addTestRecordToTestRun(self._test_run.uri,
+                                                      record.gen_polarion_object(client.factory))
 
-        # Add test run records.
-        client = session.test_management_client
-        for idx, record in enumerate(self.records):
-            LOGGER.info('Uploading Record %s', idx)
-            error = _retry_wrapper(lambda: client.service.addTestRecordToTestRun(self._test_run.uri,
-                                                                                 record.gen_polarion_object(client.factory)))
-            if error:
-                raise PolarionException("Failed during creating test record %s" % error)
+        error = session.retry_request(_add_record)
+        if error:
+            LOGGER.error('Test Run Record adding failed')
+            raise PolarionException("Adding record failed %s" % error)
+        else:
+            LOGGER.info('Test Run Records Added')
 
-        LOGGER.info('Test Run Records Added')
-        self._test_run.status = 'finished'
-        if not _retry_wrapper(lambda: self._test_run.update(), 30):
-            raise PolarionException("Failed saving test record %s" % error)
+        def _mark_test_finished():
+            self._test_run.status = 'finished'
+            self._test_run.update()
+
+        if session.retry_request(_mark_test_finished, 50):
+            raise PolarionException("Failed finishing test run %s" % error)
+
         LOGGER.info('Submit Done')
 
 
