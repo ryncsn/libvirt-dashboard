@@ -31,12 +31,12 @@
     </div>
 </div>
 <script type="text/javascript" charset="utf-8">
-    window.templateColumns = [
+    sharedParameters.set("ajaxURL", {{ajax}});
+    sharedParameters.set("templateColumn", [
         {% for col in column_datas %}
         "{{ col }}",
         {% endfor %}
-    ];
-    window.ajaxURL = "{{ajax}}";
+    ]);
 </script>
 <script src="{{ url_for('static', filename='dist/resolve_manual.js') }}" type="text/javascript" charset="utf-8"></script>
 {% endblock %}

@@ -53,7 +53,7 @@ var vm = new Vue({
   mounted: function(){
     let vm = this;
     var table = this.dtTable.table = $('#column_table').DataTableWithChildRow({
-      ajax: window.templateDTAPIURL,
+      ajax: _p.get("datatablesAPIURL"),
       dom: '<t><"row"<"col-md-3"f><"col-md-4"i><"col-md-5"p>>',
       pageLength: 100,
       processing: true,

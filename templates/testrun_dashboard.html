@@ -23,7 +23,7 @@
 {% endblock %}
 {% block footer %}
 <script type="text/javascript" charset="utf-8">
-    window.templateStatisticURL = {{url_for('dashboard_statistics.testrun_statistics', limit=0)}};
+    sharedParameters.set("templateStatisticURL", "{{url_for('dashboard_statistics.testrun_statistics', limit=0)}}");
 </script>
 <script src="{{ url_for('static', filename='dist/testrun_dashboard.js') }}" type="text/javascript" charset="utf-8"></script>
 

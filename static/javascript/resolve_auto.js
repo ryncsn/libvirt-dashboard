@@ -2,12 +2,13 @@ var dtMixins = require('datatables-mixins');
 var htmlify = require("./lib/htmlify.js");
 var colorize = require("./lib/colorize.js");
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
-var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
 var dashboard = require("./lib/dashboard.js");
-var columns = [];
-var columnSrcs = window.templateColumns;
+var _p = require("./lib/sharedParameters.js");
 
-for (var columnSrc of columnSrcs){
+var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
+var columns = [];
+
+for (var columnSrc of _p.get("templateColumns")){
   columns.push({
     "render": htmlify,
     "data": columnSrc
@@ -132,7 +133,7 @@ $(document).ready(function() {
       }
     },
     ajax: {
-      url: window.ajaxURL,
+      url: _p.get("ajaxURL"),
       dataSrc: ''
     },
     childContent: function(row, child, finish){

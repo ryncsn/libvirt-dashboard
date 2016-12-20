@@ -1,12 +1,12 @@
 var dtMixins = require('datatables-mixins');
 var dashboard = require("./lib/dashboard.js");
 var htmlify = require("./lib/htmlify.js");
+var _p = require("./lib/sharedParameters.js");
 var error_panel = $("#_proto_error_panel").removeClass('hidden').detach();
 var run_id = window.location.pathname.match("\/run\/([0-9]*)")[1];
 var columns = [];
-var columnSrcs = window.templateColumns;
 
-for (var columnSrc of columnSrcs){
+for (var columnSrc of _p.get("templateColumns")){
   columns.push({
     "render": htmlify,
     "data": columnSrc
@@ -112,7 +112,7 @@ $(document).ready(function() {
       }
     },
     ajax: {
-      url: window.ajaxURL,
+      url: _p.get("ajaxURL"),
       dataSrc: ''
     },
 

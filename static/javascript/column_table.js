@@ -1,8 +1,9 @@
 var dtMixins = require('datatables-mixins');
 var htmlify = require('./lib/htmlify.js');
+var _p = require("./lib/sharedParameters.js");
 var columns = [];
-var columnSrcs = window.templateColumns;
-for (var columnSrc of columnSrcs){
+
+for (var columnSrc of _p.get("templateColumns")){
   columns.push({
     "render": htmlify,
     "data": columnSrc
@@ -15,7 +16,7 @@ $(document).ready(function() {
     pageLength: 50,
     columns: columns,
     ajax: {
-      url: window.ajaxURL,
+      url: _p.get("ajaxURL"),
       dataSrc: ''
     },
   });

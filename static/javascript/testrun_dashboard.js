@@ -1,4 +1,5 @@
 require("../css/dashboard.css");
+var _p = require("./lib/sharedParameters.js");
 var TestRunStackGraph = require("./lib/test-run-stack-graph.js");
 var graph = new TestRunStackGraph('.d3');
 function updateKeys(){
@@ -13,7 +14,7 @@ $('[name="showing"]').change(function(){
   updateKeys();
 });
 updateKeys();
-$.ajax(window.templateStatisticURL)
+$.ajax(_p.get("templateStatisticURL"))
   .done(function(data){
     var selector = $('[name="test_run"]');
     for (var key in data){
