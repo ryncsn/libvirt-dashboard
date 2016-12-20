@@ -3,6 +3,7 @@ var dtMixins = require('datatables-mixins');
 var htmlify = require("./lib/htmlify.js");
 var Cookies = require('js-cookie');
 var Vue = require("vue");
+var _p = require("./lib/sharedParameters.js");
 
 var dashboard = require("./lib/dashboard.js");
 var child_panel = $("#_proto_child").removeClass('hidden').detach();
@@ -136,7 +137,7 @@ var vm = new Vue({
 
         if(d.submit_date){
           $(head).find(".dashboard-submit").attr('disabled', true);
-          $(head).find(".dashboard-jump").attr('href', 'https://polarion.engineering.redhat.com/polarion/#/project/RedHatEnterpriseLinux7/testrun?id=' + d.polarion_id);
+          $(head).find(".dashboard-jump").attr('href', `${_p.get('polarionURL')}/polarion/#/project/RedHatEnterpriseLinux7/testrun?id=${d.polarion_id}`);
         }
         else{
           $(head).find(".dashboard-jump").attr('disabled', true);
@@ -170,6 +171,5 @@ var vm = new Vue({
     this.dtTable.tagsColumn = table.column(function(idx, data, node){return $(node).text() == ("Tags");});
     this.dtTable.autoColumn = table.column(function(idx, data, node){return $(node).text() == ("Auto");});
     this.dtTable.manualColumn = table.column(function(idx, data, node){return $(node).text() == ("Manual");});
-    console.log("funied");
   }
 });

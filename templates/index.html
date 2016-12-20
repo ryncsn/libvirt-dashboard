@@ -6,6 +6,9 @@
         <script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='dist/vendor.bundle.js') }}"></script>
         <script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='dist/head.js') }}"></script>
         <script type="text/javascript" charset="utf8" src="{{ url_for('static', filename='dist/init.js') }}"></script>
+        <script type="text/javascript" charset="utf-8">
+            sharedParameters.set("polarionURL", "{{ config.POLARION_URL }}");
+        </script>
         {% block extra_header %}
         {% endblock %}
     </head>
