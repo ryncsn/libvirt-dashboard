@@ -17,7 +17,7 @@ for (var columnSrc of _p.get("templateColumns")){
 
 $(document).ready(function() {
   var table = $('#column_table').DataSearchTable({
-    BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton],
+    BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton, dtMixins.DataTableJumpPageButton],
     pageLength: 50,
     "iDisplayLength": 20,
     "bAutoWidth": false,

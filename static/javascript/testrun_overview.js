@@ -53,6 +53,7 @@ var vm = new Vue({
   mounted: function(){
     let vm = this;
     var table = this.dtTable.table = $('#column_table').DataTableWithChildRow({
+      BaseTable: [dtMixins.DataTableJumpPageButton],
       ajax: _p.get("datatablesAPIURL"),
       dom: '<t><"row"<"col-md-3"f><"col-md-4"i><"col-md-5"p>>',
       pageLength: 100,
