@@ -18,7 +18,7 @@ $(document).ready(function() {
     pageLength: 50,
     "iDisplayLength": 20,
     "bAutoWidth": false,
-    BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton],
+    BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton, dtMixins.DataTableJumpPageButton],
     buttons: [
       {
         text: 'Select All Shown',
