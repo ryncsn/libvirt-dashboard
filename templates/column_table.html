@@ -14,7 +14,7 @@
 {% block footer %}
 <script type="text/javascript" charset="utf-8">
     sharedParameters.set("ajaxURL", "{{ajax}}");
-    sharedParameters.set("templateColumn", [
+    sharedParameters.set("templateColumns", [
         {% for col in column_datas %}
         "{{ col }}",
         {% endfor %}
