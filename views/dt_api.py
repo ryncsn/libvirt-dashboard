@@ -20,16 +20,19 @@ class TestRunList(Resource):
         search_value = request.args.get('search[value]')
         search_regex = request.args.get('search[regex]')
         #TODO: need something to decode a dt query properly.
+
         tags = request.args.get('columns[6][search][value]', '[]')
         auto_case = request.args.get('columns[3][search][value]', '[]')
         manual_case = request.args.get('columns[5][search][value]', '[]')
+        submit_status = request.args.get('columns[2][search][value]', '')
+
         cols = {
-            '0': Run.date,
-            '1': Run.id,
-            '2': Run.date,
-            '3': Run.submit_date,
+            '0': Run.id,
+            '1': Run.date,
+            '2': Run.submit_date,
         }
-        order_col = request.args.get('order[0][column]', 'Run')
+
+        order_col = request.args.get('order[0][column]', '0')
         order_dir = request.args.get('order[0][dir]', 'asc')
         order_col = cols.get(order_col, Run.date)
 
@@ -65,6 +68,14 @@ class TestRunList(Resource):
 
         if manual_case:
             filtered = filtered.filter(Run.manual_results.any(ManualResult.case == manual_case))
+
+        if submit_status:
+            if submit_status == 'all':
+                pass
+            elif submit_status == 'notsubmitted':
+                filtered = filtered.filter(Run.submit_date == None)
+            elif submit_status == 'submitted':
+                filtered = filtered.filter(Run.submit_date != None)
 
         filtered = filtered.order_by(order)
 

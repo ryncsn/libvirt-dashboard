@@ -13,6 +13,7 @@ var vm = new Vue({
   data: {
     availTags: [],
     checkedTags: [],
+    filterSubmitted: 'all',
     containAuto: '',
     containManual: '',
     showSearchPanel: false,
@@ -48,6 +49,10 @@ var vm = new Vue({
       } catch (e) {
         console.log(e);
       }
+    },
+    filterSubmitted: function(newStatus){
+      this.dtTable.polarionColumn.search(this.filterSubmitted);
+      this.dtTable.table.draw();
     },
   },
   mounted: function(){
@@ -171,5 +176,6 @@ var vm = new Vue({
     this.dtTable.tagsColumn = table.column(function(idx, data, node){return $(node).text() == ("Tags");});
     this.dtTable.autoColumn = table.column(function(idx, data, node){return $(node).text() == ("Auto");});
     this.dtTable.manualColumn = table.column(function(idx, data, node){return $(node).text() == ("Manual");});
+    this.dtTable.polarionColumn = table.column(function(idx, data, node){return $(node).text() == ("Polarion Submit Date");});
   }
 });

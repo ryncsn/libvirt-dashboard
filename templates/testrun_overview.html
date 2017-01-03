@@ -18,6 +18,17 @@
         </div>
         <div v-show="showSearchPanel" id="datatable-selector" class="panel-body">
             <div class="input-group">
+                <input type="radio" id="filter-all" value="all" v-model="filterSubmitted">
+                <label for="filter-all">All</label>
+                <br>
+                <input type="radio" id="filter-submitted" value="submitted" v-model="filterSubmitted">
+                <label for="filter-submitted">Submitted</label>
+                <br>
+                <input type="radio" id="filter-notsubmitted" value="notsubmitted" v-model="filterSubmitted">
+                <label for="filter-notsubmitted">Not Submitted</label>
+                <br>
+            </div>
+            <div class="input-group">
                 <div v-for="item in availTags" class="checkbox checkbox-inline">
                     <input type="checkbox" v-bind:id="item.name" v-bind:value="item.name" v-bind:title="item.desc || item.name" v-model="checkedTags">
                     <label v-bind:for="item.name">
