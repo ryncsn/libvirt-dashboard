@@ -19,27 +19,21 @@ class TestRunList(Resource):
         length = request.args.get('length', None)
         search_value = request.args.get('search[value]')
         search_regex = request.args.get('search[regex]')
-        #TODO: need something to decode a dt query properly.
 
-        tags = request.args.get('columns[6][search][value]', '[]')
-        auto_case = request.args.get('columns[3][search][value]', '[]')
-        manual_case = request.args.get('columns[5][search][value]', '[]')
-        submit_status = request.args.get('columns[2][search][value]', '')
+        submit_status = request.args.get('submitStatus', '')
+        contains_autocase = request.args.get('containsAutocases', '')
+        contains_manualcase = request.args.get('containsManualcases', '')
+        has_tags = request.args.get('hasTags', '[]')
 
-        cols = {
+        order_col = {
             '0': Run.id,
             '1': Run.date,
             '2': Run.submit_date,
-        }
+        }.get(request.args.get('order[0][column]', '0'), Run.date)
 
-        order_col = request.args.get('order[0][column]', '0')
-        order_dir = request.args.get('order[0][dir]', 'asc')
-        order_col = cols.get(order_col, Run.date)
+        order_dir = request.args.get('order[0][dir]', 'asc') == 'asc' and 'asc' or 'desc'
 
-        if order_dir == 'asc':
-            order = order_col.asc()
-        else:
-            order = order_col.desc()
+        order = getattr(order_col, order_dir)()
 
         total = Run.query.count()
 
@@ -51,7 +45,7 @@ class TestRunList(Resource):
             pass
 
         try:
-            tags = json.loads(tags)
+            tags = json.loads(has_tags)
         except ValueError:
             return {
                 'draw': draw,
@@ -63,11 +57,11 @@ class TestRunList(Resource):
         if tags:
             filtered = filtered.filter(Run.tags.any(Tag.name.in_(tags)))
 
-        if auto_case:
-            filtered = filtered.filter(Run.auto_results.any(AutoResult.case == auto_case))
+        if contains_autocase:
+            filtered = filtered.filter(Run.auto_results.any(AutoResult.case == contains_autocase))
 
-        if manual_case:
-            filtered = filtered.filter(Run.manual_results.any(ManualResult.case == manual_case))
+        if contains_manualcase:
+            filtered = filtered.filter(Run.manual_results.any(ManualResult.case == contains_manualcase))
 
         if submit_status:
             if submit_status == 'all':

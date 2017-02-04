@@ -18,13 +18,13 @@
         </div>
         <div v-show="showSearchPanel" id="datatable-selector" class="panel-body">
             <div class="input-group">
-                <input type="radio" id="filter-all" value="all" v-model="filterSubmitted">
+                <input type="radio" id="filter-all" value="all" v-model="submitStatus">
                 <label for="filter-all">All</label>
                 <br>
-                <input type="radio" id="filter-submitted" value="submitted" v-model="filterSubmitted">
+                <input type="radio" id="filter-submitted" value="submitted" v-model="submitStatus">
                 <label for="filter-submitted">Submitted</label>
                 <br>
-                <input type="radio" id="filter-notsubmitted" value="notsubmitted" v-model="filterSubmitted">
+                <input type="radio" id="filter-notsubmitted" value="notsubmitted" v-model="submitStatus">
                 <label for="filter-notsubmitted">Not Submitted</label>
                 <br>
             </div>
@@ -39,17 +39,17 @@
             <br />
             <div class="input-group">
                 <span class="input-group-addon">Contains Auto Test case:</span>
-                <input type="text" class="form-control" placeholder="Case ID" v-model="containAuto">
+                <input type="text" class="form-control" placeholder="Case ID" v-model="containsAutocase">
                 <span class="input-group-btn">
-                    <button class="btn btn-default" type="button" v-on:click="updateCaseSearch">Search</button>
+                    <button class="btn btn-default" type="button" v-on:click="reloadTable">Search</button>
                 </span>
             </div>
             <br />
             <div class="input-group">
                 <span class="input-group-addon">Contains Manual Test case:</span>
-                <input type="text" class="form-control" placeholder="Case ID" v-model="containManual">
+                <input type="text" class="form-control" placeholder="Case ID" v-model="containsManualcase">
                 <span class="input-group-btn">
-                    <button class="btn btn-default" type="button" v-on:click="updateCaseSearch">Search</button>
+                    <button class="btn btn-default" type="button" v-on:click="reloadTable">Search</button>
                 </span>
             </div>
         </div>

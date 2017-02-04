@@ -10,69 +10,54 @@ var child_panel = $("#_proto_child").removeClass('hidden').detach();
 
 var vm = new Vue({
   el: "#testrun-overview",
+  delimiters: ['${', '}'],
   data: {
     availTags: [],
     checkedTags: [],
-    filterSubmitted: 'all',
-    containAuto: '',
-    containManual: '',
+    submitStatus: 'all',
+    containsAutocase: '',
+    containsManualcase: '',
     showSearchPanel: false,
-    dtTable: {}
+    dtTable: null,
   },
   methods: {
-    applyTags: function(tags){
-      this.dtTable.tagsColumn.search(JSON.stringify(tags));
-      this.dtTable.table.draw();
-    },
-    applyCase: function(auto, manual){
-      this.dtTable.autoColumn.search(auto);
-      this.dtTable.manualColumn.search(manual);
-      this.dtTable.table.draw();
-    },
-    updateCaseSearch: function(){
-      this.applyCase(this.containAuto, this.containManual);
+    reloadTable: function(){
+      this.dtTable.ajax.reload();
+      this.dtTable.draw();
     }
   },
-  delimiters: ['${', '}'],
   created: function(){
-    let that = this;
-    $.get("/api/tag").done(function(data){
-      that.availTags = data;
-    });
+    window.fetch("/api/tag")
+      .then(data => data.json().then(tags => this.availTags = tags))
+      .catch(err => null); //TODO
     this.checkedTags = JSON.parse(Cookies.get('checkedTags') || "[]");
   },
   watch: {
-    checkedTags: function(newTag){
-      try {
-        this.applyTags(this.checkedTags);
-        Cookies.set('checkedTags', JSON.stringify(this.checkedTags));
-      } catch (e) {
-        console.log(e);
-      }
+    checkedTags: function(){
+      Cookies.set('checkedTags', JSON.stringify(this.checkedTags));
+      this.reloadTable();
     },
-    filterSubmitted: function(newStatus){
-      this.dtTable.polarionColumn.search(this.filterSubmitted);
-      this.dtTable.table.draw();
-    },
+    submitStatus: function() {this.reloadTable();},
+    containsAutocase: function() {this.reloadTable();},
+    containsManualcase: function() {this.reloadTable();},
   },
   mounted: function(){
     let vm = this;
-    var table = this.dtTable.table = $('#column_table').DataTableWithChildRow({
+    var table = this.dtTable = $('#column_table').DataTableWithChildRow({
       BaseTable: [dtMixins.DataTableJumpPageButton],
-      ajax: _p.get("datatablesAPIURL"),
-      dom: '<t><"row"<"col-md-3"f><"col-md-4"i><"col-md-5"p>>',
-      pageLength: 100,
       processing: true,
       serverSide: true,
-      "aoSearchCols": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        { "sSearch": JSON.stringify(vm.checkedTags) },
-      ],
+      ajax: {
+        url: _p.get("datatablesAPIURL"),
+        data: function(d) {
+          d.hasTags = JSON.stringify(vm.checkedTags);
+          d.submitStatus = vm.submitStatus;
+          d.containsAutocase = vm.containsAutocase;
+          d.containsManualcase = vm.containsManualcase;
+        }
+      },
+      dom: '<t><"row"<"col-md-3"f><"col-md-4"i><"col-md-5"p>>',
+      pageLength: 100,
       columns: [
         {
           "data": function(data){
@@ -118,7 +103,6 @@ var vm = new Vue({
         },
       ],
       order: [[1, 'desc']],
-      rowCallback: function(row, data, index){},
       childContent: function(row, child, finish){
         var d = row.data(), head = child_panel.clone();
         $(head).find(".dashboard-submit").click(function(){
@@ -174,9 +158,5 @@ var vm = new Vue({
         finish();
       }
     });
-    this.dtTable.tagsColumn = table.column(function(idx, data, node){return $(node).text() == ("Tags");});
-    this.dtTable.autoColumn = table.column(function(idx, data, node){return $(node).text() == ("Auto");});
-    this.dtTable.manualColumn = table.column(function(idx, data, node){return $(node).text() == ("Manual");});
-    this.dtTable.polarionColumn = table.column(function(idx, data, node){return $(node).text() == ("Polarion Submit Date");});
   }
 });
