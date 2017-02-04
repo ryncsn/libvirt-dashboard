@@ -135,6 +135,7 @@ def testrun_lastest(limit=None):
     ret = []
 
     for run in runs:
-        ret.append(run.as_dict(detailed=True))
+        ret.append(run.as_dict(statistics=True))
+        db.session.commit()
 
     return jsonify(ret), 200

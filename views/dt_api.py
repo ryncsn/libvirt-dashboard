@@ -82,13 +82,14 @@ class TestRunList(Resource):
             filtered = filtered.limit(length)
 
         for run in filtered:
-            ret.append(run.as_dict(detailed=True))
+            ret.append(run.as_dict(statistics=True))
+            db.session.commit()
 
         return {
             'draw': draw,
             'recordsTotal': total,
             'recordsFiltered': count,
             'data': ret,
-            }
+        }
 
 api.add_resource(TestRunList, '/run/', endpoint='test_run_list')

@@ -1,7 +1,7 @@
 import re
 import caselink as CaseLink
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import validates, load_only
+from sqlalchemy.orm import validates, load_only, deferred
 from sqlalchemy import func, ForeignKeyConstraint
 from flask_sqlalchemy import SQLAlchemy
 from requests import HTTPError, ConnectionError
@@ -66,6 +66,7 @@ class Tag(db.Model):
                 ret[c.name] = getattr(self, c.name)
         return ret
 
+
 class Run(db.Model):
     __tablename__ = 'run'
     __table_args__ = (
@@ -98,6 +99,27 @@ class Run(db.Model):
     manual_results = db.relationship('ManualResult', back_populates='run', lazy='dynamic')
     linkage_results = db.relationship("LinkageResult", back_populates="run", cascade="all, delete")
 
+    # Denormalization for faster statistics
+
+    __statistics_cols = [
+        'auto_passed', 'auto_failed', 'auto_skipped', 'auto_ignored',
+        'auto_missing', 'auto_error', 'auto_nolinkage',
+        'manual_passed', 'manual_failed', 'manual_skipped', 'manual_ignored',
+        'manual_error',
+    ]
+    auto_passed = db.Column(db.Integer, nullable=True)
+    auto_failed = db.Column(db.Integer, nullable=True)
+    auto_skipped = db.Column(db.Integer, nullable=True)
+    auto_ignored = db.Column(db.Integer, nullable=True)
+    auto_missing = db.Column(db.Integer, nullable=True)
+    auto_error = db.Column(db.Integer, nullable=True)
+    auto_nolinkage = db.Column(db.Integer, nullable=True)
+    manual_passed = db.Column(db.Integer, nullable=True)
+    manual_failed = db.Column(db.Integer, nullable=True)
+    manual_skipped = db.Column(db.Integer, nullable=True)
+    manual_ignored = db.Column(db.Integer, nullable=True)
+    manual_error = db.Column(db.Integer, nullable=True)
+
     def __repr__(self):
         return '<TestRun %s>' % self.name
 
@@ -129,55 +151,50 @@ class Run(db.Model):
                     prop_instance = Property(name=name, value=value)
                     self.properties.append(prop_instance)
 
-    def get_statistics(self):
-        ret = {
-            'auto_passed': 0,
-            'auto_failed': 0,
-            'auto_skipped': 0,
-            'auto_ignored': 0,
-            'auto_missing': 0,
-            'auto_error': 0,
-            'auto_nolinkage': 0,
-            'manual_passed': 0,
-            'manual_failed': 0,
-            'manual_skipped': 0,
-            'manual_ignored': 0,
-            'manual_error': 0,
-        }
+    def gen_statistics(self):
+        for col in self.__statistics_cols:
+            setattr(self, col, 0)
+
         for result in self.auto_results\
                       .options(load_only("result", "comment"))\
                       .all():
             if result.result == 'passed':
-                ret['auto_passed'] += 1
+                self.auto_passed = (self.auto_passed or 0) + 1
             elif result.result == 'failed':
-                ret['auto_failed'] += 1
+                self.auto_failed = (self.auto_failed or 0) + 1
                 if "UnknownIssue" in result.comment:
-                    ret['auto_error'] += 1
+                    self.auto_error = (self.auto_error or 0) + 1
             elif result.result == 'skipped':
-                ret['auto_skipped'] += 1
+                self.auto_skipped = (self.auto_skipped or 0) + 1
             elif result.result == 'missing':
-                ret['auto_missing'] += 1
+                self.auto_missing = (self.auto_missing or 0) + 1
             elif result.result == 'ignored':
-                ret['auto_ignored'] += 1
+                self.auto_ignored = (self.auto_ignored or 0) + 1
             else:
-                ret['auto_error'] += 1
-
+                self.auto_error = (self.auto_error or 0) + 1
             if result.comment is None:
-                ret['auto_nolinkage'] += 1
+                self.auto_nolinkage = (self.auto_nolinkage or 0) + 1
 
         for result in self.manual_results\
                       .options(load_only("result"))\
                       .all():
             if result.result == 'failed':
-                ret['manual_failed'] += 1
+                self.manual_failed = (self.manual_failed or 0) + 1
             elif result.result == 'passed':
-                ret['manual_passed'] += 1
+                self.manual_passed = (self.manual_passed or 0) + 1
             elif result.result == 'skipped':
-                ret['manual_skipped'] += 1
+                self.manual_skipped = (self.manual_skipped or 0) + 1
             elif result.result == 'ignored':
-                ret['manual_ignored'] += 1
+                self.manual_ignored = (self.manual_ignored or 0) + 1
             else:
-                ret['manual_error'] += 1
+                self.manual_error = (self.manual_error or 0) + 1
+
+    def get_statistics(self):
+        ret = {}
+        for col in self.__statistics_cols:
+            if getattr(self, col) is None:
+                self.gen_statistics()
+            ret[col] = getattr(self, col)
         return ret
 
     def blocking_errors(self, exclude=['Missing'], ignore_resulted=True):
@@ -197,7 +214,7 @@ class Run(db.Model):
     def short_unique_name(self):
         return "%s %s" % (self.name, self.id)
 
-    def as_dict(self, detailed=False):
+    def as_dict(self, statistics=False):
         ret = {}
         for c in self.__table__.columns:
             if c.name != 'date':
@@ -211,7 +228,7 @@ class Run(db.Model):
         if self.submit_date:
             ret['submit_date'] = self.submit_date.isoformat()
         ret['polarion_id'] = self.polarion_id
-        if detailed:
+        if statistics:
             ret.update(self.get_statistics())
         return ret
 
@@ -224,10 +241,10 @@ class AutoResult(db.Model):
 
     case = db.Column(db.String(65535), nullable=False, primary_key=True)
     time = db.Column(db.Float(), default=0.0, nullable=False)
-    skip = db.Column(db.Text(), nullable=True)
-    failure = db.Column(db.Text(), nullable=True)
-    output = db.Column(db.Text(), nullable=True)
-    source = db.Column(db.Text(), nullable=True)
+    skip = deferred(db.Column(db.Text(), nullable=True))
+    failure = deferred(db.Column(db.Text(), nullable=True))
+    output = deferred(db.Column(db.Text(), nullable=True))
+    source = deferred(db.Column(db.Text(), nullable=True))
     comment = db.Column(db.Text(), nullable=True)
     result = db.Column(db.String(255), nullable=True)
 
@@ -239,6 +256,11 @@ class AutoResult(db.Model):
     def __init__(self, **result):
         for key, value in result.items():
             setattr(self, key, value)
+
+    @validates('result')
+    def validate_result(self, key, result):
+        assert result in ['passed', 'failed', 'skipped', 'missing', 'invalid', ]
+        return result
 
     def as_dict(self, detailed=False):
         ret = {}
@@ -470,6 +492,14 @@ class LinkageResult(db.Model):
     error = db.Column(db.String(255), nullable=True)
     result = db.Column(db.String(255), nullable=True)
 
+    @validates('result')
+    def validate_linkage_result(self, key, result):
+        """
+        Validate if result is legal:
+        """
+        assert result in ['skipped', 'passed', 'failed', 'ignored', None, ]
+        return result
+
     @validates('error')
     def validate_error(self, key, error):
         """
@@ -482,14 +512,6 @@ class LinkageResult(db.Model):
         """
         assert error in ['UnknownIssue', 'Missing', None, ]
         return error
-
-    @validates('result')
-    def validate_linkage_result(self, key, result):
-        """
-        Validate if result is legal:
-        """
-        assert result in ['skipped', 'passed', 'failed', 'ignored', None, ]
-        return result
 
     def __repr__(self):
         return ' %s, Description:(%s)>' % (self.name, self.desc)

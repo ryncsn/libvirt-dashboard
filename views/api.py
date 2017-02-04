@@ -53,7 +53,8 @@ class TestRunList(Resource):
         runs = Run.query.all()
         ret = []
         for run in runs:
-            ret.append(run.as_dict(detailed=True))
+            ret.append(run.as_dict(statistics=True))
+            db.session.commit()
         return ret
 
     def post(self):
@@ -79,7 +80,9 @@ class TestRunDetail(Resource):
         run = Run.query.get(run_id)
         if not run:
             return {'message': 'Test Run doesn\'t exists'}, 400
-        return run.as_dict(detailed=True)
+        ret = run.as_dict(statistics=True)
+        db.session.commit()
+        return ret
 
     def delete(self, run_id):
         res = Run.query.get(run_id)
