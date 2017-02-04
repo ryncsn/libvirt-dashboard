@@ -1,4 +1,5 @@
 TODO
+static/dist
 node_modules
 config_instance.py
 .virtenv
