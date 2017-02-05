@@ -22,6 +22,9 @@ var vm = new Vue({
   },
   methods: {
     reloadTable: function(){
+      if(!this.dtTable){
+        return;
+      }
       this.dtTable.ajax.reload();
       this.dtTable.draw();
     }
