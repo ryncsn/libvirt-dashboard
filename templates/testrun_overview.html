@@ -65,8 +65,9 @@
     </div>
 </div>
 {% endblock %}
+
 {% block footer %}
-<div id="_proto_child" class="hidden">
+<script type="text/x-templates" charset="utf-8" id="testrun-child-row">
     <div class="testrun-child row">
         <div class="btn-group col-md-4">
             <div class="dropdown dropdown-auto">
@@ -75,13 +76,15 @@
                     <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="runDropDown">
-                    <li><a href="#" class='dashboard-resolve' title='View Test Results and Resolve existing errors manually'>View and resolve</a></li>
+                    <li><a class='dashboard-resolve' title='View Test Results and Resolve existing errors manually' v-bind:href="autoResolveUrl">View and resolve</a></li>
                     <li role="separator" class="divider"></li>
-                    <li><a href="#" class='dashboard-table' title='View in table'>Table</a></li>
-                    <li><a href="#" class='dashboard-api' title='View in JSON'>API</a></li>
+                    <li><a class='dashboard-table' title='View in table' v-bind:href="autoTableUrl">Table</a></li>
+                    <li><a href="#" class='dashboard-api' title='View in JSON' v-bind:href="autoApi">API</a></li>
                 </ul>
             </div>
-            <span class="label dashboard-info-auto"></span>
+            <span class="label dashboard-info-auto" v-bind:class="{ 'label-danger': !!testRun.auto_error, 'label-info': !testRun.auto_error}">
+            ${autoSummary}
+            </span>
         </div>
         <div class="btn-group col-md-4">
             <div class="dropdown dropdown-manual">
@@ -90,27 +93,29 @@
                     <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" aria-labelledby="runDropDown">
-                    <li><a href="#" class='dashboard-resolve' title='View Test Results and Resolve existing errors manually'>View and resolve</a></li>
+                    <li><a class='dashboard-resolve' title='View Test Results and Resolve existing errors manually' v-bind:href="manualResolveUrl">View and resolve</a></li>
                     <li role="separator" class="divider"></li>
-                    <li><a href="#" class='dashboard-table' title='View in table'>Table</a></li>
-                    <li><a href="#" class='dashboard-api' title='View in JSON'>API</a></li>
+                    <li><a href="#" class='dashboard-table' title='View in table' v-bind:href="manualTableUrl">Table</a></li>
+                    <li><a href="#" class='dashboard-api' title='View in JSON' v-bind:href="manualApi">API</a></li>
                 </ul>
             </div>
-            <span class="label dashboard-info-manual "></span>
+            <span class="label dashboard-info-manual" v-bind:class="{ 'label-danger': !!testRun.manual_error, 'label-info': !testRun.manual_error}">
+            ${manualSummary}
+            </span>
         </div>
         <div class="btn-group col-md-4">
-            <a class="btn btn-success dashboard-submit" title="Submit generated manual test results to polarion, test result will be blocked from being submitted until all auto test error and manual test result errors have been resolved.">
+            <a class="btn btn-success dashboard-submit" title="Submit generated manual test results to polarion, test result will be blocked from being submitted until all auto test error and manual test result errors have been resolved." v-on:click="submitTestRun" v-bind:class="{ disabled: !!testRun.submit_date }">
                 Submit to Polarion
             </a>
-            <a class="btn btn-success dashboard-jump" title="Jump to the Polarin page.">
+            <a class="btn btn-success dashboard-jump" title="Jump to the Polarin page." v-bind:href="polarionUrl" v-bind:class="{ disabled: !testRun.submit_date }" >
                 View on Polarion
             </a>
-            <a class="btn btn-danger dashboard-delete" title="Delete this test run. (UNRECOVERABLE)">
+            <a class="btn btn-danger dashboard-delete" title="Delete this test run. (UNRECOVERABLE)" v-on:click="deleteTestRun">
                 Delete
             </a>
         </div>
     </div>
-</div>
+</script>
 <script type="text/javascript" charset="utf-8">
     sharedParameters.set('datatablesAPIURL', "{{ url_for('dt_api.test_run_list')}}");
 </script>

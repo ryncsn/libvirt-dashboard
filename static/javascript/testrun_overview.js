@@ -6,7 +6,6 @@ var Vue = require("vue");
 var _p = require("./lib/sharedParameters.js");
 
 var dashboard = require("./lib/dashboard.js");
-var child_panel = $("#_proto_child").removeClass('hidden').detach();
 
 var vm = new Vue({
   el: "#testrun-overview",
@@ -106,60 +105,59 @@ var vm = new Vue({
         },
       ],
       order: [[1, 'desc']],
-      childContent: function(row, child, finish){
-        var d = row.data(), head = child_panel.clone();
-        $(head).find(".dashboard-submit").click(function(){
-          dashboard.submitTestRun(d.id);
+      childContent: function(row, child, slideDown){
+        var childVm = new TestRunChildRow({
+          el: child.get(0),
+          parent: vm,
+          propsData: {
+            testRun: row.data()
+          },
+          mounted: function(){
+            slideDown();
+          },
         });
-        $(head).find(".dashboard-delete").click(function(){
-          var r = confirm("Delete this test run and all related autotest/manual results?");
-          if (r === true){
-            $.ajax("/api/run/" + d.id + "/", {
-              method: "DELETE",
-            }).fail(function(err){
-              alert("Ajax failed with: " + JSON.stringify(err));
-            }).done(function(data){
-              alert('Test Run deleted.');
-              table
-                .row(row)
-                .remove()
-                .draw();
-            });
-          }
-        });
-
-        if(d.submit_date){
-          $(head).find(".dashboard-submit").attr('disabled', true);
-          $(head).find(".dashboard-jump").attr('href', `${_p.get('polarionURL')}/polarion/#/project/RedHatEnterpriseLinux7/testrun?id=${d.polarion_id}`);
-        }
-        else{
-          $(head).find(".dashboard-jump").attr('disabled', true);
-        }
-
-        $(head).find(".dropdown-manual .dashboard-resolve").attr('href', '/resolve/run/' + d.id + '/manual/');
-        $(head).find(".dropdown-manual .dashboard-table").attr('href', '/table/run/' + d.id + '/manual/');
-        $(head).find(".dropdown-manual .dashboard-api").attr('href', '/api/run/' + d.id + '/manual/');
-        $(head).find(".dashboard-info-manual").text(d.manual_error + ' errors, ' + d.manual_passed + ' passed, ' + d.manual_failed + ' failed');
-        if(d.manual_error){
-          $(head).find(".dashboard-info-manual").addClass("label-danger");
-        }
-        else{
-          $(head).find(".dashboard-info-manual").addClass("label-info").append(' ,Cleared!');
-        }
-
-        $(head).find(".dropdown-auto .dashboard-resolve").attr('href', '/resolve/run/' + d.id + '/auto/');
-        $(head).find(".dropdown-auto .dashboard-table").attr('href', '/table/run/' + d.id + '/auto/');
-        $(head).find(".dropdown-auto .dashboard-api").attr('href', '/api/run/' + d.id + '/auto/');
-        $(head).find(".dashboard-info-auto").text(d.auto_error + ' errors, ' + d.auto_passed + ' passed, ' + d.auto_failed + ' failed, ' + d.auto_missing + ' missing');
-        if(d.auto_error){
-          $(head).find(".dashboard-info-auto").addClass("label-danger");
-        }
-        else{
-          $(head).find(".dashboard-info-auto").addClass("label-info").append(' ,Cleared!');
-        }
-        child.append(head);
-        finish();
       }
     });
   }
+});
+
+var TestRunChildRow = Vue.extend({
+  template: "#testrun-child-row",
+  delimiters: ['${', '}'],
+  props: [ 'testRun' ],
+  methods: {
+    submitTestRun: function(){
+      dashboard.submitTestRun(this.testRun.id);
+    },
+    deleteTestRun: function(){
+      let r = confirm("Delete this test run and all related autotest/manual results?");
+      if (r === true){
+        $.ajax("/api/run/" + this.testRun.id + "/", {
+          method: "DELETE",
+        }).fail(function(err){
+          alert("Ajax failed with: " + JSON.stringify(err));
+        }).done(function(data){
+          alert('Test Run deleted.');
+          table
+            .row(row)
+            .remove()
+            .draw();
+        });
+      }
+    }
+  },
+  data: function() {
+    return {};
+  },
+  computed: {
+    polarionUrl: function() {return `${_p.get('polarionURL')}/polarion/#/project/RedHatEnterpriseLinux7/testrun?id=${this.testRun.polarion_id}`;},
+    manualResolveUrl: function()  {return `/resolve/run/${this.testRun.id}/manual/`;},
+    manualTableUrl:function() {return `/table/run/${this.testRun.id}/manual/`;},
+    manualApi: function(){return `/api/run/${this.testRun.id}/manual/`;},
+    manualSummary: function() {return `${this.testRun.manual_error} errors, ${this.testRun.manual_passed} passed, ${this.testRun.manual_failed} failed`;},
+    autoResolveUrl: function()  {return `/resolve/run/${this.testRun.id}/auto/`;},
+    autoTableUrl:function() {return `/table/run/${this.testRun.id}/auto/`;},
+    autoApi: function(){return `/api/run/${this.testRun.id}/auto/`;},
+    autoSummary: function() {return `${this.testRun.auto_error} errors, ${this.testRun.auto_passed} passed, ${this.testRun.auto_failed} failed, ${this.testRun.auto_missing} missing`;},
+  },
 });
