@@ -259,7 +259,7 @@ class AutoResult(db.Model):
 
     @validates('result')
     def validate_result(self, key, result):
-        assert result in ['passed', 'failed', 'skipped', 'missing', 'invalid', ]
+        assert result in ['passed', 'failed', 'skipped', 'missing', 'invalid', None]
         return result
 
     def as_dict(self, detailed=False):
