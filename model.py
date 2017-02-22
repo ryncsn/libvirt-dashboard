@@ -278,12 +278,16 @@ class AutoResult(db.Model):
         comments = []
         for result in self.linkage_results:
             _result = result.result
-            _error = result.error or "No error"
+            _error = result.error
             if result.result:
-                comments.append("%s with %s: \"%s\"" %
-                                (_result.title(), _error, result.manual_result_id))
+                if result.detail:
+                    comments.append("%s: \"%s\" with detail: %s" %
+                                    (_result.title(), result.manual_result_id, result.detail))
+                else:
+                    comments.append("%s: \"%s\"" %
+                                    (_result.title(), result.manual_result_id))
             else:
-                comments.append("Blocking with Error %s: %s" % (_error, result.manual_result_id))
+                comments.append("Blocking with %s: %s" % (_error, result.manual_result_id))
         comments.sort()
         self.comment = "\n".join(comments)
 
@@ -302,17 +306,16 @@ class AutoResult(db.Model):
         else:
             self.result = 'invalid'
 
-    def _check_failure(self, this_autocase=None):
-        if not this_autocase:
-            try:
-                this_autocase = CaseLink.AutoCase(self.case).refresh()
-            except (HTTPError, ConnectionError) as err:
-                return "UnknownIssue"
-        for failure in this_autocase.failures:
+    def _check_failure(self, autocase):
+        failures = []
+        for failure in autocase.autocase_failures:
             if re.match(failure.failure_regex, self.failure) is not None:
-                # TODO: return workitem
-                return None
-        return "UnknownIssue"
+                for bl in failure.blacklist_entries:
+                    if bl.json['workitems'] and bl.json['bugs']:
+                        failures.append((bl.json['workitems'], 'failed', bl.json['bugs'], bl.status, bl.description))
+                    else:
+                        failures.append((bl.json['workitems'], 'ignored', bl.json['bugs'], bl.status, bl.description))
+        return failures
 
     def gen_linkage_result(self, session=None, gen_manual=True):
         """
@@ -327,45 +330,54 @@ class AutoResult(db.Model):
         except (HTTPError, ConnectionError) as err:
             return
 
-        _linkage_result = self.result
-        _linkage_error = None
+        def _gen_linkage_result(workitems, result, error, detail):
+            for workitem_id in workitems:
+                workitem, _ = get_or_create(session, ManualResult,
+                                            run_id=self.run_id, case=workitem_id)
+                if _:
+                    workitem.gen_linkage_result(session)
+                linkage_result, _ = get_or_create(session, LinkageResult,
+                                                  run_id=self.run_id,
+                                                  manual_result_id=workitem.case,
+                                                  auto_result_id=self.case)
+                linkage_result.result = _linkage_result
+                linkage_result.error = _linkage_error
+                linkage_result.detail = _linkage_detail
 
-        if _linkage_result == "black-listed":
-            _linkage_result = "ignored"
-            _linkage_error = "black-listed"
+                workitem.refresh_result()
+                workitem.refresh_comment()
+                workitem.refresh_duration()
+
+        _linkage_result = self.result
+        _linkage_error, _linkage_detail = None, None
 
         if _linkage_result == "failed":
-            # Auto Case failed with message <self['failure']>
-            _linkage_error = self._check_failure(this_autocase)
-            if _linkage_error:
-                _linkage_result = None
+            known_failures = self._check_failure(this_autocase)
+            if not known_failures:
+                _linkage_result, _linkage_error = None, "UnknownIssue"
+            else:
+                for wis, result, bugs, status, desc in known_failures:
+                    _linkage_result, _linkage_error = result, None
+                    _linkage_detail = (_linkage_detail and _linkage_detail + "\n" or "") + (
+                        "%s: Workitems %s %s for bugs %s: %s" %
+                        (status, wis, result, bugs, desc))
+                    _gen_linkage_result(wis, _linkage_result, _linkage_error, _linkage_detail)
+
+        elif _linkage_result == "black-listed":
+            _linkage_result, _linkage_error = "ignored", "black-listed"
 
         elif _linkage_result == "missing":
-            _linkage_result = None
-            _linkage_error = "Missing"
+            _linkage_result, _linkage_error = None, "Missing"
 
         elif _linkage_result == "ignored":
-            pass
+            _linkage_result, _linkage_error = None, None
 
         if gen_manual:
-            manualcases = [case.id for case in this_autocase.manualcases]
+            workitems = [case.id for case in this_autocase.workitems]
         else:
-            manualcases = [r.manual_result_id for r in self.linkage_results]
-        for manualcase_id in manualcases:
-            manualcase, _ = get_or_create(session, ManualResult,
-                                          run_id=self.run_id, case=manualcase_id)
-            if _:
-                manualcase.gen_linkage_result(session)
-            linkage_result, _ = get_or_create(session, LinkageResult,
-                                              run_id=self.run_id,
-                                              manual_result_id=manualcase.case,
-                                              auto_result_id=self.case)
-            linkage_result.result = _linkage_result
-            linkage_result.error = _linkage_error
+            workitems = [r.manual_result_id for r in self.linkage_results]
 
-            manualcase.refresh_result()
-            manualcase.refresh_comment()
-            manualcase.refresh_duration()
+        _gen_linkage_result(workitems, _linkage_result, _linkage_error, _linkage_detail)
 
 
 class ManualResult(db.Model):
@@ -404,57 +416,56 @@ class ManualResult(db.Model):
 
     def gen_linkage_result(self, session=None):
         session = session or db.session
-        this_workitem = CaseLink.ManualCase(self.case)
-        for this_autocase in this_workitem.autocases:
+        this_workitem = CaseLink.WorkItem(self.case)
+        for autocase in this_workitem.autocases:
             auto_result, _ = get_or_create(session, AutoResult,
                                            run_id=self.run_id,
-                                           case=this_autocase.id)
+                                           case=autocase.id)
             if _:
                 auto_result.refresh_result()
                 linkage_result, _ = get_or_create(session, LinkageResult,
                                                   run_id=self.run_id,
                                                   manual_result_id=self.case,
-                                                  auto_result_id=this_autocase.id)
+                                                  auto_result_id=autocase.id)
                 linkage_result.result = None
                 linkage_result.error = "Missing"
                 auto_result.refresh_comment()
 
     def refresh_result(self, linkage_results=None):
         linkage_results = self.linkage_results
-        if any(r.result is None for r in linkage_results):
-            self.result = "incomplete"
-            return
 
         if any(r.result == "failed" for r in linkage_results):
             self.result = "failed"
-            return
+
+        elif any(r.result is None for r in linkage_results):
+            self.result = "incomplete"
 
         elif all(r.result == "ignored" or r.result == "passed" for r in linkage_results):
             if any(r.result == "passed" for r in linkage_results):
                 self.result = "passed"
-                return
             else:
                 self.result = "skipped"
-                return
 
         elif all(r.result == "ignored" or r.result == "skipped" for r in linkage_results):
             self.result = "skipped"
-            return
 
         else:
             self.result = "incomplete"
-            return
 
     def refresh_comment(self, linkage_results=None):
         comments = []
         for result in self.linkage_results:
             _result = result.result
-            _error = result.error or "No error"
+            _error = result.error
             if result.result:
-                comments.append("%s case with %s: \"%s\"" %
-                                (_result.title(), _error, result.auto_result_id))
+                if result.detail:
+                    comments.append("%s: \"%s\" with detail: %s" %
+                                    (_result.title(), result.auto_result_id, result.detail))
+                else:
+                    comments.append("%s: \"%s\"" %
+                                    (_result.title(), result.auto_result_id))
             else:
-                comments.append("Blocking case with Error %s: %s" % (_error, result.auto_result_id))
+                comments.append("Blocking with %s : %s" % (_error, result.auto_result_id))
         comments.sort()
         self.comment = "\n".join(comments)
 
@@ -491,6 +502,7 @@ class LinkageResult(db.Model):
 
     error = db.Column(db.String(255), nullable=True)
     result = db.Column(db.String(255), nullable=True)
+    detail = db.Column(db.Text(), nullable=True)
 
     @validates('result')
     def validate_linkage_result(self, key, result):
