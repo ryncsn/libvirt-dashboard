@@ -358,9 +358,8 @@ class AutoResult(db.Model):
             else:
                 for wis, result, bugs, status, desc in known_failures:
                     _linkage_result, _linkage_error = result, None
-                    _linkage_detail = (_linkage_detail and _linkage_detail + "\n" or "") + (
-                        "%s: Workitems %s %s for bugs %s: %s" %
-                        (status, wis, result, bugs, desc))
+                    _linkage_detail = ("%s: Workitems %s %s for bugs %s: %s" %
+                                       (status, wis, result, bugs, desc))
                     _gen_linkage_result(wis, _linkage_result, _linkage_error, _linkage_detail)
 
         elif _linkage_result == "black-listed":
