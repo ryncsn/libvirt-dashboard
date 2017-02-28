@@ -259,7 +259,7 @@ class AutoResult(db.Model):
 
     @validates('result')
     def validate_result(self, key, result):
-        assert result in ['passed', 'failed', 'skipped', 'missing', 'invalid', None]
+        assert result in ['passed', 'failed', 'skipped', 'missing', 'invalid', 'ignored', None]
         return result
 
     def as_dict(self, detailed=False):
@@ -294,7 +294,7 @@ class AutoResult(db.Model):
     def refresh_result(self):
         if self.skip:
             if "BLACKLISTED" in self.skip:
-                self.result = "ignored"
+                self.result = 'ignored'
             else:
                 self.result = 'skipped'
         elif self.failure:
@@ -397,7 +397,7 @@ class ManualResult(db.Model):
 
     @validates('result')
     def validate_result(self, key, result):
-        assert result in ['passed', 'failed', 'skipped', 'incomplete', ]
+        assert result in ['passed', 'failed', 'skipped', 'incomplete', None]
         return result
 
     def __repr__(self):
