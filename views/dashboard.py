@@ -23,6 +23,11 @@ def index():
     return render_template('testrun_overview.html')
 
 
+@dashboard.route('/diff', methods=['GET'])
+def testrun_diff():
+    return render_template('testrun_diff.html')
+
+
 @dashboard.route('/dashboard', methods=['GET'])
 def testrun_dashboard():
     return render_template('testrun_dashboard.html')

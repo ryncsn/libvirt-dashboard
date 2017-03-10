@@ -14,6 +14,7 @@ module.exports = {
     resolve_manual: './resolve_manual.js',
     testrun_dashboard: './testrun_dashboard.js',
     testrun_overview: './testrun_overview.js',
+    testrun_diff: './testrun_diff.js',
   },
   output: {
     path: __dirname + '/static/dist/',

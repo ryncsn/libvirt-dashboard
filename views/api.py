@@ -135,7 +135,7 @@ class AutoResultList(Resource):
 
         res = AutoResult.query.get((run_id, args['case']))
         if res:
-            if res.result != "missing":
+            if res.result is not None:
                 return res.as_dict(), 400
             else:
                 db.session.delete(res)
