@@ -1,6 +1,6 @@
 var webpack = require('webpack');
 module.exports = {
-  context: __dirname + "/static/javascript",
+  context: __dirname + "/static",
   entry: {
     // Vendors
     vendor: ['jquery', 'bootstrap-webpack', 'font-awesome-webpack', './pack/datatables.js', './pack/style.js'],

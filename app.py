@@ -31,12 +31,6 @@ migrate = Migrate(app, db)
 manager = Manager(app)
 manager.add_command('db', MigrateCommand)
 
-# Extra filter
-@app.template_filter('nl2br_simple')
-def nl2br_simple(s):
-    s = s.replace('\\n', ';')
-    return Markup(s)
-
 @app.cli.command('initdb')
 def init_db_cli():
     init_db()

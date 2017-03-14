@@ -1,35 +1,11 @@
 {% extends "index.html" %}
-{% set column_names = ["case", "time", "result", "comment"]%}
-{% set column_datas = ["case", "time", "result", "comment"]%}
 {% block title %} Libvirt Dashboard - Autotest Results {% endblock %}
 {% block content %}
 <div id='autoresult-resolving'>
-    <table class='table' id='autoresult-table'>
-        <thead>
-            <tr>
-                {% for col in column_names %}
-                <th>{{ col }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tfoot>
-            <tr>
-                {% for col in column_names %}
-                <th>{{ col }}</th>
-                {% endfor %}
-            </tr>
-        </tfoot>
-    </table>
+    <autoresult-table dt-ajax-url="{{ajax}}" run-id="{{run_id}}">
+    </autoresult-table>
 </div>
 {% endblock %}
 {% block footer %}
-<script type="text/javascript" charset="utf-8">
-    sharedParameters.set("ajaxURL", "{{ajax}}");
-    sharedParameters.set("templateColumns", [
-    {% for col in column_datas %}
-    "{{ col }}",
-    {% endfor %}
-]);
-</script>
 <script src="{{ url_for('static', filename='dist/resolve_auto.js') }}" type="text/javascript" charset="utf-8"></script>
 {% endblock %}

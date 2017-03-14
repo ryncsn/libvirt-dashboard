@@ -10,7 +10,6 @@ for (var columnSrc of _p.get("templateColumns")){
   });
 }
 
-
 $(document).ready(function() {
   $('#column_table').dataTable( {
     pageLength: 50,

@@ -36,7 +36,8 @@ def testrun_dashboard():
 @dashboard.route('/resolve/run/<int:run_id>/auto/', methods=['GET'])
 def resolve_autocase(run_id):
     return render_template('resolve_auto.html',
-                           ajax='/api/run/' + str(run_id) + '/auto/')
+                           ajax='/api/run/' + str(run_id) + '/auto/',
+                           run_id=run_id)
 
 
 @dashboard.route('/resolve/run/<int:run_id>/manual/', methods=['GET'])

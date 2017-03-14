@@ -1,4 +1,4 @@
-require("../css/dashboard.css");
+require("./css/dashboard.css");
 var _p = require("./lib/sharedParameters.js");
 var TestRunStackGraph = require("./lib/test-run-stack-graph.js");
 var graph = new TestRunStackGraph('.d3');

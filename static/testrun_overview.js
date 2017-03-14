@@ -1,4 +1,4 @@
-require("../css/testrun-overview.css");
+require("./css/testrun-overview.css");
 var dtMixins = require('datatables-mixins');
 var htmlify = require("./lib/htmlify.js");
 var Cookies = require('js-cookie');
