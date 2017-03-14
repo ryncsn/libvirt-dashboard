@@ -10,11 +10,13 @@ var dashboard = require("./lib/dashboard.js");
 var vm = new Vue({
   el: "#testrun-diff",
   delimiters: ['${', '}'],
+  props: {
+    testRunIds: [1, 2],
+  },
   data: function() {
     return {
       ready: false,
       testRuns: [],
-      testRunIds: [1, 2],
       testAttrs: ["case", "comment", "result"],
       testAttrsKeys: ["case", "comment", "result"]
     };

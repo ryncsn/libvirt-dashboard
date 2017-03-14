@@ -39,6 +39,7 @@ module.exports = {
       { test: /\.css$/, loader: "style!css" },
       // HACK, pace-progress have a broken AMD definetion, disable "define" variable can disable AMD, force use CommonJS.
       { test: require.resolve("pace-progress"), loader: "imports?define=>false" },
+      { test: /\.vue$/, loader: 'vue' },
       // babel
       {
         test: /\.js$/,
@@ -49,6 +50,11 @@ module.exports = {
         }
       }
     ]
+  },
+  vue: {
+    loaders: {
+      js: 'babel?presets[]=es2015'
+    }
   },
   jshint: {
     esversion: 6,

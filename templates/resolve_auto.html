@@ -3,44 +3,33 @@
 {% set column_datas = ["case", "time", "result", "comment"]%}
 {% block title %} Libvirt Dashboard - Autotest Results {% endblock %}
 {% block content %}
-<table class='table' id='column_table'>
-    <thead>
-        <tr>
-            {% for col in column_names %}
-            <th>{{ col }}</th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tfoot>
-        <tr>
-            {% for col in column_names %}
-            <th>{{ col }}</th>
-            {% endfor %}
-        </tr>
-    </tfoot>
-</table>
+<div id='autoresult-resolving'>
+    <table class='table' id='autoresult-table'>
+        <thead>
+            <tr>
+                {% for col in column_names %}
+                <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tfoot>
+            <tr>
+                {% for col in column_names %}
+                <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+        </tfoot>
+    </table>
+</div>
 {% endblock %}
 {% block footer %}
-<div id="_proto_error_panel" class="hidden">
-    <div class="panel panel-default detail-operatoins">
-        <div class="panel-body">
-            <button type="button" class="btn btn-warning btn-ignore btn-result" title="Set linkage_result to ignored and no longer consider this case as a failure bloking polarion submition anymore.">Ignore/Skip</button>
-            <button type="button" class="btn btn-success btn-refresh btn-result" title="Lookup in Caselink again, override current error.">Refresh</button>
-            <button type="button" class="btn btn-danger btn-delete btn-result" title="Delete this result. (UNRECOVERABLE)">Delete</button>
-        </div>
-    </div>
-    <pre>
-        <code class="detail-well">
-        </code>
-    </pre>
-</div>
 <script type="text/javascript" charset="utf-8">
     sharedParameters.set("ajaxURL", "{{ajax}}");
     sharedParameters.set("templateColumns", [
-        {% for col in column_datas %}
-        "{{ col }}",
-        {% endfor %}
-    ]);
+    {% for col in column_datas %}
+    "{{ col }}",
+    {% endfor %}
+]);
 </script>
 <script src="{{ url_for('static', filename='dist/resolve_auto.js') }}" type="text/javascript" charset="utf-8"></script>
 {% endblock %}
