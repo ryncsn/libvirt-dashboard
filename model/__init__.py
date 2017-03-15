@@ -2,6 +2,7 @@ import re
 import caselink as CaseLink
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates, load_only, deferred
+from sqlalchemy.orm.session import object_session
 from sqlalchemy import func, ForeignKeyConstraint
 from flask_sqlalchemy import SQLAlchemy
 from requests import HTTPError, ConnectionError
@@ -61,9 +62,9 @@ class Tag(db.Model):
 
     def as_dict(self, detailed=False):
         ret = {}
-        for c in self.__table__.columns:
-            if c.name != 'date':
-                ret[c.name] = getattr(self, c.name)
+        for _c in self.__table__.columns:
+            if _c.name != 'date':
+                ret[_c.name] = getattr(self, _c.name)
         return ret
 
 
@@ -71,7 +72,7 @@ class Run(db.Model):
     __tablename__ = 'run'
     __table_args__ = (
         db.UniqueConstraint('name', 'date', name='_test_run_id_uc'),
-        {'sqlite_autoincrement': True},
+        {'sqlite_autoincrement': True}, # For SQLite support
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -107,6 +108,7 @@ class Run(db.Model):
         'manual_passed', 'manual_failed', 'manual_skipped', 'manual_ignored',
         'manual_error',
     ]
+
     auto_passed = db.Column(db.Integer, nullable=True)
     auto_failed = db.Column(db.Integer, nullable=True)
     auto_skipped = db.Column(db.Integer, nullable=True)
@@ -130,26 +132,17 @@ class Run(db.Model):
         """
         Update test run's tags and properties.
         """
-        tags = None
-        properties = None
         with db.session.no_autoflush:
             # Create relationship after other values are processed
             # to prevent IntegrityError caused by auto commit.
+            for tag in kwargs.pop('tags', []):
+                tag_instance, _ = get_or_create(db.session, Tag, name=tag)
+                self.tags.append(tag_instance)
+            for name, value in kwargs.pop('properties', {}).items():
+                prop_instance = Property(name=name, value=value)
+                self.properties.append(prop_instance)
             for key, value in kwargs.items():
-                if key == 'tags':
-                    tags = value
-                elif key == 'properties':
-                    properties = value
-                else:
-                    setattr(self, key, value)
-            if tags:
-                for tag in tags:
-                    tag_instance, _ = get_or_create(db.session, Tag, name=tag)
-                    self.tags.append(tag_instance)
-            if properties:
-                for name, value in properties.items():
-                    prop_instance = Property(name=name, value=value)
-                    self.properties.append(prop_instance)
+                setattr(self, key, value)
 
     def gen_statistics(self):
         for col in self.__statistics_cols:
@@ -188,6 +181,7 @@ class Run(db.Model):
                 self.manual_ignored = (self.manual_ignored or 0) + 1
             else:
                 self.manual_error = (self.manual_error or 0) + 1
+        object_session(self).commit()
 
     def get_statistics(self):
         ret = {}
@@ -254,12 +248,15 @@ class AutoResult(db.Model):
         return '<TestResult %s-%s>' % (self.run_id, self.case)
 
     def __init__(self, **result):
-        for key, value in result.items():
+        self.update(**result)
+
+    def update(self, **kwargs):
+        for key, value in kwargs.items():
             setattr(self, key, value)
 
     @validates('result')
     def validate_result(self, key, result):
-        assert result in ['passed', 'failed', 'skipped', 'missing', 'invalid', 'ignored', None]
+        assert result in ['passed', 'failed', 'skipped', 'missing', 'ignored', None]
         return result
 
     def as_dict(self, detailed=False):
@@ -274,7 +271,25 @@ class AutoResult(db.Model):
             ret['output'] = self.output
         return ret
 
+    def _check_failure(self, autocase_failures):
+        """
+        Check if any failure pattern matches
+        """
+        failures = []
+        for failure in autocase_failures:
+            if re.match(failure.failure_regex, self.failure) is not None:
+                for bl in failure.blacklist_entries:
+                    if bl.json['workitems'] and bl.json['bugs']:
+                        failures.append((bl.json['workitems'], 'failed', bl.json['bugs'], bl.status, bl.description))
+                    else:
+                        failures.append((bl.json['workitems'], 'ignored', bl.json['bugs'], bl.status, bl.description))
+        return failures
+
     def refresh_comment(self):
+        """
+        Generate a human readable text decscripting which manual
+        result is beging failed/block by this auto result.
+        """
         comments = []
         for result in self.linkage_results:
             _result = result.result
@@ -292,42 +307,33 @@ class AutoResult(db.Model):
         self.comment = "\n".join(comments)
 
     def refresh_result(self):
-        if self.skip:
-            if "BLACKLISTED" in self.skip:
+        if self.skip is not None:
+            if "BLACKLISTED" in str(self.skip):
                 self.result = 'ignored'
             else:
                 self.result = 'skipped'
-        elif self.failure:
+        elif self.failure is not None:
             self.result = 'failed'
-        elif self.output:
+        elif self.output is not None:
             self.result = 'passed'
         elif all(text is None for text in [self.skip, self.failure, self.output]):
             self.result = 'missing'
         else:
-            self.result = 'invalid'
-
-    def _check_failure(self, autocase):
-        failures = []
-        for failure in autocase.autocase_failures:
-            if re.match(failure.failure_regex, self.failure) is not None:
-                for bl in failure.blacklist_entries:
-                    if bl.json['workitems'] and bl.json['bugs']:
-                        failures.append((bl.json['workitems'], 'failed', bl.json['bugs'], bl.status, bl.description))
-                    else:
-                        failures.append((bl.json['workitems'], 'ignored', bl.json['bugs'], bl.status, bl.description))
-        return failures
+            raise RuntimeError('Unexpected auto result status %s' % self.as_dict(detailed=True))
 
     def gen_linkage_result(self, session=None, gen_manual=True):
         """
         Take a AutoResult instance, rewrite it's error and linkage_result
         with data in caselink.
         """
+        session = session or object_session(self)
         if not session:
-            session = db.session
+            raise RuntimeError("Can't gen linkage result on a detached reuslt")
 
         try:
             this_autocase = CaseLink.AutoCase(self.case).refresh()
-        except (HTTPError, ConnectionError) as err:
+        except (HTTPError, ConnectionError):
+            self.result = None
             return
 
         def _gen_linkage_result(workitems, result, error, detail):
@@ -340,9 +346,9 @@ class AutoResult(db.Model):
                                                   run_id=self.run_id,
                                                   manual_result_id=workitem.case,
                                                   auto_result_id=self.case)
-                linkage_result.result = _linkage_result
-                linkage_result.error = _linkage_error
-                linkage_result.detail = _linkage_detail
+                linkage_result.result = result
+                linkage_result.error = error
+                linkage_result.detail = detail
 
                 workitem.refresh_result()
                 workitem.refresh_comment()
@@ -352,13 +358,13 @@ class AutoResult(db.Model):
         _linkage_error, _linkage_detail = None, None
 
         if _linkage_result == "failed":
-            known_failures = self._check_failure(this_autocase)
+            known_failures = self._check_failure(this_autocase.autocase_failures)
             if not known_failures:
                 _linkage_result, _linkage_error = None, "UnknownIssue"
             else:
                 for wis, result, bugs, status, desc in known_failures:
                     _linkage_result, _linkage_error = result, None
-                    _linkage_detail = ("%s: Workitems %s %s for bugs %s: %s" %
+                    _linkage_detail = ("%s: Workitems '%s' %s for bugs %s: %s" %
                                        (status, wis, result, bugs, desc))
                     _gen_linkage_result(wis, _linkage_result, _linkage_error, _linkage_detail)
 
@@ -414,7 +420,10 @@ class ManualResult(db.Model):
         return ret
 
     def gen_linkage_result(self, session=None):
-        session = session or db.session
+        session = session or object_session(self)
+        if not session:
+            raise RuntimeError("Can't gen linkage result on a detached reuslt")
+
         this_workitem = CaseLink.WorkItem(self.case)
         for autocase in this_workitem.autocases:
             auto_result, _ = get_or_create(session, AutoResult,

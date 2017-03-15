@@ -1,6 +1,3 @@
-import datetime
-import re
-
 from model import db, AutoResult, ManualResult, LinkageResult, Run, Tag, Property
 from flask import Blueprint, request
 from flask_restful import Resource, Api, reqparse, inputs
@@ -54,7 +51,6 @@ class TestRunList(Resource):
         ret = []
         for run in runs:
             ret.append(run.as_dict(statistics=True))
-            db.session.commit()
         return ret
 
     def post(self):
@@ -63,15 +59,15 @@ class TestRunList(Resource):
             run = Run(**args)
             db.session.add(run)
             db.session.commit()
-        except IntegrityError as e:
+        except IntegrityError as err:
             db.session.rollback()
-            if "_test_run_id_uc" in  e.message:
+            if "_test_run_id_uc" in  err.message:
                 run = Run.query.filter(Run.name == args['name'],
                                        Run.date == args['date']
                                       ).one()
                 return run.as_dict(), 400
             else:
-                raise e
+                raise err
         return run.as_dict()
 
 
@@ -133,25 +129,23 @@ class AutoResultList(Resource):
         result = args
         result['run_id'] = run_id
 
-        res = AutoResult.query.get((run_id, args['case']))
-        if res:
-            if res.result is not None:
-                return res.as_dict(), 400
-            else:
-                db.session.delete(res)
-                db.session.commit()
+        result_instance = AutoResult.query.get((run_id, result['case']))
+        if not result_instance:
+            result_instance = AutoResult()
+        elif result_instance.result != 'missing':
+            return result_instance.as_dict(), 400
+        result_instance.update(**result)
 
-        result_instance = AutoResult(**result)
         db.session.add(result_instance)
 
         try:
             result_instance.refresh_result()
-            result_instance.gen_linkage_result(session=db.session)
+            result_instance.gen_linkage_result()
             result_instance.refresh_comment()
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            raise e
+            raise
         return result_instance.as_dict()
 
 
@@ -182,7 +176,7 @@ class AutoResultDetail(Resource):
         for key in request.json.keys():
             setattr(res, (key), result[(key)])
 
-        res.gen_linkage_result(session=db.session, gen_manual=False)
+        res.gen_linkage_result(gen_manual=False)
         res.refresh_comment()
 
         db.session.commit()

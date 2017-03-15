@@ -1,20 +1,21 @@
-from flask import render_template, make_response, jsonify, Blueprint
-from model import *
+from flask import render_template, make_response, Blueprint
+from model import Run, AutoResult, ManualResult
 
 table = Blueprint('table', __name__)
 
-def column_to_table(model, ajax_url, code, extra_column=[]):
+def column_to_table(model, ajax_url, code, extra_column=None):
     """
     Render array of entrys of a database with datatable.
     Array should contain dicts with the same keys.
     """
     columns = model.__table__.columns
     columns = [str(col).split('.')[-1] for col in columns]
-    columns += extra_column
+    if extra_column:
+        columns += extra_column
     resp = make_response(render_template('column_table.html',
                                          column_names=columns,
                                          column_datas=columns,
-                                         ajax=ajax_url), 200)
+                                         ajax=ajax_url), code)
     return resp
 
 
@@ -38,5 +39,3 @@ def manual_result_table(run_id):
         ManualResult,
         '/api/run/' + str(run_id) + '/manual/',
         200)
-
-
