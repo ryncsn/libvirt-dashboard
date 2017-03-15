@@ -1,2 +1,2 @@
 <template src="./datatable-template.html"></template>
-<script src="./autoresult-datatable.js"></script>
+<script src="./manualresult-datatable.js"></script>

@@ -1,0 +1,18 @@
+<div>
+  <div v-if="noError">
+    <div class="alert alert-success" role="alert">Nothing to do</div>
+  </div>
+  <div v-else class="panel panel-default detail-operatoins">
+    <div class="panel panel-default">
+      <div class="panel-body">
+        <button type="button" class="btn btn-warning btn-mark-fail btn-result" v-on:click="failResult">Mark Failed</button>
+        <button type="button" class="btn btn-success btn-mark-pass btn-result" v-on:click="passResult">Mark Passed</button>
+        <button type="button" class="btn btn-danger btn-delete btn-result" v-on:click="deleteResult">Delete</button>
+      </div>
+    </div>
+  </div>
+  <pre>
+    <code class="detail-well" v-html="logContentHTML">
+    </code>
+  </pre>
+</div>

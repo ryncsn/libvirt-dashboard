@@ -1,42 +1,11 @@
 {% extends "index.html" %}
-{% set column_names = ["case", "time", "comment", "result"] %}
-{% set column_datas = ["case", "time", "comment", "result"] %}
 {% block title %} Libvirt Dashboard - Generated Manuals {% endblock %}
 {% block content %}
-<table class='table' id='column_table'>
-    <thead>
-        <tr>
-            {% for col in column_names %}
-            <th>{{ col }}</th>
-            {% endfor %}
-        </tr>
-    </thead>
-    <tfoot>
-        <tr>
-            {% for col in column_names %}
-            <th>{{ col }}</th>
-            {% endfor %}
-        </tr>
-    </tfoot>
-</table>
+<div id="manualresult-resolving">
+    <manualresult-table dt-ajax-url="{{ajax}}" run-id="{{run_id}}">
+    </manualresult-table>
+</div>
 {% endblock %}
 {% block footer %}
-<div id="_proto_error_panel" class="hidden">
-    <div class="panel panel-default">
-        <div class="panel-body">
-            <button type="button" class="btn btn-warning btn-mark-fail btn-result">Mark Failed</button>
-            <button type="button" class="btn btn-success btn-mark-pass btn-result">Mark Passed</button>
-            <button type="button" class="btn btn-danger btn-delete btn-result">Delete</button>
-        </div>
-    </div>
-</div>
-<script type="text/javascript" charset="utf-8">
-    sharedParameters.set("ajaxURL", "{{ajax}}");
-    sharedParameters.set("templateColumns", [
-        {% for col in column_datas %}
-        "{{ col }}",
-        {% endfor %}
-    ]);
-</script>
 <script src="{{ url_for('static', filename='dist/resolve_manual.js') }}" type="text/javascript" charset="utf-8"></script>
 {% endblock %}
