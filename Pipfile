@@ -9,6 +9,9 @@ Flask-SQLAlchemy = "*"
 Flask-RESTful = "*"
 Flask-Migrate = "*"
 
+[dev-packages]
+pylint = "*"
+
 [packages.caselink]
 git = "https://github.com/ryncsn/caselink-python"
 ref = "master"
