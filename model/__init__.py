@@ -483,10 +483,10 @@ class LinkageResult(db.Model):
     __table_args__ = (
         ForeignKeyConstraint(["run_id", "manual_result_id"],
                              [ManualResult.run_id, ManualResult.case],
-                             on_delete="CASCADE"),
+                             ondelete="CASCADE"),
         ForeignKeyConstraint(["run_id", "auto_result_id"],
                              [AutoResult.run_id, AutoResult.case],
-                             on_delete="CASCADE"),
+                             ondelete="CASCADE"),
         {})
 
     run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
