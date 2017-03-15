@@ -2,15 +2,16 @@
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 
+[dev-packages]
+pylint = "*"
+
 [packages]
 Flask = "*"
 SQLAlchemy = "*"
 Flask-SQLAlchemy = "*"
 Flask-RESTful = "*"
 Flask-Migrate = "*"
-
-[dev-packages]
-pylint = "*"
+six = "*"
 
 [packages.caselink]
 git = "https://github.com/ryncsn/caselink-python"

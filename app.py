@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Load Flask and config
-from flask import Flask, Markup
+from flask import Flask
 app = Flask(__name__)
 app.config.from_object('config.ActiveConfig')
 

@@ -9,6 +9,7 @@ import datetime
 import tempfile
 import argparse
 
+import six.moves as sm
 from flask import json, jsonify
 
 class randFilledBoolList(list):
@@ -18,9 +19,9 @@ class randFilledBoolList(list):
         if 0 > true_ratio or 1 < true_ratio:
             raise RuntimeError("true_ratio can only be a number between 1 - 0")
         super(randFilledBoolList, self).__init__()
-        for i in range(int(math.floor(length * true_ratio))):
+        for i in sm.range(int(math.floor(length * true_ratio))):
             self.append(True)
-        for i in range(int(math.ceil(length * (1 - true_ratio)))):
+        for i in sm.range(int(math.ceil(length * (1 - true_ratio)))):
             self.append(False)
         self = random.shuffle(self)
 
@@ -141,23 +142,23 @@ class FixtureTest(DashboardTestCase):
                                ("d.fail.%s.often", 1, randFilledBoolList(run_number, 0.2)),
                                ("e.fail.%s.always", 1, randFilledBoolList(run_number, 0))]
 
-        for _ in range(run_number):
+        for _ in sm.range(run_number):
             self.submit_test_run(**kwargs)
 
             for case_name, case_number in passed_cases_param:
-                for _number in range(case_number):
+                for _number in sm.range(case_number):
                     self.submit_case_result(case_name % _number, "Passed output", "passed")
 
             for case_name, case_number, case_result_list in failed_cases_param:
                 this_case_result = case_result_list.pop()
-                for _number in range(case_number):
+                for _number in sm.range(case_number):
                     if this_case_result:
                         self.submit_case_result(case_name % _number, "Passed output", "passed")
                     else:
                         self.submit_case_result(case_name % _number, "Failed output", "failed")
 
     def test_submit_data(self):
-        for group_num in xrange(self.fixture_group_number):
+        for group_num in sm.range(self.fixture_group_number):
             tags = ["Test %s" % group_num, "Fixture"]
             name = "Dev-Test-Run-%s" % group_num
             build = "Dev-build-%s" % group_num
