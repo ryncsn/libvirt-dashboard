@@ -23,6 +23,8 @@ from suds import WebFault
 from ssl import SSLError
 from pylarion.exceptions import PylarionLibException
 
+from .. import config
+
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s|%(message)s',
     level=logging.INFO)
@@ -31,12 +33,14 @@ LOGGER = logging.getLogger(__name__)
 
 COMMIT_CHUNK_SIZE = 100
 
+PLAN_QUERY_MAP = config.ActiveConfig
+
 
 class PolarionException(Exception):
     pass
 
 
-def get_nearest_plan(version, date=None):
+def get_nearest_plan(query, date=None):
     """
     Get next nearest next plan ID
     """
@@ -45,7 +49,7 @@ def get_nearest_plan(version, date=None):
     LOGGER.info('Using date %s', date)
 
     nearest_plan = None
-    for plan in Plan.search(version):
+    for plan in Plan.search(query):
         LOGGER.info('Found plan %s, due date %s', plan.name, plan.due_date)
         if not plan.due_date:
             continue
@@ -196,9 +200,10 @@ class TestRunRecord(object):
 
     @property
     def nearest_plan(self):
+        query = PLAN_QUERY_MAP["%s-%s" % (self.product, self.version)]
         if not self._nearest_plan:
             LOGGER.info("Getting nearest plan")
-            self._nearest_plan = get_nearest_plan(self.version, self.date.date())
+            self._nearest_plan = get_nearest_plan(query, self.date.date())
             LOGGER.info("Nearest plan %s", self._nearest_plan)
         return self._nearest_plan
 

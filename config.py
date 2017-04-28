@@ -11,6 +11,9 @@ class Config(object):
 
     POLARION_ENABLED = False
     POLARION_URL = '#'
+    POLARION_PLAN = {
+        "PRODUCT-VERSION": "QUERY",
+    }
 
 
 class ProductionConfig(Config):
