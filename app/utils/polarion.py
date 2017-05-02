@@ -2,38 +2,29 @@
 More specified ORM for Polaroin
 Wrapper for Pylaroin
 """
-import time
 import logging
 import datetime
+import tempfile
+
+import os
+import sys
 import re
 import ssl
-import threading
 import traceback
 
-from pylarion.base_polarion import BasePolarion
-from pylarion.document import Document
-from pylarion.work_item import TestCase
-from pylarion.test_run import TestRun
-from pylarion.plan import Plan
-from pylarion.exceptions import PylarionLibException
-from pylarion.text import Text
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
 
-from httplib import HTTPException
-from suds import WebFault
-from ssl import SSLError
-from pylarion.exceptions import PylarionLibException
+from pylarion.plan import Plan
 
 from config import ActiveConfig
 from app import celery
 
 try:
-    from suds import WebFault
-    from ssl import SSLError
     from pylarion.exceptions import PylarionLibException
     PYLARION_INSTALLED = True
 except ImportError:
     PYLARION_INSTALLED = False
-
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s|%(message)s',
@@ -43,17 +34,22 @@ LOGGER = logging.getLogger(__name__)
 
 COMMIT_CHUNK_SIZE = 100
 
-PLAN_QUERY_MAP = ActiveConfig.POLARION_PLAN
+POLARION_URL = ActiveConfig.POLARION_URL
+POLARION_USER = ActiveConfig.POLARION_USER
+POLARION_PLANS = ActiveConfig.POLARION_PLANS
+POLARION_PROJECT = ActiveConfig.POLARION_PROJECT
+POLARION_PASSWORD = ActiveConfig.POLARION_PASSWORD
 
 
 class PolarionException(Exception):
     pass
 
 
-def get_nearest_plan(query, date=None):
+def get_nearest_plan_by_pylarion(query, date=None):
     """
     Get next nearest next plan ID
     """
+    return "NEAREST PLAN"
     if not date:
         date = datetime.date.today()
     LOGGER.info('Using date %s', date)
@@ -74,308 +70,238 @@ def get_nearest_plan(query, date=None):
         raise PolarionException("Unable to find a planned in.")
 
 
-class PolarionSession(object):
+class TestSuites(object):
+    POLARION_PROPERTIES = [
+        "polarion-testrun-id",
+        "polarion-testrun-template-id",
+        "polarion-testrun-status-id",
+        "polarion-testrun-template-id",
+        "polarion-testrun-title",
+        "polarion-testrun-type-id",
+        "polarion-dry-run",
+        "polarion-include-skipped",
+        "polarion-use-testcase-iterations",
+        "polarion-lookup-method",
+    ]
+
+    def __init__(self, project_id, **kwargs):
+        self.properties = {
+            "polarion-project-id": project_id,
+        }
+        self.testsuites = []
+
+    def set_polarion_response(self, response_key, response_value):
+        if not response_key.startswith("polarion-response-"):
+            response_key = "polarion-response-{}".format(response_key)
+        self.properties[response_key] = response_value
+
+    def set_polarion_property(self, key, value):
+        if not key.startswith("polarion-"):
+            key = "polarion-{}".format(key)
+        self.properties[key] = value
+
+    def set_polarion_custom_field(self, key, value):
+        if not key.startswith("polarion-custom-"):
+            key = "polarion-custom-{}".format(key)
+        self.properties[key] = value
+
+    def build_xml_str(self):
+        xml_element = ET.Element("testsuites")
+
+        if self.properties:
+            props_element = ET.SubElement(xml_element, "properties")
+            for k, v in self.properties.items():
+                attrs = {'name': str(k), 'value': str(v)}
+                ET.SubElement(props_element, "property", attrs)
+
+        for suite in self.testsuites:
+            xml_element.append(suite.build_xml_doc())
+
+        xml_string = ET.tostring(xml_element)
+        xml_string = TestSuites._clean_illegal_xml_chars(xml_string.decode('utf-8'))
+        xml_string = xml.dom.minidom.parseString(xml_string).toprettyxml()
+
+        return xml_string
+
+    @staticmethod
+    def _clean_illegal_xml_chars(string_to_clean):
+        """
+        Removes any illegal unicode characters from the given XML string, Copy & paste code
+        """
+        # see http://stackoverflow.com/questions/1707890/fast-way-to-filter-illegal-xml-unicode-chars-in-python
+        illegal_unichrs = [(0x00, 0x08), (0x0B, 0x1F), (0x7F, 0x84), (0x86, 0x9F),
+                           (0xD800, 0xDFFF), (0xFDD0, 0xFDDF), (0xFFFE, 0xFFFF),
+                           (0x1FFFE, 0x1FFFF), (0x2FFFE, 0x2FFFF), (0x3FFFE, 0x3FFFF),
+                           (0x4FFFE, 0x4FFFF), (0x5FFFE, 0x5FFFF), (0x6FFFE, 0x6FFFF),
+                           (0x7FFFE, 0x7FFFF), (0x8FFFE, 0x8FFFF), (0x9FFFE, 0x9FFFF),
+                           (0xAFFFE, 0xAFFFF), (0xBFFFE, 0xBFFFF), (0xCFFFE, 0xCFFFF),
+                           (0xDFFFE, 0xDFFFF), (0xEFFFE, 0xEFFFF), (0xFFFFE, 0xFFFFF),
+                           (0x10FFFE, 0x10FFFF)]
+
+        illegal_ranges = ["%s-%s" % (unichr(low), unichr(high))
+                          for (low, high) in illegal_unichrs
+                          if low < sys.maxunicode]
+
+        illegal_xml_re = re.compile(u'[%s]' % u''.join(illegal_ranges))
+        return illegal_xml_re.sub('', string_to_clean)
+
+
+class TestSuite(object):
     """
-    Manage session, allow tx_commit during session
+    Contains a set of TestCase object
     """
-    lock = threading.RLock()
-    def __enter__(self):
-        self.lock.acquire()
-        self.session = BasePolarion.session
-        self.session._reauth()
-        if not self.session.tx_in():
-            self.session.tx_begin()
-        return self
+    def __init__(self, name):
+        self.name = name
+        self.testcases = []
 
-    def __exit__(self, exception_type, exception_value, tb):
-        try:
-            if exception_type:
-                LOGGER.error("Got exception: %s \n %s",
-                             exception_type, exception_value)
-                traceback.print_tb(tb)
-                self.session.tx_rollback()
-            else:
-                if self.session.tx_in():
-                    self.session.tx_commit()
-                self.session.tx_release()
-                self.session._logout()
-        finally:
-            self.lock.release()
+    def add_testcase(self, testcase):
+        assert isinstance(testcase, TestCase)
+        self.testcases.append(testcase)
 
-    def reauth(self):
-        self.session._logout()
-        self.session._login()
+    def build_xml_doc(self):
+        xml_element = ET.Element("testsuite", {
+            'failures': str(self.failures),
+            'errors': str(self.errors),
+            'skipped': str(self.skipped),
+            'tests': str(len(self.testcases)),
+            'time': str(self.time),
+            'name': str(self.name)
+        })
 
-    def rollback(self):
-        if self.session.tx_in():
-            self.session.tx_rollback()
+        for testcase in self.testcases:
+            xml_element.append(testcase.build_xml_doc())
 
-    def commit(self):
-        if self.session.tx_in():
-            self.session.tx_commit()
+        return xml_element
 
-    def begin(self):
-        if not self.session.tx_in():
-            self.session.tx_begin()
+    @property
+    def failures(self):
+        return len([c for c in self.testcases if c.failure])
 
-    def __getattr__(self, attr):
-        return getattr(self.session, attr)
+    @property
+    def errors(self):
+        return len([c for c in self.testcases if c.error])
 
-    def retry_request(self, func, times=50, read_only=False):
-        for retry in reversed(range(times)):
-            try:
-                if not read_only:
-                    self.begin()
-                func()
-                if not read_only:
-                    self.commit()
-                return
-            except (WebFault, SSLError) as error:
-                time.sleep(10)
-                if "timed out" in error.message and retry:
-                    LOGGER.info("Request timeout, retry left %s", retry)
-                elif "Not authorized" in error.message and retry:
-                    LOGGER.info("Auth expired, retry left %s", retry)
-                    self.reauth()
-                else:
-                    return error
-                self.rollback()
-                continue
-            except HTTPException as error:
-                time.sleep(10)
-                if retry:
-                    LOGGER.info("HTTP error %s, retry lift %s", error, retry)
-                    self.reauth()
-                    self.rollback()
-                    continue
-                else:
-                    return error
-        return None
+    @property
+    def skipped(self):
+        return len([c for c in self.testcases if c.skipped])
+
+    @property
+    def time(self):
+        return sum([c.elapsed_sec for c in self.testcases])
+
+
+class TestCase(object):
+    """
+    Stands for a record of a test run on Polarion
+    """
+    def __init__(self, name, id,
+                 stdout=None, stderr=None,
+                 failure=None, skipped=None, error=None,
+                 classname=None, comment=None, elapsed_sec=None):
+        # Attr
+        self.classname = classname
+        self.name = name
+
+        # Sub ele
+        self.stdout = stdout
+        self.stderr = stderr
+        self.failure = failure
+        self.skipped = skipped
+        self.error = error
+        self.elapsed_sec = elapsed_sec
+
+        # Polarion Prop
+        self.properties = {
+            "polarion-testcase-id": id,
+            "polarion-testcase-comment": comment,
+        }
+
+    def set_polarion_parameter(self, key, value):
+        if not key.startswith("polarion-parameter-"):
+            key = "polarion-parameter-{}".format(key)
+        self.properties[key] = value
+
+    @property
+    def passed(self):
+        return not self.failure and not self.skipped and not self.error
+
+    def build_xml_doc(self):
+        status = iter([self.failure, self.skipped, self.error])
+        assert self.passed or any(status) and not any(status)
+
+        attrs = {"name": str(self.name)}
+        if self.classname:
+            attrs["classname"] = str(self.classname)
+        if self.elapsed_sec:
+            attrs["time"] = str(self.elapsed_sec)
+
+        xml_element = ET.Element("testcase", attrs)
+
+        if self.failure:
+            ET.SubElement(xml_element, "failure", {"type": "failure", "message": str(self.failure)})
+
+        if self.skipped:
+            ET.SubElement(xml_element, "skipped", {"type": "skipped", "message": str(self.skipped)})
+
+        if self.error:
+            ET.SubElement(xml_element, "error", {"type": "error", "message": str(self.error)})
+
+        ET.SubElement(xml_element, "system-out").text = str(self.stdout or "")
+        ET.SubElement(xml_element, "system-err").text = str(self.stderr or "")
+
+        if self.properties:
+            props_element = ET.SubElement(xml_element, "properties")
+            for k, v in self.properties.items():
+                attrs = {'name': str(k), 'value': str(v)}
+                ET.SubElement(props_element, "property", attrs)
+
+        return xml_element
+
 
 # pylint: disable=no-member
 class TestRunRecord(object):
-    # TODO: dashboard_id not used
-    __props__ = ("dashboard_id", "name", "component", "build",
-                 "product", "version", "arch", "type",
-                 "framework", "project", "date", "ci_url",
-                 "title_tags", "polarion_tags", "description")
+    def __init__(self, project_id, testrun_name, **kwargs):
+        self.tss = TestSuites(project_id)
 
-    def __init__(self, **kwargs):
-        for prop in self.__props__:
-            setattr(self, prop, kwargs.pop(prop))
+        self.set_polarion_property = self.tss.set_polarion_property
+        self.set_polarion_response = self.tss.set_polarion_response
+        self.set_polarion_custom_field = self.tss.set_polarion_custom_field
 
-        self._test_run = None
-        self.records = []
-        self.query = (('project.id:%s AND type:testcase ' % (self.project)
-                       + 'AND (%s)'))
+        for key, value in kwargs.items():
+            self.tss.set_polarion_custom_field(key, value)
 
-        self.test_run_id = '%s %s %s %s' % (
-            self.name, self.framework, self.build,
-            self.date.strftime('%Y-%m-%d %H-%M-%S')
-        )
+        self.ts = TestSuite(testrun_name)
+        self.tss.testsuites.append(self.ts)
 
-        if self.title_tags:
-            self.test_run_id += ' %s' % (' '.join(self.title_tags))
+    def get_polarion_property(self, key):
+        if not key.startswith("polarion-"):
+            key = "polarion-{}".format(key)
+        return self.tss.properties[key]
 
-        # Replace unsupported characters
-        self.test_run_id = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', self.test_run_id)
-
-        # TODO: tempalte name
-        self.template_name = "libvirt-autotest"
-        self._nearest_plan = None
-
-    def add_record(self, case=None, result=None, duration=None,
-                   record_datetime=None, executed_by=None, comment=None):
+    def add_testcase(
+            self, case, result, elapsed_sec, comment=None):
         """
         Update test run content according to the test cases.
         """
 
         if result not in ['failed', 'passed', 'blocked']:
-            raise PolarionException('Result can only be "failed", "passed" of "blocked"')
+            raise PolarionException('Result can only be "failed", "passed" or "blocked"')
 
-        LOGGER.debug('Creating Test Record for %s', case)
-
-        record = Record(
-            case=case,
-            #factory=self.client.factory,
-            project=self.project,
-            duration=duration,
-            executed=record_datetime,
-            executed_by=executed_by,
-            result=result,
-            comment=comment,
+        # executed/executed_by is set automatically to the submit user and submit time
+        record = TestCase(
+            case, case, elapsed_sec=elapsed_sec, comment=comment
         )
 
-        self.records.append(record)
+        self.ts.add_testcase(record)
+        return record
 
-    @property
-    def nearest_plan(self):
-        query = PLAN_QUERY_MAP["%s-%s" % (self.product, self.version)]
-        if not self._nearest_plan:
-            LOGGER.info("Getting nearest plan")
-            self._nearest_plan = get_nearest_plan(query, self.date.date())
-            LOGGER.info("Nearest plan %s", self._nearest_plan)
-        return self._nearest_plan
-
-    def exist_on_polarion(self):
-        pass
-
-    def _create_on_polarion(self):
-        """
-        Create a empty Test Run with test_run_id on Polarion
-        """
-        self._test_run = TestRun.create(
-            self.project, self.test_run_id, self.template_name,
-            plannedin=self.nearest_plan,
-            assignee='kasong', description=self.description,
-            group_id=self.build,
-            select_test_cases_by = 'staticQueryResult',
-            query=self.query % " OR ".join(["id:%s" % rec.case for rec in self.records])
-        )
-
-    def _set_jenkinsjobs(self, url=None):
-        """
-        Hacky way to set jenkinsjobs.
-        """
-        if not self._test_run or url is None:
-            return None
-
-        # Make sure jenkinsjobs field exists.
-        self._test_run._set_custom_field("jenkinsjobs", "")
-
-        for cf in self._test_run._suds_object.customFields[0]:
-            if cf.key == "jenkinsjobs":
-                cf.value = Text(url)._suds_object
-                cf.value.type = "text/plain"
-
-    def _set_tags(self, tags):
-        """
-        Hacky way to set tags.
-        """
-        if not self._test_run or tags is None:
-            return None
-
-        # Make sure tags field exists.
-        self._test_run._set_custom_field("tags", "")
-
-        for cf in self._test_run._suds_object.customFields[0]:
-            if cf.key == "tags":
-                cf.value = tags
-
-    def _update_info_on_polarion(self):
-        """
-        Update Test Run info on Polarion
-        """
-        # [manualSelection, staticQueryResult, dynamicQueryResult, staticLiveDoc,
-        #  dynamicLiveDoc, automatedProcess]
-        self._set_jenkinsjobs(self.ci_url)
-        self._set_tags(self.polarion_tags)
-
-    def submit(self, session, resubmit=False):
+    def submit(self):
         """
         Submit / Update a test run on polarion.
         """
-        def _find_test_run():
-            try:
-                self._test_run = TestRun(self.test_run_id, project_id=self.project)
-            except PylarionLibException as error:
-                if "not found" in error.message:
-                    self._test_run = None
-                else:
-                    raise error
-            else:
-                LOGGER.info('Test Run Founded')
-
-        def _create_test_run():
-            self._create_on_polarion()
-            LOGGER.info('Empty Test Run Created')
-            self._update_info_on_polarion()
-            LOGGER.info('Test Run Metadata Updated')
-            session.commit()
-            LOGGER.info('Test Run Saved')
-
-        error = session.retry_request(_find_test_run, read_only=True)
-        if error:
-            LOGGER.info('Failed looking up test run')
-            raise PolarionException("Failed looking up test run %s" % error)
-
-        if resubmit:
-            if self._test_run:
-                raise PolarionException("Old test run not deleted, you have to delete it manually")
-
-        if not self._test_run:
-            error = session.retry_request(_create_test_run)
-            if error:
-                LOGGER.info('Empty Test Run Create Failed')
-                raise PolarionException("Failed creating test run %s" % error)
-            else:
-                LOGGER.info('Empty Test Run Created')
-        else:
-            LOGGER.info('Test Run already exists')
-
-        def _add_record():
-            # Add test run records.
-            client = session.test_management_client
-            for idx, record in enumerate(self.records):
-                LOGGER.info('Uploading Record %s', idx)
-                client.service.addTestRecordToTestRun(self._test_run.uri,
-                                                      record.gen_polarion_object(client.factory))
-
-        error = session.retry_request(_add_record)
-        if error:
-            LOGGER.error('Test Run Record adding failed')
-            raise PolarionException("Adding record failed %s" % error)
-        else:
-            LOGGER.info('Test Run Records Added')
-
-        def _mark_test_finished():
-            self._test_run.status = 'finished'
-            self._test_run.update()
-
-        if session.retry_request(_mark_test_finished, 50):
-            raise PolarionException("Failed finishing test run %s" % error)
-
-        LOGGER.info('Submit Done')
-
-
-class Record(object):
-    __props__ = ("case", "project", "duration", "executed",
-                 "executed_by", "result", "comment")
-
-    def __init__(self, **kwargs):
-        for prop in self.__props__:
-            setattr(self, prop, kwargs.pop(prop))
-
-        self._polarion_object = None
-
-    def gen_polarion_object(self, factory):
-        """
-        Generate a Test Run Record object for Polarion.
-        """
-
-        if self._polarion_object is not None:
-            return self._polarion_object
-
-        suds_object = factory.create('tns3:TestRecord')
-
-        suds_object.testCaseURI = ("subterra:data-service:objects:/default/"
-                                   "%s${WorkItem}%s" %
-                                   (self.project, self.case))
-        suds_object.duration = self.duration
-        suds_object.executed = self.executed
-
-        result_obj = factory.create('tns4:EnumOptionId')
-        result_obj.id = self.result
-        suds_object.result = result_obj
-
-        if self.comment is not None:
-            comment_obj = factory.create('tns2:Text')
-            comment_obj.type = "text/html"
-            comment_obj.content = '<pre>%s</pre>' % self.comment
-            comment_obj.contentLossy = False
-            suds_object.comment = comment_obj
-
-        suds_object.executedByURI = ("subterra:data-service:objects:/default/"
-                                     "${User}%s" % self.executed_by)
-        self._polarion_object = suds_object
-        return suds_object
+        xmldoc = self.tss.build_xml_str()
+        fd, temp_path = tempfile.mkstemp()
+        with open(temp_path, "w") as fp:
+            print(temp_path)
+            fp.write(xmldoc)
+        os.close(fd)
