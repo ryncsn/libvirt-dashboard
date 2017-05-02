@@ -1,6 +1,6 @@
 var webpack = require('webpack');
 module.exports = {
-  context: __dirname + "/static",
+  context: __dirname + "/app/static",
   entry: {
     // Vendors
     vendor: ['jquery', 'bootstrap-webpack', 'font-awesome-webpack', './pack/datatables.js', './pack/style.js'],
@@ -17,8 +17,8 @@ module.exports = {
     testrun_diff: './testrun_diff.js',
   },
   output: {
-    path: __dirname + '/static/dist/',
-    publicPath: '/static/dist/',
+    path: __dirname + '/app/static/dist/',
+    publicPath: '/app/static/dist/',
     filename: "[name].js"
   },
   module: {

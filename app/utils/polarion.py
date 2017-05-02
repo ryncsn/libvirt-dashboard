@@ -23,7 +23,17 @@ from suds import WebFault
 from ssl import SSLError
 from pylarion.exceptions import PylarionLibException
 
-from .. import config
+from config import ActiveConfig
+from app import celery
+
+try:
+    from suds import WebFault
+    from ssl import SSLError
+    from pylarion.exceptions import PylarionLibException
+    PYLARION_INSTALLED = True
+except ImportError:
+    PYLARION_INSTALLED = False
+
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s|%(message)s',
@@ -33,7 +43,7 @@ LOGGER = logging.getLogger(__name__)
 
 COMMIT_CHUNK_SIZE = 100
 
-PLAN_QUERY_MAP = config.ActiveConfig
+PLAN_QUERY_MAP = ActiveConfig.POLARION_PLAN
 
 
 class PolarionException(Exception):

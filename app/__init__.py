@@ -2,11 +2,26 @@
 # Load Flask and config
 from flask import Flask
 app = Flask(__name__)
-app.config.from_object('config.ActiveConfig')
+app.config.from_object("config.ActiveConfig")
 
 # Load ORM
 from model import db
 db.init_app(app)
+
+# Celery task entry
+from celery import Celery
+def make_celery(app):
+    celery = Celery(app.import_name)
+    celery.conf.update(app.config)
+    TaskBase = celery.Task
+    class ContextTask(TaskBase):
+        abstract = True
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return TaskBase.__call__(self, *args, **kwargs)
+    celery.Task = ContextTask
+    return celery
+celery = make_celery(app)
 
 # Load utils
 from caselink import CASELINK_URL
@@ -24,21 +39,11 @@ app.register_blueprint(restful_api, url_prefix="/api")
 app.register_blueprint(dt_api, url_prefix="/dt")
 app.register_blueprint(dashboard_statistics, url_prefix="/statistics")
 
-# Load Manager and Migration
-from flask_migrate import Migrate, MigrateCommand
-from flask_script import Manager
-migrate = Migrate(app, db)
-manager = Manager(app)
-manager.add_command('db', MigrateCommand)
-
-@app.cli.command('initdb')
-def init_db_cli():
-    init_db()
-
-def init_db():
+def initdb():
+    "Initialize the database"
     with app.app_context():
         db.create_all()
 
-# Start the server
-if __name__ == '__main__':
-    manager.run()
+# Load Migration
+from flask_migrate import Migrate
+migrate = Migrate(app, db)

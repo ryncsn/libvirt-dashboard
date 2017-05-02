@@ -1,7 +1,8 @@
-from model import db, AutoResult, ManualResult, LinkageResult, Run, Tag, Property
 from flask import Blueprint, request
 from flask_restful import Resource, Api, reqparse, inputs
 from sqlalchemy.exc import IntegrityError
+
+from ..model import db, AutoResult, ManualResult, LinkageResult, Run, Tag, Property
 
 restful_api = Blueprint('restful_api', __name__)
 

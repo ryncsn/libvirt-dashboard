@@ -6,7 +6,8 @@ import json
 from sqlalchemy import func
 from flask_restful import Resource, Api
 from flask import Blueprint, request
-from model import db, Run, Tag, AutoResult, ManualResult
+
+from ..model import db, Run, Tag, AutoResult, ManualResult
 
 dt_api = Blueprint('dt_api', __name__)
 

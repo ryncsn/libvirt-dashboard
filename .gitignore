@@ -2,5 +2,6 @@ TODO
 static/dist
 node_modules
 config_instance.py
+config/config.py
 .virtenv
-
+*.swp

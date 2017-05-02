@@ -31,6 +31,6 @@ class TestingConfig(Config):
 ActiveConfig = DevelopmentConfig
 
 try:
-    from config_instance import *
+    from .config import ActiveConfig
 except ImportError:
     print("Instance setting not found.")

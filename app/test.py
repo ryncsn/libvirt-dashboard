@@ -42,7 +42,7 @@ class DashboardTestCase(unittest.TestCase):
 
     def setUpDev(self):
         self.app = app.app.test_client()
-        app.init_db()
+        app.initdb()
 
     def tearDownDev(self):
         pass
@@ -52,7 +52,7 @@ class DashboardTestCase(unittest.TestCase):
         app.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + self.db_fn
         app.app.config['TESTING'] = True
         self.app = app.app.test_client()
-        app.init_db()
+        app.initdb()
 
     def tearDownTest(self):
         os.close(self.db_fd)

@@ -1,5 +1,6 @@
 from flask import render_template, make_response, Blueprint
-from model import Run, AutoResult, ManualResult
+
+from ..model import Run, AutoResult, ManualResult
 
 table = Blueprint('table', __name__)
 

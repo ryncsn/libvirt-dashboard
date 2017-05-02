@@ -1,0 +1,14 @@
+from . import Config
+
+class ActiveConfig(Config):
+    DEBUG = False
+    TESTING = False
+
+    SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/test.db'
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    POLARION_ENABLED = False
+    POLARION_URL = '#'
+    POLARION_PLAN = {
+        "PRODUCT-VERSION": "QUERY",
+    }

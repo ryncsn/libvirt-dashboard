@@ -1,8 +1,9 @@
 from datetime import datetime
 from flask import Blueprint, Markup, render_template, request, jsonify
-from model import db, Run, AutoResult, ManualResult, Run
 from sqlalchemy.orm import load_only, joinedload
 from collections import Counter
+
+from ..model import db, Run, AutoResult, ManualResult, Run
 
 dashboard_statistics = Blueprint('dashboard_statistics', __name__)
 CHUNCK_SIZE = 300
