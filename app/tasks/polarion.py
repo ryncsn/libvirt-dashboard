@@ -63,7 +63,7 @@ def submit_to_polarion(testrun_ids, forced=False):
         )
     try:
         # Read-only lock for updating rows
-        for test_run in Run.query.with_for_update(read=True).filter(Run.id in testrun_ids):
+        for test_run in Run.query.with_for_update(read=True).filter(Run.id.in_(testrun_ids)):
             errors = test_run.blocking_errors(exclude="ALL") if forced else test_run.blocking_errors()
             re_submit = bool(test_run.submit_date)
             if errors:

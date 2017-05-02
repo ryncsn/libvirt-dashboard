@@ -6,6 +6,7 @@ from flask import current_app as app
 
 from ..model import db, AutoResult, ManualResult, LinkageResult, Run, Tag
 from ..tasks import submit_to_polarion as submit_to_polarion_task
+from ..tasks import get_running_tasks_status
 
 from ..utils.polarion import PYLARION_INSTALLED
 
@@ -139,3 +140,8 @@ def submit_to_polarion(run_id=None, run_regex=None):
     submit_to_polarion_task.delay([run.id for run in test_runs], forced)
 
     return jsonify({'message': 'Tasks queued'}), 200
+
+
+@dashboard.route('/tasks', methods=['GET'])
+def get_tasks(run_id=None, run_regex=None):
+    return jsonify(_get_running_tasks_status()), 200

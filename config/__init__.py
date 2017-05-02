@@ -15,6 +15,10 @@ class Config(object):
         "PRODUCT-VERSION": "QUERY",
     }
 
+    CELERY_BROKER='amqp://guest:guest@localhost:5672//'
+    CELERY_RESULT_BACKEND = 'db+sqlite:////tmp/test.db'
+    CELERY_IGNORE_RESULT = False
+
 
 class ProductionConfig(Config):
     pass
