@@ -12,7 +12,7 @@ from ..utils.polarion import PYLARION_INSTALLED
 
 dashboard = Blueprint('dashboard', __name__)
 
-CHUNK_SIZE=128
+CHUNK_SIZE = 128
 
 
 @dashboard.route('/', methods=['GET'])
@@ -40,15 +40,15 @@ def resolve_autocase(run_id):
 @dashboard.route('/resolve/run/<int:run_id>/manual/', methods=['GET'])
 def resolve_manualcase(run_id):
     return render_template('resolve_manual.html',
-                             ajax='/api/run/' + str(run_id) + '/manual/')
+                           ajax='/api/run/' + str(run_id) + '/manual/')
 
 
 @dashboard.route('/trigger/run/<int:run_id>/refresh', methods=['GET'])
 def refresh_testrun(run_id):
     LinkageResult.query.filter(LinkageResult.run_id == run_id).\
-            delete(synchronize_session=False)
+        delete(synchronize_session=False)
     ManualResult.query.filter(ManualResult.run_id == run_id).\
-            delete(synchronize_session=False)
+        delete(synchronize_session=False)
     AutoResult.query.filter(
         AutoResult.run_id == run_id,
         AutoResult.output == None,
@@ -97,7 +97,7 @@ def refresh_auto(run_id, case=None):
 @dashboard.route('/trigger/run/<int:run_id>/manual/refresh', methods=['GET'])
 def refresh_manual(run_id):
     ManualResult.query.filter(ManualResult.run_id == run_id).\
-            delete(synchronize_session=False)
+        delete(synchronize_session=False)
 
     for result_instance in AutoResult.query.filter(AutoResult.run_id == run_id):
         result_instance.gen_linkage_result(db.session, gen_manual=False)

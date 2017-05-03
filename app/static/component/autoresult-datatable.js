@@ -57,8 +57,8 @@ const dtButtons = function () {
       action() {
         vm.dtTable.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
           var row = this, d = this.data();
-          dashboard.refreshAutoCase(this.runId, d.case).done(function(data){
-            dashboard.autoCaseAPI("GET", this.runId, d.case).done(function(data){
+          dashboard.refreshAutoCase(vm.runId, d.case).done(function(data){
+            dashboard.autoCaseAPI("GET", vm.runId, d.case).done(function(data){
               row.data(data).draw();
             });
           });
@@ -72,7 +72,7 @@ const dtButtons = function () {
       action: function ( e, dt, node, config ) {
         table.rows( { selected: true } ).every(function(idx, tableLoop, rowLoop){
           var row = this, d = this.data();
-          dashboard.autoCaseAPI("DELETE", this.runId, d.case).done(function(data){
+          dashboard.autoCaseAPI("DELETE", vm.runId, d.case).done(function(data){
             table
               .row(idx)
               .remove()
@@ -121,7 +121,7 @@ export default {
 
   mounted(){
     let vm = this;
-    var table = $('#result-table').DataSearchTable({
+    vm.dtTable = $('#result-table').DataSearchTable({
       BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton, dtMixins.DataTableJumpPageButton],
       iDisplayLength: 20,
       bAutoWidth: false,

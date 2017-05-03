@@ -115,7 +115,7 @@ export default {
 
   mounted(){
     let vm = this;
-    var table = $('#result-table').DataSearchTable({
+    vm.dtTable = $('#result-table').DataSearchTable({
       BaseTable: [dtMixins.DataTableWithChildRow, dtMixins.DataTableWithInlineButton, dtMixins.DataTableJumpPageButton],
       iDisplayLength: 20,
       bAutoWidth: false,
