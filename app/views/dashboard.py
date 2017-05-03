@@ -128,7 +128,10 @@ def submit_to_polarion(run_id=None, run_regex=None):
     if run_id:
         test_runs = Run.query.filter(Run.id == run_id)
     elif run_regex:
-        test_runs = Run.query.filter(Run.name.op("REGEXP", run_regex)).yield_per(CHUNK_SIZE)
+        test_runs = Run.query.filter(Run.name.op("REGEXP", run_regex))
+
+    if not forced:
+        test_runs = test_runs.filter(Run.submit_date == None)
 
     if test_runs.count() == 0:
         return jsonify({'message': 'No matching test runs founded'}), 403
