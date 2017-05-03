@@ -48,6 +48,7 @@ def get_nearest_plan_by_pylarion(query, date=None):
     """
     Get next nearest next plan ID
     """
+    return "NEAREST PLAN"
     if not date:
         date = datetime.date.today()
     LOGGER.info('Using date %s', date)
@@ -161,6 +162,7 @@ class TestSuite(object):
             'failures': str(self.failures),
             'errors': str(self.errors),
             'skipped': str(self.skipped),
+            'tests': str(len(self.testcases)),
             'time': str(self.time),
             'name': str(self.name)
         })
@@ -230,7 +232,7 @@ class TestCase(object):
         if self.classname:
             attrs["classname"] = str(self.classname)
         if self.elapsed_sec:
-            attrs["elapsed_sec"] = str(self.elapsed_sec)
+            attrs["time"] = str(self.elapsed_sec)
 
         xml_element = ET.Element("testcase", attrs)
 
@@ -244,7 +246,7 @@ class TestCase(object):
             ET.SubElement(xml_element, "error", {"type": "error", "message": str(self.error)})
 
         ET.SubElement(xml_element, "system-out").text = str(self.stdout or "")
-        ET.SubElement(xml_element, "system-error").text = str(self.stderr or "")
+        ET.SubElement(xml_element, "system-err").text = str(self.stderr or "")
 
         if self.properties:
             props_element = ET.SubElement(xml_element, "properties")
@@ -299,5 +301,6 @@ class TestRunRecord(object):
         xmldoc = self.tss.build_xml_str()
         fd, temp_path = tempfile.mkstemp()
         with open(temp_path, "w") as fp:
+            print(temp_path)
             fp.write(xmldoc)
         os.close(fd)
