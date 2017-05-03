@@ -15,12 +15,11 @@ import traceback
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
-from pylarion.plan import Plan
-
 from config import ActiveConfig
 from app import celery
 
 try:
+    from pylarion.plan import Plan
     from pylarion.exceptions import PylarionLibException
     PYLARION_INSTALLED = True
 except ImportError:
