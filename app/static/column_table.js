@@ -3,7 +3,7 @@ var htmlify = require('./lib/htmlify.js');
 var _p = require("./lib/sharedParameters.js");
 var columns = _p.get("templateColumns").map(col => ({
   "render": htmlify,
-  "data": column
+  "data": col
 }));
 
 $('#column_table').dataTable( {
