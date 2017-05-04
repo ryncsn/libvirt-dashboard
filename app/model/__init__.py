@@ -93,8 +93,9 @@ class Run(db.Model):
     tags = db.relationship('Tag', secondary=run_tags_table, back_populates='runs', lazy='dynamic')
     properties = db.relationship('Property', back_populates='run', lazy='dynamic')
 
-    submit_date = db.Column(db.DateTime(), unique=False, nullable=True, index=True)
-    submit_status = db.Column(db.String(4095), unique=False, nullable=True, index=True)
+    submit_date = db.Column(db.DateTime(), nullable=True, index=True)
+    submit_status = db.Column(db.String(4095), nullable=True, index=True)
+    submit_task = db.Column(db.String(128), nullable=True)
     polarion_id = db.Column(db.String(65535), unique=False, nullable=True)
 
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')

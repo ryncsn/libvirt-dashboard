@@ -138,9 +138,11 @@ def submit_to_polarion(run_id=None, run_regex=None):
 
     test_runs.update({Run.submit_status: "Pending"})
 
-    db.session.commit()
+    task = submit_to_polarion_task.delay([run.id for run in test_runs], forced)
 
-    submit_to_polarion_task.delay([run.id for run in test_runs], forced)
+    test_runs.update({Run.submit_task: str(task)})
+
+    db.session.commit()
 
     return jsonify({'message': 'Tasks queued'}), 200
 

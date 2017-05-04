@@ -50,7 +50,6 @@ def get_nearest_plan_by_pylarion(query, date=None):
     """
     Get next nearest next plan ID
     """
-    return "NEAREST PLAN"
     if not date:
         date = datetime.date.today()
     LOGGER.info('Using date %s', date)
@@ -306,9 +305,13 @@ class TestRunRecord(object):
         with open(temp_path, "w") as fp:
             fp.write(xmldoc)
 
-        with open(temp_path, "w") as fp:
-            requests.post("{}/import/xunit".format(POLARION_URL),
-                          auth=(POLARION_USER, POLARION_PASSWORD),
-                          files={"temp_path": fp})
+        with open(temp_path, "r") as fp:
+            res = requests.post("{}/import/xunit".format(POLARION_URL),
+                                auth=(POLARION_USER, POLARION_PASSWORD),
+                                files={"temp_path": fp}, verify=False)  # FIXME
+            if res.status_code != requests.status_codes.codes.ok:
+                return res.text
 
         os.close(fd)
+
+        return None

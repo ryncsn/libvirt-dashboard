@@ -89,7 +89,9 @@ def submit_to_polarion(testrun_ids, forced=False):
         testrun_record.set_polarion_property("group-id", test_run.build)
         testrun_record.set_polarion_property("testrun-id", testrun_id)
         testrun_record.set_polarion_property("testrun-template-id", "libvirt-autotest")
-        testrun_record.set_polarion_response("libvirt-dashboard-submitted", testrun_id)
+        testrun_record.set_polarion_response("libvirt-dashboard-submitted", "true")
+        testrun_record.set_polarion_response("libvirt-dashboard-id", test_run.id)
+        testrun_record.set_polarion_response("polarion-testrun", testrun_id)
         testrun_record.set_polarion_response("libvirt-dashboard-build", test_run.build)
 
         return testrun_record
@@ -98,6 +100,7 @@ def submit_to_polarion(testrun_ids, forced=False):
         # Read-only lock for updating rows
         query = Run.query.with_for_update(read=True).filter(Run.id.in_(testrun_ids))
         for test_run in query.all():
+            test_run.submit_status = "Task running"
             errors = test_run.blocking_errors(exclude="ALL") if forced else test_run.blocking_errors()
             if errors:
                 test_run.submit_status = "\n".join(errors)
@@ -118,10 +121,14 @@ def submit_to_polarion(testrun_ids, forced=False):
                             elapsed_sec=record.time,
                         )
 
-                    polarion_testrun.submit()
+                    res = polarion_testrun.submit()
+                    if res:
+                        raise Exception(str(res))
 
                 except Exception as error:
-                    test_run.submit_status = "%s: %s" % (type(error), error.message or str(error))
+                    test_run.submit_status = (
+                        "Failed: %s: %s" % (type(error), error.message or str(error))
+                    )  # TODO
                     if hasattr(error, "__traceback__"):
                         traceback.print_tb(error.__traceback__)
                     else:
@@ -132,7 +139,7 @@ def submit_to_polarion(testrun_ids, forced=False):
                     # No exception, means everything went well
                     test_run.submit_date = datetime.datetime.now()
                     test_run.polarion_id = polarion_testrun.get_polarion_property('testrun-id')
-                    test_run.submit_status = "Success"
+                    test_run.submit_status = "Waiting For Feedback"
     finally:
         # Always Release the lock
         query.session.commit()
