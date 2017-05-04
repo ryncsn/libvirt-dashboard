@@ -22,10 +22,10 @@ def get_or_create(session, model, **kwargs):
 
 
 run_tags_table = \
-        db.Table('test_run_tags',
-                 db.Column('run_id', db.Integer, db.ForeignKey('run.id')),
-                 db.Column('tag_name', db.String(255), db.ForeignKey('tag.name'))
-                )
+    db.Table('test_run_tags',
+             db.Column('run_id', db.Integer, db.ForeignKey('run.id'), index=True),
+             db.Column('tag_name', db.String(255), db.ForeignKey('tag.name'), index=True)
+             )
 
 
 class Property(db.Model):
@@ -34,7 +34,7 @@ class Property(db.Model):
     run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
     run = db.relationship('Run', back_populates='properties', single_parent=True)
 
-    name = db.Column(db.String(255), nullable=False, primary_key=True)
+    name = db.Column(db.String(255), nullable=False, primary_key=True, index=True)
     value = db.Column(db.String(65535), nullable=False)
 
     def __repr__(self):
@@ -50,7 +50,7 @@ class Tag(db.Model):
     __tablename__ = 'tag'
 
     runs = db.relationship('Run', secondary=run_tags_table, back_populates='tags', lazy='dynamic')
-    name = db.Column(db.String(255), nullable=False, primary_key=True)
+    name = db.Column(db.String(255), nullable=False, primary_key=True, index=True)
     desc = db.Column(db.String(255), nullable=True)
 
     def __repr__(self):
@@ -76,7 +76,7 @@ class Run(db.Model):
     )
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(255), unique=False, nullable=False)
+    name = db.Column(db.String(255), unique=False, nullable=False, index=True)
     component = db.Column(db.String(255), unique=False, nullable=False)
     build = db.Column(db.String(255), unique=False, nullable=False)
     product = db.Column(db.String(255), unique=False, nullable=False)
@@ -93,8 +93,8 @@ class Run(db.Model):
     tags = db.relationship('Tag', secondary=run_tags_table, back_populates='runs', lazy='dynamic')
     properties = db.relationship('Property', back_populates='run', lazy='dynamic')
 
-    submit_date = db.Column(db.DateTime(), unique=False, nullable=True)
-    submit_status = db.Column(db.String(4095), unique=False, nullable=True)
+    submit_date = db.Column(db.DateTime(), unique=False, nullable=True, index=True)
+    submit_status = db.Column(db.String(4095), unique=False, nullable=True, index=True)
     polarion_id = db.Column(db.String(65535), unique=False, nullable=True)
 
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')
@@ -231,17 +231,17 @@ class Run(db.Model):
 class AutoResult(db.Model):
     __tablename__ = 'auto_result'
 
-    run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
+    run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True, index=True)
     run = db.relationship('Run', back_populates='auto_results', single_parent=True)
 
-    case = db.Column(db.String(65535), nullable=False, primary_key=True)
+    case = db.Column(db.String(65535), nullable=False, primary_key=True, index=True)
     time = db.Column(db.Float(), default=0.0, nullable=False)
     skip = deferred(db.Column(db.Text(), nullable=True))
     failure = deferred(db.Column(db.Text(), nullable=True))
     output = deferred(db.Column(db.Text(), nullable=True))
     source = deferred(db.Column(db.Text(), nullable=True))
     comment = db.Column(db.Text(), nullable=True)
-    result = db.Column(db.String(255), nullable=True)
+    result = db.Column(db.String(255), nullable=True, index=True)
 
     linkage_results = db.relationship("LinkageResult", back_populates="auto_result", viewonly=True, cascade="all, delete")
 
@@ -392,7 +392,7 @@ class ManualResult(db.Model):
     """
     __tablename__ = 'manual_result'
 
-    run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True)
+    run_id = db.Column(db.Integer, db.ForeignKey('run.id'), primary_key=True, index=True)
     run = db.relationship('Run', back_populates='manual_results', single_parent=True)
 
     case = db.Column(db.String(255), nullable=False, primary_key=True)
