@@ -89,6 +89,8 @@ def submit_to_polarion(testrun_ids, forced=False):
         testrun_record.set_polarion_property("group-id", test_run.build)
         testrun_record.set_polarion_property("testrun-id", testrun_id)
         testrun_record.set_polarion_property("testrun-template-id", "libvirt-autotest")
+        testrun_record.set_polarion_response("libvirt-dashboard-submitted", testrun_id)
+        testrun_record.set_polarion_response("libvirt-dashboard-build", test_run.build)
 
         return testrun_record
 
