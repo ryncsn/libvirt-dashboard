@@ -38,7 +38,7 @@ def submit_to_polarion(testrun_ids, forced=False):
             query = POLARION_PLANS["%s-%s" % (product, version)]
             return Polarion.get_nearest_plan_by_pylarion(query, date)
 
-        testrun_description = "Dashboard ID: %s<br> Tags: %s<br>" % (
+        testrun_description = "Dashboard ID: %s\n Tags: %s\n" % (
             testrun.id, " ".join('"%s"' % t.name for t in testrun.tags.all()))
 
         testrun_tags = ", ".join(tag.name.lstrip("polarion:").strip()
