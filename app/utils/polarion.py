@@ -12,6 +12,8 @@ import re
 import ssl
 import traceback
 
+import requests
+
 import xml.etree.ElementTree as ET
 import xml.dom.minidom
 
@@ -300,7 +302,13 @@ class TestRunRecord(object):
         """
         xmldoc = self.tss.build_xml_str()
         fd, temp_path = tempfile.mkstemp()
+
         with open(temp_path, "w") as fp:
-            print(temp_path)
             fp.write(xmldoc)
+
+        with open(temp_path, "w") as fp:
+            requests.post("{}/import/xunit".format(POLARION_URL),
+                          auth=(POLARION_USER, POLARION_PASSWORD),
+                          files={"temp_path": fp})
+
         os.close(fd)
