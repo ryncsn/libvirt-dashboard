@@ -47,7 +47,7 @@ class TestRunList(Resource):
         if search_value:
             filtered = filtered.filter(Run.name.like("%%%s%%" % search_value))
         if search_regex and not SQLITE:
-            filtered = filtered.filter(Run.name.op("REGEXP")(search_value))
+            filtered = filtered.filter(Run.name.op("~")(search_value))
 
         try:
             tags = json.loads(has_tags)
@@ -62,11 +62,11 @@ class TestRunList(Resource):
         if tags:
             filtered = filtered.filter(Run.tags.any(Tag.name.in_(tags)))
 
-        if contains_autocase and not SQLITE:
-            filtered = filtered.filter(Run.auto_results.any(AutoResult.case.op('REGEXP')(contains_autocase)))
+        if contains_autocase and SQLITE:
+            filtered = filtered.filter(Run.auto_results.any(AutoResult.case.op('~')(contains_autocase)))
 
-        if contains_manualcase and not SQLITE:
-            filtered = filtered.filter(Run.manual_results.any(ManualResult.case.op('REGEXP')(contains_manualcase)))
+        if contains_manualcase and SQLITE:
+            filtered = filtered.filter(Run.manual_results.any(ManualResult.case.op('~')(contains_manualcase)))
 
         if submit_status:
             if submit_status == 'all':
