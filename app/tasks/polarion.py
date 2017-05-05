@@ -30,15 +30,15 @@ def update_status(state, meta=None):
 
 @celery.task()
 def submit_to_polarion(testrun_ids, forced=False):
-    if not Polarion.PYLARION_INSTALLED:
+    if not ActiveConfig.POLARION_ENABLED:
         return
 
     def _gen_polarion_testrun(testrun):
         def get_nearest_plan(product, version, date):
-            query = POLARION_PLANS["%s-%s" % (product, version)]
-            return Polarion.get_nearest_plan_by_pylarion(query, date)
+            query = ActiveConfig.POLARION_PLAN_QUERY["%s-%s" % (product, version)]
+            return Polarion.get_nearest_plan(query, date)
 
-        testrun_description = "Dashboard ID: %s\n Tags: %s\n" % (
+        testrun_description = 'Dashboard ID: "%s", Tags: "%s"' % (
             testrun.id, " ".join('"%s"' % t.name for t in testrun.tags.all()))
 
         testrun_tags = ", ".join(tag.name.lstrip("polarion:").strip()
@@ -53,10 +53,9 @@ def submit_to_polarion(testrun_ids, forced=False):
 
         for group_name, group in testrun_properties.items():
             if group_name in ["package"]:
-                testrun_description += "<table><tr><th>%s</th></tr>" % group_name.title()
                 for name, value in group.items():
-                    testrun_description += "<tr><td>%s</td><td>%s</td></tr>" % (name, value)
-                testrun_description += "</table>"
+                    testrun_description += "%s: (%s: %s)" % ((
+                        group_name.title(), name, value))
 
         testrun_id = '{name} {framework} {build} {date} {extra}'.format(
             name=testrun.name,
@@ -101,44 +100,40 @@ def submit_to_polarion(testrun_ids, forced=False):
         query = Run.query.with_for_update(read=True).filter(Run.id.in_(testrun_ids))
         for test_run in query.all():
             test_run.submit_status = "Task running"
-            errors = test_run.blocking_errors(exclude="ALL") if forced else test_run.blocking_errors()
-            if errors:
-                test_run.submit_status = "\n".join(errors)
-            else:
-                try:
-                    polarion_testrun = _gen_polarion_testrun(test_run)
-                    for record in test_run.manual_results:
-                        polarion_result = record.result
-                        if polarion_result in ['ignored', 'skipped']:
-                            continue
-                        if polarion_result not in ['passed', 'failed']:
-                            polarion_result = 'blocked'
+            try:
+                polarion_testrun = _gen_polarion_testrun(test_run)
+                for record in test_run.manual_results:
+                    polarion_result = record.result
+                    if polarion_result in ['ignored', 'skipped']:
+                        continue
+                    if polarion_result not in ['passed', 'failed']:
+                        polarion_result = 'blocked'
 
-                        polarion_testrun.add_testcase(
-                            case=record.case,
-                            result=polarion_result,
-                            comment=record.comment,
-                            elapsed_sec=record.time,
-                        )
+                    polarion_testrun.add_testcase(
+                        case=record.case,
+                        result=polarion_result,
+                        comment=record.comment,
+                        elapsed_sec=record.time,
+                    )
 
-                    res = polarion_testrun.submit()
-                    if res:
-                        raise Exception(str(res))
+                res = polarion_testrun.submit()
+                if res:
+                    raise Exception(str(res))
 
-                except Exception as error:
-                    test_run.submit_status = (
-                        "Failed: %s: %s" % (type(error), error.message or str(error))
-                    )  # TODO
-                    if hasattr(error, "__traceback__"):
-                        traceback.print_tb(error.__traceback__)
-                    else:
-                        traceback.print_exc()
-                    # TODO: Error Detail
-
+            except Exception as error:
+                test_run.submit_status = (
+                    "Failed: %s: %s" % (type(error), error.message or str(error))
+                )  # TODO
+                if hasattr(error, "__traceback__"):
+                    traceback.print_tb(error.__traceback__)
                 else:
-                    # No exception, means everything went well
-                    test_run.polarion_id = polarion_testrun.get_polarion_property('testrun-id')
-                    test_run.submit_status = "Waiting For Feedback"
+                    traceback.print_exc()
+                # TODO: Error Detail
+
+            else:
+                # No exception, means everything went well
+                test_run.polarion_id = polarion_testrun.get_polarion_property('testrun-id')
+                test_run.submit_status = "Waiting For Feedback"
     finally:
         # Always Release the lock
         query.session.commit()

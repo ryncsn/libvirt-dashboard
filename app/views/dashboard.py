@@ -8,8 +8,6 @@ from ..model import db, AutoResult, ManualResult, LinkageResult, Run, Tag
 from ..tasks import submit_to_polarion as submit_to_polarion_task
 from ..tasks import get_running_tasks_status
 
-from ..utils.polarion import PYLARION_INSTALLED
-
 dashboard = Blueprint('dashboard', __name__)
 
 CHUNK_SIZE = 128
@@ -118,10 +116,6 @@ def refresh_manual(run_id):
 def submit_to_polarion(run_id=None, run_regex=None):
     forced = (request.args.get('forced', False) == "true")
 
-    if not PYLARION_INSTALLED:
-        return jsonify({'message': 'Pylarion not installed, you need to\
-                        install it manually or Pylarion support is disabled.'}), 503
-
     if not app.config['POLARION_ENABLED']:
         return jsonify({'message': 'Polarion not enabled, please contract the admin.'}), 503
 
@@ -135,6 +129,11 @@ def submit_to_polarion(run_id=None, run_regex=None):
 
     if test_runs.count() == 0:
         return jsonify({'message': 'No matching test runs founded'}), 403
+
+    for test in test_runs:
+        errors = test.blocking_errors(exclude="ALL") if forced else test.blocking_errors()
+        if errors:
+            return jsonify({'message': "Can't submit with error: %s" % errors}), 403
 
     test_runs.update({Run.submit_status: "Pending"})
 

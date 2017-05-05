@@ -20,13 +20,6 @@ import xml.dom.minidom
 from config import ActiveConfig
 from app import celery
 
-try:
-    from pylarion.plan import Plan
-    from pylarion.exceptions import PylarionLibException
-    PYLARION_INSTALLED = True
-except ImportError:
-    PYLARION_INSTALLED = False
-
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s|%(message)s',
     level=logging.INFO)
@@ -47,30 +40,36 @@ class PolarionException(Exception):
     pass
 
 
-def get_nearest_plan_by_pylarion(query, date=None):
+def get_nearest_plan(kw, date=None):
     """
     Get next nearest next plan ID
     """
+    plan_id = None
+    plan_name = None
+    nearest_date = None
+
     if not date:
         date = datetime.datetime.today()
-    LOGGER.info('Using date %s', date)
+        LOGGER.info('Using plan date %s', date)
 
-    nearest_plan = None
-    for plan in Plan.search(query):
-        LOGGER.info('Found plan %s, due date %s', plan.name, plan.due_date)
-        if not plan.due_date:
-            continue
-        if not isinstance(plan.due_date, datetime.datetime):
-            due_date = datetime.datetime.combine(plan.due_date, datetime.datetime.min.time())
-        else:
-            due_date = plan.due_date,
+    for key, value in POLARION_PLANS.items():
+        try:
+            LOGGER.debug('trying plan %s', key)
+            due_date = datetime.datetime.strptime(value.get('due_date'), "%Y-%m-%d")
+        except ValueError:
+            LOGGER.error("Wrong date time: %s", datetime)
+            raise
+        except TypeError:
+            LOGGER.debug("no date, %s", key)
+            raise
+
         if date < due_date:
-            if not nearest_plan or plan.due_date < nearest_plan.due_date:
-                nearest_plan = plan
+            if not plan_id or due_date < nearest_date:
+                plan_name, plan_id, nearest_date = key, value['plan_id'], due_date
 
-    if nearest_plan:
-        LOGGER.info('Next nearest plan is %s', nearest_plan.name)
-        return nearest_plan.plan_id
+    if plan_id:
+        LOGGER.info('Next nearest plan is %s', plan_name)
+        return plan_id
     elif POLARION_DEFAULT_PLANNED_IN:
         LOGGER.info('Fall back to default %s', POLARION_DEFAULT_PLANNED_IN)
         return POLARION_DEFAULT_PLANNED_IN

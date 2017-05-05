@@ -14,9 +14,8 @@ class Config(object):
     POLARION_PROJECT = 'TEST-PROJECT'
     POLARION_USER = 'TEST-USER'
     POLARION_PASSWORD = 'TEST-PASSWORD'
-    POLARION_PLANS = {
-        "PRODUCT-VERSION": "QUERY",
-    }
+    POLARION_PLAN_QUERY = {}
+    POLARION_PLANS = {}
     POLARION_DEFAULT_PLANNED_IN = None
 
     CELERY_BROKER = 'amqp://guest:guest@localhost:5672//'
