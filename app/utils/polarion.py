@@ -53,6 +53,8 @@ def get_nearest_plan(kw, date=None):
         LOGGER.info('Using plan date %s', date)
 
     for key, value in POLARION_PLANS.items():
+        if kw not in key:
+            continue
         try:
             LOGGER.debug('trying plan %s', key)
             due_date = datetime.datetime.strptime(value.get('due_date'), "%Y-%m-%d")

@@ -66,11 +66,17 @@ class MessageRouter(object):
         status = message.get('status')
         log_url = message.get('log-url')
         with app.app_context():
-            count = Run.query.filter(Run.id == libvirt_dashboard_id).update({
-                "submit_status": status,
-                "submit_log": log_url,
-                "submit_date": datetime.datetime.now()
-            })
+            if status == "passed":
+                count = Run.query.filter(Run.id == libvirt_dashboard_id).update({
+                    "submit_status": status,
+                    "submit_log": log_url,
+                    "submit_date": datetime.datetime.now()
+                })
+            else:
+                count = Run.query.filter(Run.id == libvirt_dashboard_id).update({
+                    "submit_status": status,
+                    "submit_log": log_url,
+                })
             Run.query.session.commit()
             if not count:
                 LOGGER.error("No matching test run for ID: {}".format(libvirt_dashboard_id))
