@@ -80,6 +80,10 @@ var vm = new Vue({
           "render": htmlify
         },
         {
+          "data":"submit_status",
+          "render": htmlify
+        },
+        {
           "data":function(row){
             var total = row.auto_passed + row.auto_failed + row.auto_skipped + row.auto_ignored + row.auto_error;
             return (total === 0) ? "N/a" : `${row.auto_passed} / ${total}`;
@@ -103,6 +107,11 @@ var vm = new Vue({
           },
           visible: false
         },
+        {
+          "data":'submit_task',
+          visible: false
+        },
+
       ],
       order: [[1, 'desc']],
       childContent: function(row, child, slideDown){

@@ -7,11 +7,16 @@ from sqlalchemy import func
 from flask_restful import Resource, Api
 from flask import Blueprint, request
 
+from config import ActiveConfig
+
 from ..model import db, Run, Tag, AutoResult, ManualResult
 
 dt_api = Blueprint('dt_api', __name__)
 
 api = Api(dt_api)
+
+SQLITE = ActiveConfig.SQLALCHEMY_DATABASE_URI.startswith("sqlite")
+
 
 class TestRunList(Resource):
     def get(self):
@@ -41,9 +46,8 @@ class TestRunList(Resource):
         filtered = Run.query
         if search_value:
             filtered = filtered.filter(Run.name.like("%%%s%%" % search_value))
-        if search_regex:
-            #TODO
-            pass
+        if search_regex and not SQLITE:
+            filtered = filtered.filter(Run.name.op("REGEXP")(search_value))
 
         try:
             tags = json.loads(has_tags)
@@ -58,11 +62,11 @@ class TestRunList(Resource):
         if tags:
             filtered = filtered.filter(Run.tags.any(Tag.name.in_(tags)))
 
-        if contains_autocase:
-            filtered = filtered.filter(Run.auto_results.any(AutoResult.case == contains_autocase))
+        if contains_autocase and not SQLITE:
+            filtered = filtered.filter(Run.auto_results.any(AutoResult.case.op('REGEXP')(contains_autocase)))
 
-        if contains_manualcase:
-            filtered = filtered.filter(Run.manual_results.any(ManualResult.case == contains_manualcase))
+        if contains_manualcase and not SQLITE:
+            filtered = filtered.filter(Run.manual_results.any(ManualResult.case.op('REGEXP')(contains_manualcase)))
 
         if submit_status:
             if submit_status == 'all':
@@ -75,6 +79,7 @@ class TestRunList(Resource):
         filtered = filtered.order_by(order)
 
         count = filtered.count()
+
         ret = []
 
         if start is not None:
@@ -92,5 +97,6 @@ class TestRunList(Resource):
             'recordsFiltered': count,
             'data': ret,
         }
+
 
 api.add_resource(TestRunList, '/run/', endpoint='test_run_list')
