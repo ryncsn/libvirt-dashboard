@@ -52,6 +52,7 @@ class TestRunList(Resource):
         ret = []
         for run in runs:
             ret.append(run.as_dict(statistics=True))
+        db.session.commit()
         return ret
 
     def post(self):

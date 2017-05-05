@@ -57,7 +57,7 @@ const dtButtons = function () {
       action() {
         table.rows( { selected: true } ).every(function(){
           var row = this, d = this.data();
-          dashboard.manualCaseAPI("DELETE", run_id, d.case)
+          dashboard.manualCaseAPI("DELETE", vm.runId, d.case)
             .done((data) => vm.dtTable.row(row).remove().draw());
         });
       },
@@ -68,7 +68,7 @@ const dtButtons = function () {
       className: 'btn-info',
       titleAttr: 'Regenerate all Manual test result according to auto test results and linkage on Caselink. (slow, page will be refreshed after finished)',
       action() {
-        dashboard.regenerateManual(run_id)
+        dashboard.regenerateManual(vm.runId)
           .done((data) => window.location.reload(false));
       },
     },
@@ -76,7 +76,7 @@ const dtButtons = function () {
       text: 'Submit to Polarion',
       className: 'btn-success',
       action() {
-        dashboard.submitTestRun(run_id, false);
+        dashboard.submitTestRun(vm.runId, false);
       },
     },
   ];

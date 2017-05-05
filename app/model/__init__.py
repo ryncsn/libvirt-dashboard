@@ -106,24 +106,16 @@ class Run(db.Model):
     # Denormalization for faster statistics
 
     __statistics_cols = [
-        'auto_passed', 'auto_failed', 'auto_skipped', 'auto_ignored',
-        'auto_missing', 'auto_error', 'auto_nolinkage',
-        'manual_passed', 'manual_failed', 'manual_skipped', 'manual_ignored',
-        'manual_error',
+        'auto_passed', 'auto_failed', 'auto_skipped',
+        'manual_passed', 'manual_failed', 'manual_error',
     ]
 
     auto_passed = db.Column(db.Integer, nullable=True)
     auto_failed = db.Column(db.Integer, nullable=True)
     auto_skipped = db.Column(db.Integer, nullable=True)
-    auto_ignored = db.Column(db.Integer, nullable=True)
-    auto_missing = db.Column(db.Integer, nullable=True)
-    auto_error = db.Column(db.Integer, nullable=True)
-    auto_nolinkage = db.Column(db.Integer, nullable=True)
     manual_passed = db.Column(db.Integer, nullable=True)
     manual_failed = db.Column(db.Integer, nullable=True)
-    manual_skipped = db.Column(db.Integer, nullable=True)
-    manual_ignored = db.Column(db.Integer, nullable=True)
-    manual_error = db.Column(db.Integer, nullable=True)
+    manual_error = db.Column(db.Integer, nullable=True)  # stands for blocked
 
     def __repr__(self):
         return '<TestRun %s>' % self.name
@@ -152,39 +144,24 @@ class Run(db.Model):
             setattr(self, col, 0)
 
         for result in self.auto_results\
-                      .options(load_only("result", "comment"))\
-                      .all():
+                .options(load_only("result", "comment"))\
+                .all():
             if result.result == 'passed':
                 self.auto_passed = (self.auto_passed or 0) + 1
             elif result.result == 'failed':
                 self.auto_failed = (self.auto_failed or 0) + 1
-                if "UnknownIssue" in result.comment:
-                    self.auto_error = (self.auto_error or 0) + 1
             elif result.result == 'skipped':
                 self.auto_skipped = (self.auto_skipped or 0) + 1
-            elif result.result == 'missing':
-                self.auto_missing = (self.auto_missing or 0) + 1
-            elif result.result == 'ignored':
-                self.auto_ignored = (self.auto_ignored or 0) + 1
-            else:
-                self.auto_error = (self.auto_error or 0) + 1
-            if result.comment is None:
-                self.auto_nolinkage = (self.auto_nolinkage or 0) + 1
 
         for result in self.manual_results\
-                      .options(load_only("result"))\
-                      .all():
+                .options(load_only("result"))\
+                .all():
             if result.result == 'failed':
                 self.manual_failed = (self.manual_failed or 0) + 1
             elif result.result == 'passed':
                 self.manual_passed = (self.manual_passed or 0) + 1
-            elif result.result == 'skipped':
-                self.manual_skipped = (self.manual_skipped or 0) + 1
-            elif result.result == 'ignored':
-                self.manual_ignored = (self.manual_ignored or 0) + 1
             else:
                 self.manual_error = (self.manual_error or 0) + 1
-        object_session(self).commit()
 
     def get_statistics(self):
         ret = {}
@@ -198,8 +175,6 @@ class Run(db.Model):
         ret = []
         if len(self.linkage_results) == 0:
             return ["No Linkage result avaliable"]
-        if exclude == "ALL":
-            return []
         for linkage_result in self.linkage_results:
             if ignore_resulted and linkage_result.result:
                 continue

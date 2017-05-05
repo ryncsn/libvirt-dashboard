@@ -85,19 +85,13 @@ var vm = new Vue({
         },
         {
           "data":function(row){
-            var total = row.auto_passed + row.auto_failed + row.auto_skipped + row.auto_ignored + row.auto_error;
+            var total = row.auto_passed + row.auto_failed + row.auto_skipped;
             return (total === 0) ? "N/a" : `${row.auto_passed} / ${total}`;
           },
         },
         {
           "data":function(row){
-            var total = row.auto_passed + row.auto_failed + row.auto_skipped + row.auto_ignored + row.auto_error;
-            return (total === 0) ? "N/a" : `${total - row.auto_nolinkage} / ${total}`;
-          },
-        },
-        {
-          "data":function(row){
-            var total = row.manual_failed + row.manual_passed + row.manual_ignored + row.manual_skipped + row.manual_error;
+            var total = row.manual_failed + row.manual_passed + row.manual_error;
             return (total === 0) ? "N/a" : `${row.manual_passed} / ${total}`;
           },
         },
@@ -163,10 +157,10 @@ var TestRunChildRow = Vue.extend({
     manualResolveUrl: function()  {return `/resolve/run/${this.testRun.id}/manual/`;},
     manualTableUrl:function() {return `/table/run/${this.testRun.id}/manual/`;},
     manualApi: function(){return `/api/run/${this.testRun.id}/manual/`;},
-    manualSummary: function() {return `${this.testRun.manual_error} errors, ${this.testRun.manual_passed} passed, ${this.testRun.manual_failed} failed`;},
+    manualSummary: function() {return `${this.testRun.manual_passed} passed, ${this.testRun.manual_failed} failed, ${this.testRun.manual_error} errors`;},
     autoResolveUrl: function()  {return `/resolve/run/${this.testRun.id}/auto/`;},
     autoTableUrl:function() {return `/table/run/${this.testRun.id}/auto/`;},
     autoApi: function(){return `/api/run/${this.testRun.id}/auto/`;},
-    autoSummary: function() {return `${this.testRun.auto_error} errors, ${this.testRun.auto_passed} passed, ${this.testRun.auto_failed} failed, ${this.testRun.auto_missing} missing`;},
+    autoSummary: function() {return `${this.testRun.auto_skipped} errors, ${this.testRun.auto_passed} passed, ${this.testRun.auto_failed} failed`;},
   },
 });

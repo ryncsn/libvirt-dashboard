@@ -38,7 +38,8 @@ def resolve_autocase(run_id):
 @dashboard.route('/resolve/run/<int:run_id>/manual/', methods=['GET'])
 def resolve_manualcase(run_id):
     return render_template('resolve_manual.html',
-                           ajax='/api/run/' + str(run_id) + '/manual/')
+                           ajax='/api/run/' + str(run_id) + '/manual/',
+                           run_id=run_id)
 
 
 @dashboard.route('/trigger/run/<int:run_id>/refresh', methods=['GET'])
@@ -131,9 +132,13 @@ def submit_to_polarion(run_id=None, run_regex=None):
         return jsonify({'message': 'No matching test runs founded'}), 403
 
     for test in test_runs:
-        errors = test.blocking_errors(exclude="ALL") if forced else test.blocking_errors()
-        if errors:
+        errors = test.blocking_errors()
+        if not forced and errors:
             return jsonify({'message': "Can't submit with error: %s" % errors}), 403
+
+        valid_submits = test.manual_results.filter(ManualResult.result == "passed").count()
+        if valid_submits == 0:
+            return jsonify({'message': "No useful info for testrun %s to submit, all case is failing or lack of linkage data" % test.id}), 403
 
     test_runs.update({Run.submit_status: "Pending"})
 

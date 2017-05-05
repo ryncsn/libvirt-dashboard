@@ -11,7 +11,6 @@ var d3 = require('d3')
         "auto_passed": "limegreen",
         "auto_failed": "tomato",
         "auto_skipped": "darkorange",
-        "auto_error": "lightgray"
     };
 
     var TestRunStackGraph = function(dom_selector, testRun){

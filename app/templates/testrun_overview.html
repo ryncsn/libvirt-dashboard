@@ -2,7 +2,7 @@
 {% extends "index.html" %}
 {% block title %} Libvirt Dashboard - Generated Manuals {% endblock %}
 {% block content %}
-{% set column_names = ['Test Run', 'Date', 'Polarion Submit Date', 'Submit Status', 'Auto', 'Linkage', 'Manual', 'Tags', 'Task'] %}
+{% set column_names = ['Test Run', 'Date', 'Polarion Submit Date', 'Submit Status', 'Auto', 'Manual', 'Tags', 'Task'] %}
 <div id="testrun-overview" class="container">
     <div class="panel panel-default">
         <div class="panel-heading test-run-panel">Test Runs
@@ -82,7 +82,7 @@
                     <li><a href="#" class='dashboard-api' title='View in JSON' v-bind:href="autoApi">API</a></li>
                 </ul>
             </div>
-            <span class="label dashboard-info-auto" v-bind:class="{ 'label-danger': !!testRun.auto_error, 'label-info': !testRun.auto_error}">
+            <span class="label dashboard-info-auto" v-bind:class="{ 'label-danger': !!testRun.auto_failed, 'label-info': !testRun.auto_failed}">
             ${autoSummary}
             </span>
         </div>
