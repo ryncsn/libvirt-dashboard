@@ -159,7 +159,7 @@ var TestRunChildRow = Vue.extend({
     return {};
   },
   computed: {
-    polarionUrl: function() {return `${_p.get('polarionURL')}/polarion/#/project/RedHatEnterpriseLinux7/testrun?id=${this.testRun.polarion_id}`;},
+    polarionUrl: function() {return `${_p.get('polarionURL')}/#/project/RedHatEnterpriseLinux7/testrun?id=${this.testRun.polarion_id}`;},
     manualResolveUrl: function()  {return `/resolve/run/${this.testRun.id}/manual/`;},
     manualTableUrl:function() {return `/table/run/${this.testRun.id}/manual/`;},
     manualApi: function(){return `/api/run/${this.testRun.id}/manual/`;},
