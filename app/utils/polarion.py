@@ -40,6 +40,7 @@ POLARION_USER = ActiveConfig.POLARION_USER
 POLARION_PLANS = ActiveConfig.POLARION_PLANS
 POLARION_PROJECT = ActiveConfig.POLARION_PROJECT
 POLARION_PASSWORD = ActiveConfig.POLARION_PASSWORD
+POLARION_DEFAULT_PLANNED_IN = ActiveConfig.POLARION_DEFAULT_PLANNED_IN
 
 
 class PolarionException(Exception):
@@ -51,7 +52,7 @@ def get_nearest_plan_by_pylarion(query, date=None):
     Get next nearest next plan ID
     """
     if not date:
-        date = datetime.date.today()
+        date = datetime.datetime.today()
     LOGGER.info('Using date %s', date)
 
     nearest_plan = None
@@ -59,13 +60,20 @@ def get_nearest_plan_by_pylarion(query, date=None):
         LOGGER.info('Found plan %s, due date %s', plan.name, plan.due_date)
         if not plan.due_date:
             continue
-        if date < plan.due_date:
+        if not isinstance(plan.due_date, datetime.datetime):
+            due_date = datetime.datetime.combine(plan.due_date, datetime.datetime.min.time())
+        else:
+            due_date = plan.due_date,
+        if date < due_date:
             if not nearest_plan or plan.due_date < nearest_plan.due_date:
                 nearest_plan = plan
 
     if nearest_plan:
         LOGGER.info('Next nearest plan is %s', nearest_plan.name)
         return nearest_plan.plan_id
+    elif POLARION_DEFAULT_PLANNED_IN:
+        LOGGER.info('Fall back to default %s', POLARION_DEFAULT_PLANNED_IN)
+        return POLARION_DEFAULT_PLANNED_IN
     else:
         raise PolarionException("Unable to find a planned in.")
 

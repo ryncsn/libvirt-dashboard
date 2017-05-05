@@ -96,6 +96,7 @@ class Run(db.Model):
     submit_date = db.Column(db.DateTime(), nullable=True, index=True)
     submit_status = db.Column(db.String(4095), nullable=True, index=True)
     submit_task = db.Column(db.String(128), nullable=True)
+    submit_log = db.Column(db.String(1024), nullable=True)
     polarion_id = db.Column(db.String(65535), unique=False, nullable=True)
 
     auto_results = db.relationship('AutoResult', back_populates='run', lazy='dynamic')

@@ -89,10 +89,10 @@ def submit_to_polarion(testrun_ids, forced=False):
         testrun_record.set_polarion_property("group-id", test_run.build)
         testrun_record.set_polarion_property("testrun-id", testrun_id)
         testrun_record.set_polarion_property("testrun-template-id", "libvirt-autotest")
-        testrun_record.set_polarion_response("libvirt-dashboard-submitted", "true")
-        testrun_record.set_polarion_response("libvirt-dashboard-id", test_run.id)
-        testrun_record.set_polarion_response("polarion-testrun", testrun_id)
-        testrun_record.set_polarion_response("libvirt-dashboard-build", test_run.build)
+        testrun_record.set_polarion_response("libvirt_dashboard_submitted", "true")
+        testrun_record.set_polarion_response("libvirt_dashboard_id", test_run.id)
+        testrun_record.set_polarion_response("polarion_testrun", testrun_id)
+        testrun_record.set_polarion_response("libvirt_dashboard_build", test_run.build)
 
         return testrun_record
 
@@ -137,7 +137,6 @@ def submit_to_polarion(testrun_ids, forced=False):
 
                 else:
                     # No exception, means everything went well
-                    test_run.submit_date = datetime.datetime.now()
                     test_run.polarion_id = polarion_testrun.get_polarion_property('testrun-id')
                     test_run.submit_status = "Waiting For Feedback"
     finally:

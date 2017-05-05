@@ -1,8 +1,26 @@
 #!/usr/bin/env python
 # Load Flask and config
+import logging
+
 from flask import Flask
 app = Flask(__name__)
 app.config.from_object("config.ActiveConfig")
+
+# setup logging
+def _get_logger():
+    fmt = '[%(filename)s:%(lineno)d] %(asctime)s %(levelname)s %(message)s'
+    loglevel = logging.DEBUG
+    formatter = logging.Formatter(fmt=fmt)
+
+    root_logger = logging.getLogger('lib-dash')
+    root_logger.setLevel(loglevel)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(loglevel)
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+    return root_logger
+
+logger = _get_logger()
 
 # Load ORM
 from model import db

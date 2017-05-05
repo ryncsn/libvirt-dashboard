@@ -17,10 +17,18 @@ class Config(object):
     POLARION_PLANS = {
         "PRODUCT-VERSION": "QUERY",
     }
+    POLARION_DEFAULT_PLANNED_IN = None
 
     CELERY_BROKER = 'amqp://guest:guest@localhost:5672//'
     CELERY_RESULT_BACKEND = 'db+sqlite:////tmp/test.db'
     CELERY_IGNORE_RESULT = False
+
+    BUS_HOST = "127.0.0.1"
+    BUS_PORT = 61613
+    BUS_USER = ""
+    BUS_PASSWORD = ""
+    BUS_TIMEOUT = 60
+    BUS_DISTINATION = ''
 
 
 class ProductionConfig(Config):
