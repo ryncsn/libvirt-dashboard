@@ -299,6 +299,10 @@ class TestRunRecord(object):
         record = TestCase(
             case, case, elapsed_sec=elapsed_sec, comment=comment
         )
+        if result == "failed":
+            record.failure = comment
+        elif result == "blcked":
+            record.error = comment
 
         self.ts.add_testcase(record)
         return record
