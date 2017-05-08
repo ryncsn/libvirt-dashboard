@@ -38,7 +38,7 @@ def submit_to_polarion(testrun_ids, forced=False):
             query = ActiveConfig.POLARION_PLAN_QUERY["%s-%s" % (product, version)]
             return Polarion.get_nearest_plan(query, date)
 
-        testrun_description = 'Dashboard ID: "%s", Tags: "%s"' % (
+        testrun_description = 'Dashboard ID: "%s", Tags: "%s" ' % (
             testrun.id, " ".join('"%s"' % t.name for t in testrun.tags.all()))
 
         testrun_tags = ", ".join(tag.name.lstrip("polarion:").strip()
@@ -68,6 +68,11 @@ def submit_to_polarion(testrun_ids, forced=False):
         testrun_id = re.sub(r'[.\/:*"<>|~!@#$?%^&\'*()+`,=]', '-', testrun_id)
         testrun_name = testrun_id
 
+        if testrun.arch == "x86_64":
+            testarch = 'x8664'
+        else:
+            testarch = testrun.arch
+
         testrun_record = Polarion.TestRunRecord(
             POLARION_PROJECT,
             testrun_name,
@@ -78,8 +83,7 @@ def submit_to_polarion(testrun_ids, forced=False):
             plannedin=get_nearest_plan(testrun.product, testrun.version, testrun.date),
             isautomated=True,
             build=testrun.build,
-            arch=testrun.arch,
-            type=test_run.type,
+            arch=testarch,
             component=test_run.component,
             jenkinsjobs=test_run.ci_url,
             tags=testrun_tags
@@ -87,6 +91,7 @@ def submit_to_polarion(testrun_ids, forced=False):
 
         testrun_record.set_polarion_property("group-id", test_run.build)
         testrun_record.set_polarion_property("testrun-id", testrun_id)
+        # testrun_record.set_polarion_property("testrun-type-id", testrun.type)
         testrun_record.set_polarion_property("testrun-template-id", "libvirt-autotest")
         testrun_record.set_polarion_response("libvirt_dashboard_submitted", "true")
         testrun_record.set_polarion_response("libvirt_dashboard_id", test_run.id)

@@ -302,7 +302,7 @@ class TestRunRecord(object):
         )
         if result == "failed":
             record.failure = comment
-        elif result == "blcked":
+        elif result == "blocked":
             record.error = comment
 
         self.ts.add_testcase(record)
