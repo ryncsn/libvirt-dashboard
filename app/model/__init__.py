@@ -426,14 +426,11 @@ class ManualResult(db.Model):
         elif any(r.result is None for r in linkage_results):
             self.result = "incomplete"
 
-        elif all(r.result == "ignored" or r.result == "passed" for r in linkage_results):
+        elif all(r.result in ["ignored", "skipped", "passed"] for r in linkage_results):
             if any(r.result == "passed" for r in linkage_results):
                 self.result = "passed"
             else:
                 self.result = "skipped"
-
-        elif all(r.result == "ignored" or r.result == "skipped" for r in linkage_results):
-            self.result = "skipped"
 
         else:
             self.result = "incomplete"
