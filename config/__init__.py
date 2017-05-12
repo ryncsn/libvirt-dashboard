@@ -29,6 +29,9 @@ class Config(object):
     BUS_TIMEOUT = 60
     BUS_DISTINATION = ''
 
+    JOB_TRIGGER_URL = 'http://exapmle.com/job-trigger'
+    JOB_NAMES_URL = 'htpp://example.com/get-job-names'
+
 
 class ProductionConfig(Config):
     pass

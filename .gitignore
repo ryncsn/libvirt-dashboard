@@ -1,7 +1,9 @@
 TODO
 static/dist
 node_modules
+app/static/dist
 config_instance.py
 config/config.py
 .virtenv
 *.swp
+celerybeat-schedule

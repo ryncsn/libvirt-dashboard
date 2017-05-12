@@ -28,6 +28,14 @@ def testrun_dashboard():
     return render_template('testrun_dashboard.html')
 
 
+@dashboard.route('/job-trigger', methods=['GET'])
+def job_trigger():
+    return render_template('job_trigger.html',
+                           trigger_gate_url=app.config["JOB_TRIGGER_URL"],
+                           get_job_names_url=app.config["JOB_NAMES_URL"],
+                           )
+
+
 @dashboard.route('/resolve/run/<int:run_id>/auto/', methods=['GET'])
 def resolve_autocase(run_id):
     return render_template('resolve_auto.html',

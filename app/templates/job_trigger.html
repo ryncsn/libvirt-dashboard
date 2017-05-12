@@ -1,0 +1,11 @@
+{% extends "index.html" %}
+{% block title %} Libvirt Dashboard - Trigger Job {% endblock %}
+{% block content %}
+<div id='job-trigger'>
+    <job-trigger trigger-gate-url="{{trigger_gate_url}}" get-job-names-url="{{get_job_names_url}}">
+    </job-trigger>
+</div>
+{% endblock %}
+{% block footer %}
+<script src="{{ url_for('static', filename='dist/job_trigger.js') }}" type="text/javascript" charset="utf-8"></script>
+{% endblock %}

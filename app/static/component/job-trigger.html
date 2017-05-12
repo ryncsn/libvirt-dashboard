@@ -1,0 +1,63 @@
+<div>
+  <div class="container">
+    <form role="form">
+      <div class="form-group">
+        <br />
+
+        <label for="job-trigger-form">Params for triggering a job</label>
+        <br />
+
+        <div class="input-group" v-bind:class="{ 'has-error': !archValid }" >
+          <span class="input-group-addon" id="basic-addon1">Arch</span>
+          <div class="tagsinput form-control">
+            <span v-for="arch in arch" class="tag label label-info" v-on:click="removeArch(arch)">{{arch}} x</span>
+          </div>
+          <input type="text" class="form-control hidden" v-model="arch" placeholder="Arch" disabled="true">
+          <div class="input-group-btn">
+            <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add <span class="caret"></span></button>
+            <ul class="dropdown-menu dropdown-menu-right">
+              <li v-for="arch in archCandidate"><a href="javascript:void(0)" v-on:click.stop.prevent="addArch(arch)">{{arch}}</a></li>
+            </ul>
+          </div><!-- /btn-group -->
+        </div>
+        <br />
+
+        <div class="input-group" v-bind:class="{ 'has-error': !ciMessageValid }" >
+          <span class="input-group-addon" id="basic-addon1">CI Message</span>
+          <input type="text" class="form-control" v-model="ci_message" placeholder="CI Message: {'CI_TYPE': 'balbal'}">
+        </div>
+        <br />
+
+        <div class="input-group">
+          <span class="input-group-addon" id="basic-addon1" v-bind:class="{ 'has-error': !ciMessageValid }" >Package Name</span>
+          <input type="text" class="form-control" v-model="pkg_name" placeholder="Package Name">
+        </div>
+        <br />
+
+        <div class="input-group">
+          <span class="input-group-addon" id="basic-addon1">Brew Tag</span>
+          <input type="text" class="form-control" v-model="brew_tag" placeholder="Brew Tag">
+        </div>
+        <br />
+
+        <div class="input-group">
+          <span class="input-group-addon" id="basic-addon1">Product</span>
+          <input type="text" class="form-control" v-model="product" placeholder="Product: eg: RHEL">
+        </div>
+        <br />
+
+        <div class="input-group">
+          <span class="input-group-addon" id="basic-addon1">Job name</span>
+          <input type="text" class="form-control" v-model="job_name" placeholder="Job name">
+        </div>
+        <br />
+      </div>
+
+      <div class="well">
+        Matched Jobs: {{ matchedJobs}}
+      </div>
+
+      <button type="submit" class="btn btn-default" v-on:click.stop.prevent="submit">Submit</button>
+    </form>
+  </div>
+</div>

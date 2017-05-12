@@ -3,7 +3,7 @@ module.exports = {
   context: __dirname + "/app/static",
   entry: {
     // Vendors
-    vendor: ['jquery', 'bootstrap-webpack', 'font-awesome-webpack', './pack/datatables.js', './pack/style.js'],
+    vendor: ['jquery', 'bootstrap-webpack', 'font-awesome-webpack', './pack/datatables.js', './pack/style.js', ],
     // The script that will load before any page content loaded.
     head: './pack/pace.js',
     // Initial Script for all page.
@@ -15,6 +15,7 @@ module.exports = {
     testrun_dashboard: './testrun_dashboard.js',
     testrun_overview: './testrun_overview.js',
     testrun_diff: './testrun_diff.js',
+    job_trigger: './job_trigger.js',
   },
   output: {
     path: __dirname + '/app/static/dist/',
