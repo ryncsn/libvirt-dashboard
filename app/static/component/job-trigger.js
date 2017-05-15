@@ -11,34 +11,19 @@ export default {
       pkg_name: "",
       arch: ["x86_64"],
       brew_tag: "",
-      ci_message: "{}",
+      message: "{}",
       product: "",
       job_name: "",
     };
   },
   methods: {
-    filter(str){
-      return (str === "" || str.length === 0)? null: str;
-    },
     dataForSubmit(){
-      let raw = {
-        "arch": this.filter(this.arch),
-        "brew_tag": this.filter(this.brew_tag),
-        "message": this.filter(this.ci_message),
-        "product": this.filter(this.product),
-        "job_name": this.filter(this.job_name),
-        "pkg_name": this.filter(this.pkg_name),
-      };
-      let ret = {};
-      for (let key in raw){
-        if (raw[key]){
-          ret[key] = raw[key];
-        }
-      }
-      return ret;
+      return _.pickBy(
+        _.pick(this, ["arch", "brew_tag", "message", "product", "job_name", "pkg_name"]),
+        v => v !== "" && v.length !== 0
+      );
     },
     submit(){
-      let vm = this;
       $.ajax({
         url: this.triggerGateUrl,
         data: this.dataForSubmit(),
@@ -48,13 +33,12 @@ export default {
         .fail((err) => alert(`Failed with ${err}`));
     },
     getMatchedJobs: _.debounce(function (){
-      let vm = this;
       $.ajax({
         url: this.getJobNamesUrl,
         data: this.dataForSubmit(),
         method: "POST",
       })
-        .done((data) => vm.matchedJobs = data);
+        .done((data) => this.matchedJobs = data);
     }, 500),
     addArch(arch){
       if (this.arch.indexOf(arch) == -1){
@@ -87,7 +71,7 @@ export default {
       return true;
     },
     ciMessageValid(){
-      return this.isJsonValid(this.ci_message);
+      return this.isJsonValid(this.message);
     }
   },
   created(){
